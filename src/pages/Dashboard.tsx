@@ -23,11 +23,9 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Responsive, WidthProvider, LayoutItem } from 'react-grid-layout';
+import { ResponsiveGridLayout, useContainerWidth, LayoutItem } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-
-const ResponsiveGridLayout = WidthProvider(Responsive);
 
 export default function Dashboard() {
   const { data: services = [] } = useServices();
@@ -180,6 +178,7 @@ function DashboardDetailView({
   const deleteWidget = useDeleteDashboardWidget();
   const [addOpen, setAddOpen] = useState(false);
   const layoutChangeRef = useRef<LayoutItem[]>([]);
+  const { width: containerWidth, ref: containerRef } = useContainerWidth({ initialWidth: 1200 });
 
   const widgetConfigs: WidgetConfig[] = widgets.map((w) => ({
     id: w.id,
@@ -234,7 +233,7 @@ function DashboardDetailView({
   };
 
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in" ref={containerRef}>
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={onBack} className="text-muted-foreground hover:text-foreground">
@@ -272,6 +271,7 @@ function DashboardDetailView({
         </div>
       ) : (
         <ResponsiveGridLayout
+          width={containerWidth}
           className="layout"
           layouts={{ lg: layouts }}
           breakpoints={{ lg: 1200, md: 900, sm: 600, xs: 0 }}
