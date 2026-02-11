@@ -8,7 +8,7 @@ export default function SettingsPage() {
   const { user } = useAuth();
 
   return (
-    <AppLayout tvMode={false} onToggleTvMode={() => {}} onAddService={() => {}}>
+    <AppLayout>
       <div className="max-w-xl animate-fade-in">
         <h1 className="text-2xl font-bold text-foreground mb-6">Settings</h1>
 

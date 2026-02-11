@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
+import ServicesPage from "@/pages/ServicesPage";
 import Integrations from "@/pages/Integrations";
 import Alerts from "@/pages/Alerts";
 import SettingsPage from "@/pages/SettingsPage";
@@ -24,7 +25,7 @@ const AppRoutes = () => (
   <Routes>
     <Route path="/auth" element={<Auth />} />
     <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-    <Route path="/services" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+    <Route path="/services" element={<ProtectedRoute><ServicesPage /></ProtectedRoute>} />
     <Route path="/integrations" element={<ProtectedRoute><Integrations /></ProtectedRoute>} />
     <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
     <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
