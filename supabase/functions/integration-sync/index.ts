@@ -108,84 +108,8 @@ async function syncGoogle(accessToken: string, userId: string, integrationId: st
     }
   } catch (e) { console.error("Google storage sync error:", e); }
 
-  // Fetch Drive file stats (using drive.metadata.readonly scope)
+  // Fetch Drive workspace-level metrics
   try {
-    // Count all files accessible to the authenticated user
-    let totalFiles = 0;
-    let sharedWithMeFiles = 0;
-    let sharedDrivesCount = 0;
-
-    // Get total file count (owned files)
-    const ownedRes = await fetch(
-      "https://www.googleapis.com/drive/v3/files?q='me'+in+owners&fields=nextPageToken&pageSize=1&supportsAllDrives=true",
-      { headers }
-    );
-    if (ownedRes.ok) {
-      // Use a paginated count approach
-      let pageToken: string | null = null;
-      let ownedCount = 0;
-      do {
-        const url = `https://www.googleapis.com/drive/v3/files?q='me'+in+owners&fields=nextPageToken,files(id)&pageSize=1000&supportsAllDrives=true${pageToken ? `&pageToken=${pageToken}` : ""}`;
-        const res = await fetch(url, { headers });
-        if (!res.ok) break;
-        const data = await res.json();
-        ownedCount += (data.files || []).length;
-        pageToken = data.nextPageToken || null;
-        // Limit to 5 pages to avoid timeout
-        if (ownedCount > 4000) break;
-      } while (pageToken);
-      totalFiles = ownedCount;
-    }
-
-    // Count shared with me files
-    const sharedRes = await fetch(
-      "https://www.googleapis.com/drive/v3/files?q=sharedWithMe=true&fields=nextPageToken,files(id)&pageSize=1000&supportsAllDrives=true",
-      { headers }
-    );
-    if (sharedRes.ok) {
-      const sharedData = await sharedRes.json();
-      sharedWithMeFiles = (sharedData.files || []).length;
-      // Follow one more page if available
-      if (sharedData.nextPageToken) {
-        const res2 = await fetch(
-          `https://www.googleapis.com/drive/v3/files?q=sharedWithMe=true&fields=nextPageToken,files(id)&pageSize=1000&supportsAllDrives=true&pageToken=${sharedData.nextPageToken}`,
-          { headers }
-        );
-        if (res2.ok) {
-          const data2 = await res2.json();
-          sharedWithMeFiles += (data2.files || []).length;
-        }
-      }
-    }
-
-    // Fetch shared drives with details
-    const drivesRes = await fetch(
-      "https://www.googleapis.com/drive/v3/drives?pageSize=100&fields=drives(id,name,createdTime,restrictions,backgroundImageLink),nextPageToken",
-      { headers }
-    );
-    if (drivesRes.ok) {
-      const drivesData = await drivesRes.json();
-      const drives = drivesData.drives || [];
-      sharedDrivesCount = drives.length;
-
-      // Store each shared drive as its own metric with metadata
-      for (let i = 0; i < drives.length; i++) {
-        const d = drives[i];
-        metrics.push({
-          metric_type: "shared_drive",
-          metric_key: `shared_drive_${i}`,
-          metric_value: 1,
-          metric_unit: "info",
-          metadata: {
-            drive_id: d.id,
-            name: d.name,
-            created_time: d.createdTime || null,
-            restrictions: d.restrictions || null,
-          },
-        });
-      }
-    }
-
     // Get storage quota from Drive about endpoint
     const aboutRes = await fetch(
       "https://www.googleapis.com/drive/v3/about?fields=storageQuota",
@@ -207,52 +131,66 @@ async function syncGoogle(accessToken: string, userId: string, integrationId: st
       }
     }
 
-    // Storage breakdown by file type
-    const mimeCategories: Array<{ key: string; label: string; query: string }> = [
-      { key: "storage_docs", label: "Google Docs", query: "mimeType='application/vnd.google-apps.document'" },
-      { key: "storage_sheets", label: "Google Sheets", query: "mimeType='application/vnd.google-apps.spreadsheet'" },
-      { key: "storage_slides", label: "Google Slides", query: "mimeType='application/vnd.google-apps.presentation'" },
-      { key: "storage_pdfs", label: "PDFs", query: "mimeType='application/pdf'" },
-      { key: "storage_images", label: "Images", query: "(mimeType contains 'image/')" },
-      { key: "storage_videos", label: "Vidéos", query: "(mimeType contains 'video/')" },
-      { key: "storage_audio", label: "Audio", query: "(mimeType contains 'audio/')" },
-    ];
-
-    for (const cat of mimeCategories) {
-      try {
-        let totalSize = 0;
-        let fileCount = 0;
-        let pageToken: string | null = null;
-        do {
-          const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(cat.query + " and 'me' in owners and trashed=false")}&fields=nextPageToken,files(size)&pageSize=1000&supportsAllDrives=true${pageToken ? `&pageToken=${pageToken}` : ""}`;
-          const res = await fetch(url, { headers });
-          if (!res.ok) break;
-          const data = await res.json();
-          const files = data.files || [];
-          fileCount += files.length;
-          for (const f of files) {
-            totalSize += Number(f.size || 0);
-          }
-          pageToken = data.nextPageToken || null;
-          if (fileCount > 5000) break; // safety limit
-        } while (pageToken);
-
-        const sizeGb = Math.round(totalSize / (1024 ** 3) * 100) / 100;
-        metrics.push({
-          metric_type: "drive_by_type",
-          metric_key: cat.key,
-          metric_value: sizeGb,
-          metric_unit: "GB",
-          metadata: { label: cat.label, file_count: fileCount },
-        });
-      } catch (e) { console.error(`Drive storage breakdown error (${cat.key}):`, e); }
-    }
-
-    metrics.push(
-      { metric_type: "drive", metric_key: "drive_owned_files", metric_value: totalFiles, metric_unit: "count" },
-      { metric_type: "drive", metric_key: "drive_shared_with_me", metric_value: sharedWithMeFiles, metric_unit: "count" },
-      { metric_type: "drive", metric_key: "drive_shared_drives", metric_value: sharedDrivesCount, metric_unit: "count" },
+    // Fetch shared drives with details + per-drive storage & object count
+    const OBJECT_LIMIT = 400000; // Google Workspace shared drive object limit
+    const drivesRes = await fetch(
+      "https://www.googleapis.com/drive/v3/drives?pageSize=100&fields=drives(id,name,createdTime),nextPageToken",
+      { headers }
     );
+    if (drivesRes.ok) {
+      const drivesData = await drivesRes.json();
+      const drives = drivesData.drives || [];
+
+      metrics.push({ metric_type: "drive", metric_key: "drive_shared_drives_count", metric_value: drives.length, metric_unit: "count" });
+
+      for (let i = 0; i < drives.length; i++) {
+        const d = drives[i];
+
+        // Count objects in this shared drive (paginated)
+        let objectCount = 0;
+        let totalSize = 0;
+        let pageToken: string | null = null;
+        try {
+          do {
+            const q = encodeURIComponent("trashed=false");
+            const url = `https://www.googleapis.com/drive/v3/files?q=${q}&driveId=${d.id}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&fields=nextPageToken,files(size)&pageSize=1000${pageToken ? `&pageToken=${pageToken}` : ""}`;
+            const res = await fetch(url, { headers });
+            if (!res.ok) break;
+            const data = await res.json();
+            const files = data.files || [];
+            objectCount += files.length;
+            for (const f of files) {
+              totalSize += Number(f.size || 0);
+            }
+            pageToken = data.nextPageToken || null;
+            // Safety: stop after 10 pages (10k items counted exactly, estimate beyond)
+            if (objectCount >= 10000 && pageToken) {
+              // Rough estimate: multiply by ratio of pages remaining
+              // For now just mark as 10000+ and break
+              break;
+            }
+          } while (pageToken);
+        } catch (e) { console.error(`Drive object count error for ${d.name}:`, e); }
+
+        const storageGb = Math.round(totalSize / (1024 ** 3) * 100) / 100;
+
+        metrics.push({
+          metric_type: "shared_drive",
+          metric_key: `shared_drive_${i}`,
+          metric_value: objectCount,
+          metric_unit: "objects",
+          metadata: {
+            drive_id: d.id,
+            name: d.name,
+            created_time: d.createdTime || null,
+            object_limit: OBJECT_LIMIT,
+            object_count: objectCount,
+            storage_used_gb: storageGb,
+            has_more: !!pageToken, // true if we hit the 10k safety limit
+          },
+        });
+      }
+    }
   } catch (e) { console.error("Google Drive sync error:", e); }
 
   // Store metrics
