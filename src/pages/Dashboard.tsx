@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
-import { useServices, Service } from '@/hooks/use-supabase';
+import { useServices, Service, useIntegrations, Integration } from '@/hooks/use-supabase';
 import { useDashboards, useCreateDashboard, useDeleteDashboard, useDashboardWidgets, useCreateDashboardWidgets } from '@/hooks/use-dashboards';
 import { useLatestSyncMetrics, SyncMetric } from '@/hooks/use-all-sync-data';
-import { templates } from '@/components/dashboard/DashboardTemplates';
+import { templates, SourceSelection } from '@/components/dashboard/DashboardTemplates';
 import WidgetRenderer, { WidgetConfig } from '@/components/dashboard/WidgetRenderer';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, ArrowLeft, Loader2, LayoutDashboard } from 'lucide-react';
+import { Plus, Trash2, ArrowLeft, Loader2, LayoutDashboard, Check } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -15,9 +15,11 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default function Dashboard() {
   const { data: services = [] } = useServices();
+  const { data: integrations = [] } = useIntegrations();
   const { data: syncMetrics = [] } = useLatestSyncMetrics();
   const { data: dashboards = [], isLoading } = useDashboards();
   const createDashboard = useCreateDashboard();
@@ -26,19 +28,32 @@ export default function Dashboard() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
+  const [selectedIntegrationIds, setSelectedIntegrationIds] = useState<string[]>([]);
 
   const selectedDashboard = dashboards.find((d) => d.id === selectedDashboardId);
+  const activeTemplate = templates.find((t) => t.id === selectedTemplate);
 
-  // Hook for creating widgets
+  const connectedIntegrations = integrations.filter((i) => i.is_connected);
+
   const createDashboardWidgets = useCreateDashboardWidgets();
 
+  const toggleServiceId = (id: string) =>
+    setSelectedServiceIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
+  const toggleIntegrationId = (id: string) =>
+    setSelectedIntegrationIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
   const handleCreate = async () => {
-    if (!newName.trim() || !selectedTemplate) return;
-    const template = templates.find((t) => t.id === selectedTemplate);
-    if (!template) return;
+    if (!newName.trim() || !selectedTemplate || !activeTemplate) return;
+
+    const sources: SourceSelection = {
+      serviceIds: selectedServiceIds,
+      integrationIds: selectedIntegrationIds,
+    };
 
     const dashboard = await createDashboard.mutateAsync({ name: newName, template: selectedTemplate });
-    const widgetDefs = template.generateWidgets(services.map((s) => s.id));
+    const widgetDefs = activeTemplate.generateWidgets(sources);
     await createDashboardWidgets.mutateAsync({
       dashboardId: dashboard.id,
       widgets: widgetDefs,
@@ -48,7 +63,15 @@ export default function Dashboard() {
     setCreateOpen(false);
     setNewName('');
     setSelectedTemplate(null);
+    setSelectedServiceIds([]);
+    setSelectedIntegrationIds([]);
   };
+
+  const needsServices = activeTemplate?.sourceTypes.includes('service');
+  const needsIntegrations = activeTemplate?.sourceTypes.includes('integration');
+  const hasRequiredSources =
+    (!needsServices || selectedServiceIds.length > 0) &&
+    (!needsIntegrations || selectedIntegrationIds.length > 0);
 
   if (isLoading) {
     return (
@@ -60,7 +83,6 @@ export default function Dashboard() {
     );
   }
 
-  // Dashboard detail view
   if (selectedDashboard) {
     return (
       <AppLayout>
@@ -79,7 +101,6 @@ export default function Dashboard() {
     );
   }
 
-  // Dashboard list view
   return (
     <AppLayout>
       <div className="max-w-5xl animate-fade-in">
@@ -140,11 +161,12 @@ export default function Dashboard() {
 
       {/* Create Dashboard Modal */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>New Dashboard</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-5">
+            {/* Name */}
             <div className="space-y-2">
               <Label>Name</Label>
               <Input
@@ -154,13 +176,18 @@ export default function Dashboard() {
               />
             </div>
 
+            {/* Template */}
             <div className="space-y-2">
               <Label>Template</Label>
               <div className="grid grid-cols-2 gap-3">
                 {templates.map((tmpl) => (
                   <button
                     key={tmpl.id}
-                    onClick={() => setSelectedTemplate(tmpl.id)}
+                    onClick={() => {
+                      setSelectedTemplate(tmpl.id);
+                      setSelectedServiceIds([]);
+                      setSelectedIntegrationIds([]);
+                    }}
                     className={`p-4 rounded-xl border text-left transition-all ${
                       selectedTemplate === tmpl.id
                         ? 'border-primary bg-primary/5'
@@ -175,9 +202,80 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* Source picker: Services */}
+            {activeTemplate && needsServices && (
+              <div className="space-y-2">
+                <Label>Services to include</Label>
+                {services.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No services found. Add services first.</p>
+                ) : (
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                    {services.map((svc) => (
+                      <label
+                        key={svc.id}
+                        className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-all ${
+                          selectedServiceIds.includes(svc.id)
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border bg-card hover:border-primary/20'
+                        }`}
+                      >
+                        <Checkbox
+                          checked={selectedServiceIds.includes(svc.id)}
+                          onCheckedChange={() => toggleServiceId(svc.id)}
+                        />
+                        <span className="text-lg">{svc.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{svc.name}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">{svc.url}</p>
+                        </div>
+                        <span className={`w-2 h-2 rounded-full ${svc.status === 'up' ? 'bg-emerald-500' : 'bg-destructive'}`} />
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Source picker: Integrations */}
+            {activeTemplate && needsIntegrations && (
+              <div className="space-y-2">
+                <Label>Integrations to include</Label>
+                {connectedIntegrations.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No connected integrations. Connect one first.</p>
+                ) : (
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                    {connectedIntegrations.map((integ) => (
+                      <label
+                        key={integ.id}
+                        className={`flex items-center gap-3 p-2.5 rounded-lg border cursor-pointer transition-all ${
+                          selectedIntegrationIds.includes(integ.id)
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border bg-card hover:border-primary/20'
+                        }`}
+                      >
+                        <Checkbox
+                          checked={selectedIntegrationIds.includes(integ.id)}
+                          onCheckedChange={() => toggleIntegrationId(integ.id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground capitalize">{integ.integration_type.replace(/_/g, ' ')}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            Last sync: {integ.last_sync ? new Date(integ.last_sync).toLocaleString() : 'Never'}
+                          </p>
+                        </div>
+                        {selectedIntegrationIds.includes(integ.id) && (
+                          <Check className="w-4 h-4 text-primary" />
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             <Button
               onClick={handleCreate}
-              disabled={!newName.trim() || !selectedTemplate || createDashboard.isPending}
+              disabled={!newName.trim() || !selectedTemplate || !hasRequiredSources || createDashboard.isPending}
               className="w-full gradient-primary text-primary-foreground hover:opacity-90"
             >
               {createDashboard.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
@@ -190,7 +288,6 @@ export default function Dashboard() {
   );
 }
 
-// Sub-component for dashboard detail view
 function DashboardDetailView({
   dashboardId,
   dashboardName,
