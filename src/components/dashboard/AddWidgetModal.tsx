@@ -41,12 +41,19 @@ const WIDGET_TYPES = [
 ] as const;
 
 const METRIC_KEYS = [
-  { value: 'drive_owned_files', label: 'Fichiers possédés' },
-  { value: 'drive_shared_with_me', label: 'Partagés avec moi' },
-  { value: 'drive_shared_drives', label: 'Drives partagés' },
-  { value: 'drive_trash_gb', label: 'Corbeille (GB)' },
-  { value: 'drive_quota_used_gb', label: 'Quota utilisé (GB)' },
-  { value: 'drive_quota_total_gb', label: 'Quota total (GB)' },
+  { value: 'drive_owned_files', label: 'Fichiers possédés', group: 'Drive' },
+  { value: 'drive_shared_with_me', label: 'Partagés avec moi', group: 'Drive' },
+  { value: 'drive_shared_drives', label: 'Drives partagés', group: 'Drive' },
+  { value: 'drive_trash_gb', label: 'Corbeille (GB)', group: 'Drive' },
+  { value: 'drive_quota_used_gb', label: 'Quota utilisé (GB)', group: 'Drive' },
+  { value: 'drive_quota_total_gb', label: 'Quota total (GB)', group: 'Drive' },
+  { value: 'storage_docs', label: 'Stockage Docs', group: 'Par type' },
+  { value: 'storage_sheets', label: 'Stockage Sheets', group: 'Par type' },
+  { value: 'storage_slides', label: 'Stockage Slides', group: 'Par type' },
+  { value: 'storage_pdfs', label: 'Stockage PDFs', group: 'Par type' },
+  { value: 'storage_images', label: 'Stockage Images', group: 'Par type' },
+  { value: 'storage_videos', label: 'Stockage Vidéos', group: 'Par type' },
+  { value: 'storage_audio', label: 'Stockage Audio', group: 'Par type' },
 ];
 
 interface Props {
@@ -58,12 +65,24 @@ interface Props {
 
 export default function AddWidgetModal({ open, onOpenChange, onAdd, isLoading }: Props) {
   const { data: services = [] } = useServices();
+  const { data: syncMetrics = [] } = useLatestSyncMetrics();
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [title, setTitle] = useState('');
   const [serviceId, setServiceId] = useState('');
   const [metricKey, setMetricKey] = useState('');
   const [width, setWidth] = useState(1);
   const [height, setHeight] = useState(1);
+
+  // Build dynamic metric keys including synced shared drives
+  const sharedDriveMetrics = syncMetrics
+    .filter((m) => m.metric_type === 'shared_drive')
+    .map((m) => ({
+      value: m.metric_key,
+      label: `Drive: ${(m.metadata as any)?.name || m.metric_key}`,
+      group: 'Drives partagés',
+    }));
+
+  const allMetricKeys = [...METRIC_KEYS, ...sharedDriveMetrics];
 
   const widgetDef = WIDGET_TYPES.find((w) => w.id === selectedType);
 
@@ -152,12 +171,12 @@ export default function AddWidgetModal({ open, onOpenChange, onAdd, isLoading }:
 
               {/* Metric key selector */}
               {widgetDef && 'needsMetricKey' in widgetDef && (
-                <div className="space-y-2">
+               <div className="space-y-2">
                   <Label>Metric</Label>
                   <Select value={metricKey} onValueChange={setMetricKey}>
                     <SelectTrigger><SelectValue placeholder="Select metric" /></SelectTrigger>
                     <SelectContent>
-                      {METRIC_KEYS.map((m) => (
+                      {allMetricKeys.map((m) => (
                         <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
                       ))}
                     </SelectContent>

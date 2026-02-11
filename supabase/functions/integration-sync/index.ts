@@ -158,14 +158,32 @@ async function syncGoogle(accessToken: string, userId: string, integrationId: st
       }
     }
 
-    // Count shared drives
+    // Fetch shared drives with details
     const drivesRes = await fetch(
-      "https://www.googleapis.com/drive/v3/drives?pageSize=100&fields=drives(id,name),nextPageToken",
+      "https://www.googleapis.com/drive/v3/drives?pageSize=100&fields=drives(id,name,createdTime,restrictions,backgroundImageLink),nextPageToken",
       { headers }
     );
     if (drivesRes.ok) {
       const drivesData = await drivesRes.json();
-      sharedDrivesCount = (drivesData.drives || []).length;
+      const drives = drivesData.drives || [];
+      sharedDrivesCount = drives.length;
+
+      // Store each shared drive as its own metric with metadata
+      for (let i = 0; i < drives.length; i++) {
+        const d = drives[i];
+        metrics.push({
+          metric_type: "shared_drive",
+          metric_key: `shared_drive_${i}`,
+          metric_value: 1,
+          metric_unit: "info",
+          metadata: {
+            drive_id: d.id,
+            name: d.name,
+            created_time: d.createdTime || null,
+            restrictions: d.restrictions || null,
+          },
+        });
+      }
     }
 
     // Get storage quota from Drive about endpoint
@@ -187,6 +205,47 @@ async function syncGoogle(accessToken: string, userId: string, integrationId: st
           metrics.push({ metric_type: "drive", metric_key: "drive_trash_gb", metric_value: Math.round(Number(quota.usageInDriveTrash) / (1024 ** 3) * 100) / 100, metric_unit: "GB" });
         }
       }
+    }
+
+    // Storage breakdown by file type
+    const mimeCategories: Array<{ key: string; label: string; query: string }> = [
+      { key: "storage_docs", label: "Google Docs", query: "mimeType='application/vnd.google-apps.document'" },
+      { key: "storage_sheets", label: "Google Sheets", query: "mimeType='application/vnd.google-apps.spreadsheet'" },
+      { key: "storage_slides", label: "Google Slides", query: "mimeType='application/vnd.google-apps.presentation'" },
+      { key: "storage_pdfs", label: "PDFs", query: "mimeType='application/pdf'" },
+      { key: "storage_images", label: "Images", query: "(mimeType contains 'image/')" },
+      { key: "storage_videos", label: "Vidéos", query: "(mimeType contains 'video/')" },
+      { key: "storage_audio", label: "Audio", query: "(mimeType contains 'audio/')" },
+    ];
+
+    for (const cat of mimeCategories) {
+      try {
+        let totalSize = 0;
+        let fileCount = 0;
+        let pageToken: string | null = null;
+        do {
+          const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(cat.query + " and 'me' in owners and trashed=false")}&fields=nextPageToken,files(size)&pageSize=1000&supportsAllDrives=true${pageToken ? `&pageToken=${pageToken}` : ""}`;
+          const res = await fetch(url, { headers });
+          if (!res.ok) break;
+          const data = await res.json();
+          const files = data.files || [];
+          fileCount += files.length;
+          for (const f of files) {
+            totalSize += Number(f.size || 0);
+          }
+          pageToken = data.nextPageToken || null;
+          if (fileCount > 5000) break; // safety limit
+        } while (pageToken);
+
+        const sizeGb = Math.round(totalSize / (1024 ** 3) * 100) / 100;
+        metrics.push({
+          metric_type: "drive_by_type",
+          metric_key: cat.key,
+          metric_value: sizeGb,
+          metric_unit: "GB",
+          metadata: { label: cat.label, file_count: fileCount },
+        });
+      } catch (e) { console.error(`Drive storage breakdown error (${cat.key}):`, e); }
     }
 
     metrics.push(
