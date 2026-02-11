@@ -84,12 +84,6 @@ export function useStartOAuth() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      const res = await supabase.functions.invoke('integration-oauth', {
-        body: null,
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      // Use fetch directly to pass query params
       const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/integration-oauth?provider=${provider}`;
       const response = await fetch(url, {
         headers: {
@@ -104,7 +98,6 @@ export function useStartOAuth() {
       }
 
       const data = await response.json();
-      // Redirect to OAuth provider
       window.location.href = data.url;
     },
   });
