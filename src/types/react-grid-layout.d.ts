@@ -16,12 +16,12 @@ declare module 'react-grid-layout' {
     isResizable?: boolean;
   }
 
-  export interface ReactGridLayoutProps {
+  export interface GridLayoutProps {
     className?: string;
     layout?: LayoutItem[];
     cols?: number;
     rowHeight?: number;
-    width?: number;
+    width: number;
     onLayoutChange?: (layout: LayoutItem[]) => void;
     onDragStop?: (layout: LayoutItem[], oldItem: LayoutItem, newItem: LayoutItem, placeholder: LayoutItem, e: MouseEvent, element: HTMLElement) => void;
     onResizeStop?: (layout: LayoutItem[], oldItem: LayoutItem, newItem: LayoutItem, placeholder: LayoutItem, e: MouseEvent, element: HTMLElement) => void;
@@ -31,19 +31,21 @@ declare module 'react-grid-layout' {
     children?: React.ReactNode;
   }
 
-  export interface ResponsiveProps extends Omit<ReactGridLayoutProps, 'cols' | 'layout'> {
+  export interface ResponsiveGridLayoutProps extends Omit<GridLayoutProps, 'cols' | 'layout'> {
     layouts?: { [breakpoint: string]: LayoutItem[] };
     breakpoints?: { [breakpoint: string]: number };
     cols?: { [breakpoint: string]: number };
+    onBreakpointChange?: (breakpoint: string, cols: number) => void;
   }
 
-  export class Responsive extends React.Component<ResponsiveProps> {}
+  export function ResponsiveGridLayout(props: ResponsiveGridLayoutProps): React.JSX.Element;
+  export function GridLayout(props: GridLayoutProps): React.JSX.Element;
+  export default GridLayout;
 
-  export default class ReactGridLayout extends React.Component<ReactGridLayoutProps> {}
-
-  export function WidthProvider<P extends object>(
-    component: React.ComponentType<P>
-  ): React.ComponentType<Omit<P, 'width'>>;
+  export function useContainerWidth(options?: {
+    measureBeforeMount?: boolean;
+    initialWidth?: number;
+  }): { width: number; ref: React.RefCallback<HTMLDivElement> };
 }
 
 declare module 'react-grid-layout/css/styles.css' {
