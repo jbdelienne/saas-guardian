@@ -8,6 +8,7 @@ import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
 import ServicesPage from "@/pages/ServicesPage";
 import Integrations from "@/pages/Integrations";
+import IntegrationDetail from "@/pages/IntegrationDetail";
 import Alerts from "@/pages/Alerts";
 import SettingsPage from "@/pages/SettingsPage";
 import NotFound from "@/pages/NotFound";
@@ -27,6 +28,7 @@ const AppRoutes = () => (
     <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
     <Route path="/services" element={<ProtectedRoute><ServicesPage /></ProtectedRoute>} />
     <Route path="/integrations" element={<ProtectedRoute><Integrations /></ProtectedRoute>} />
+    <Route path="/integrations/:type" element={<ProtectedRoute><IntegrationDetail /></ProtectedRoute>} />
     <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
     <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
