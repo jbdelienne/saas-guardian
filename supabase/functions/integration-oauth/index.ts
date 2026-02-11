@@ -10,10 +10,13 @@ const PROVIDERS: Record<string, { authUrl: string; scopes: string; clientIdEnv: 
   google: {
     authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
     scopes: [
+      "openid",
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile",
+      "https://www.googleapis.com/auth/drive.metadata.readonly",
       "https://www.googleapis.com/auth/admin.directory.user.readonly",
       "https://www.googleapis.com/auth/admin.directory.domain.readonly",
       "https://www.googleapis.com/auth/admin.reports.usage.readonly",
-      "https://www.googleapis.com/auth/drive.metadata.readonly",
     ].join(" "),
     clientIdEnv: "GOOGLE_CLIENT_ID",
   },
