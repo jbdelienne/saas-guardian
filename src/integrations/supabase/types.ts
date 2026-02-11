@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      alert_thresholds: {
+        Row: {
+          created_at: string
+          id: string
+          integration_type: string
+          is_enabled: boolean
+          label: string | null
+          metric_type: string
+          severity: string
+          threshold_operator: string
+          threshold_value: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          integration_type: string
+          is_enabled?: boolean
+          label?: string | null
+          metric_type: string
+          severity?: string
+          threshold_operator?: string
+          threshold_value: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          integration_type?: string
+          is_enabled?: boolean
+          label?: string | null
+          metric_type?: string
+          severity?: string
+          threshold_operator?: string
+          threshold_value?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       alerts: {
         Row: {
           alert_type: string
@@ -174,29 +216,91 @@ export type Database = {
         }
         Relationships: []
       }
-      integrations: {
+      integration_sync_data: {
         Row: {
           created_at: string
           id: string
-          integration_type: string
-          is_connected: boolean
-          last_sync: string | null
+          integration_id: string
+          metadata: Json | null
+          metric_key: string
+          metric_type: string
+          metric_unit: string | null
+          metric_value: number
+          synced_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
-          integration_type: string
-          is_connected?: boolean
-          last_sync?: string | null
+          integration_id: string
+          metadata?: Json | null
+          metric_key: string
+          metric_type: string
+          metric_unit?: string | null
+          metric_value?: number
+          synced_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          integration_id?: string
+          metadata?: Json | null
+          metric_key?: string
+          metric_type?: string
+          metric_unit?: string | null
+          metric_value?: number
+          synced_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integration_sync_data_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      integrations: {
+        Row: {
+          access_token_encrypted: string | null
+          config: Json | null
+          created_at: string
+          id: string
+          integration_type: string
+          is_connected: boolean
+          last_sync: string | null
+          refresh_token_encrypted: string | null
+          scopes: string[] | null
+          token_expires_at: string | null
+          user_id: string
+        }
+        Insert: {
+          access_token_encrypted?: string | null
+          config?: Json | null
+          created_at?: string
+          id?: string
+          integration_type: string
+          is_connected?: boolean
+          last_sync?: string | null
+          refresh_token_encrypted?: string | null
+          scopes?: string[] | null
+          token_expires_at?: string | null
+          user_id: string
+        }
+        Update: {
+          access_token_encrypted?: string | null
+          config?: Json | null
+          created_at?: string
+          id?: string
           integration_type?: string
           is_connected?: boolean
           last_sync?: string | null
+          refresh_token_encrypted?: string | null
+          scopes?: string[] | null
+          token_expires_at?: string | null
           user_id?: string
         }
         Relationships: []
@@ -311,7 +415,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_default_thresholds: {
+        Args: { p_integration_type: string; p_user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
