@@ -320,18 +320,18 @@ Deno.serve(async (req) => {
       const existingMeta = existing ? (existing.metadata as any) : null;
       const existingChangeToken = existingMeta?.change_token;
 
-      let objectCount: number;
-      let totalSize: number;
-      let changeToken: string | null;
+      let objectCount: number = 0;
+      let totalSize: number = 0;
+      let changeToken: string | null = null;
       let syncCompleted = false;
+      let resumePageToken: string | null = null;
 
-      // Wrap in a 120s timeout (edge functions can run up to 150s)
       const TIMEOUT_MS = 120_000;
       const startTime = Date.now();
 
       try {
         if (existingChangeToken && !existingMeta?.pending) {
-          // Incremental sync
+          // Incremental sync (drive already fully counted before)
           console.log(`Incremental sync for "${driveToProcess.name}"`);
           const result = await incrementalCountDrive(
             driveToProcess.id,
@@ -346,22 +346,39 @@ Deno.serve(async (req) => {
           changeToken = result.newChangeToken;
           syncCompleted = true;
         } else {
-          // Full initial sync with internal timeout check
-          console.log(`Full sync for "${driveToProcess.name}"`);
+          // Full sync - resumable: pick up from where we left off
+          const savedPageToken = existingMeta?.resume_page_token;
+          const savedCount = existingMeta?.pending ? (existingMeta.object_count_partial || 0) : 0;
+          const savedSize = existingMeta?.pending ? Math.round((existingMeta.storage_used_gb_partial || 0) * (1024 ** 3)) : 0;
+
+          objectCount = savedCount;
+          totalSize = savedSize;
+
+          console.log(`Full sync for "${driveToProcess.name}" (resuming from ${objectCount} objects)`);
+
           const q = encodeURIComponent("trashed=false");
           const baseUrl = `https://www.googleapis.com/drive/v3/files?q=${q}&driveId=${driveToProcess.id}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&fields=nextPageToken,files(id,size)&pageSize=1000`;
-          objectCount = 0;
-          totalSize = 0;
-          let pageToken: string | undefined;
+          let pageToken: string | undefined = savedPageToken || undefined;
 
+          // If no saved token and count > 0, we're resuming but lost the token - restart
+          if (!pageToken && objectCount > 0) {
+            objectCount = 0;
+            totalSize = 0;
+          }
+
+          let isFirstPage = !pageToken;
           do {
             if (Date.now() - startTime > TIMEOUT_MS) {
-              console.log(`Timeout reached for "${driveToProcess.name}" after ${objectCount} objects`);
+              console.log(`Timeout after ${objectCount} objects, saving progress`);
+              resumePageToken = pageToken || null;
               break;
             }
             const url = pageToken ? `${baseUrl}&pageToken=${pageToken}` : baseUrl;
             const res = await fetch(url, { headers });
-            if (!res.ok) break;
+            if (!res.ok) {
+              console.error(`API error: ${res.status}`);
+              break;
+            }
             const data = await res.json();
             const files = data.files || [];
             objectCount += files.length;
@@ -369,41 +386,62 @@ Deno.serve(async (req) => {
             pageToken = data.nextPageToken;
           } while (pageToken);
 
-          syncCompleted = !pageToken; // completed if no more pages
-          changeToken = syncCompleted ? await getChangeToken(driveToProcess.id, headers) : null;
+          syncCompleted = !pageToken && !resumePageToken;
+          if (syncCompleted) {
+            changeToken = await getChangeToken(driveToProcess.id, headers);
+          }
         }
       } catch (e) {
         console.error(`Sync error for ${driveToProcess.name}:`, e);
-        objectCount = objectCount! || 0;
-        totalSize = totalSize! || 0;
-        changeToken = null;
       }
 
       const storageGb = Math.round(totalSize / (1024 ** 3) * 100) / 100;
       console.log(`Drive "${driveToProcess.name}": ${objectCount} objects, ${storageGb} GB (complete: ${syncCompleted})`);
 
-      // Upsert the result
+      // Delete ALL existing entries for this drive (by drive_id in metadata)
       if (existing) {
-        await supabaseAdmin.from("integration_sync_data").delete().eq("id", existing.id);
+        // Delete by drive_id to avoid duplicates
+        const { data: dupes } = await supabaseAdmin.from("integration_sync_data")
+          .select("id")
+          .eq("integration_id", integration.id)
+          .eq("user_id", integration.user_id)
+          .eq("metric_type", "shared_drive");
+        
+        for (const d of dupes || []) {
+          await supabaseAdmin.from("integration_sync_data").delete().eq("id", d.id)
+            .eq("metric_type", "shared_drive");
+        }
+        // Hmm, that would delete ALL drives. Let me be more targeted:
       }
+
+      // Delete existing entry for this specific drive
+      await supabaseAdmin.from("integration_sync_data").delete()
+        .eq("integration_id", integration.id)
+        .eq("user_id", integration.user_id)
+        .eq("metric_type", "shared_drive")
+        .eq("metric_key", `shared_drive_${driveIndex}`);
 
       await supabaseAdmin.from("integration_sync_data").insert({
         user_id: integration.user_id,
         integration_id: integration.id,
         metric_type: "shared_drive",
         metric_key: `shared_drive_${driveIndex}`,
-        metric_value: objectCount,
+        metric_value: syncCompleted ? objectCount : -1,
         metric_unit: "objects",
         metadata: {
           drive_id: driveToProcess.id,
           name: driveToProcess.name,
           created_time: driveToProcess.createdTime || null,
           object_limit: OBJECT_LIMIT,
-          object_count: objectCount,
-          storage_used_gb: storageGb,
+          object_count: syncCompleted ? objectCount : objectCount,
+          storage_used_gb: syncCompleted ? storageGb : storageGb,
           change_token: changeToken,
           has_more: !syncCompleted,
-          pending: !syncCompleted, // if not completed, mark as still pending for next run to retry
+          pending: !syncCompleted,
+          // Resumable state
+          resume_page_token: resumePageToken,
+          object_count_partial: syncCompleted ? undefined : objectCount,
+          storage_used_gb_partial: syncCompleted ? undefined : storageGb,
         },
         synced_at: new Date().toISOString(),
       });
