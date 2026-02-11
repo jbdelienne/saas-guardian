@@ -220,7 +220,6 @@ export default function IntegrationDetail() {
                           const meta = (row.metadata || {}) as Record<string, any>;
                           const objectCount = meta.object_count ?? row.metric_value;
                           const objectLimit = meta.object_limit ?? 400000;
-                          const storageGb = meta.storage_used_gb ?? 0;
                           const objectPct = Math.round((objectCount / objectLimit) * 100);
 
                           return (
@@ -239,10 +238,6 @@ export default function IntegrationDetail() {
                                 </div>
                                 <Progress value={Math.min(objectPct, 100)} className="h-2" />
                                 <p className="text-[10px] text-muted-foreground mt-0.5">{objectPct}%</p>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-muted-foreground">Stockage</span>
-                                <span className="text-sm font-semibold text-foreground">{storageGb} GB</span>
                               </div>
 
                               {meta.created_time && (
