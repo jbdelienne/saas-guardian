@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 const METRIC_ICONS: Record<string, typeof Users> = {
   users: Users,
   storage: HardDrive,
+  drive: HardDrive,
   licenses: Key,
   security: Shield,
   channels: Hash,
@@ -41,6 +42,12 @@ const METRIC_LABELS: Record<string, string> = {
   archived_channels: 'Channels archivés',
   low_activity_channels: 'Channels peu actifs',
   team_name: 'Nom du workspace',
+  drive_quota_total_gb: 'Quota Drive total',
+  drive_quota_used_gb: 'Quota Drive utilisé',
+  drive_trash_gb: 'Drive corbeille',
+  drive_owned_files: 'Fichiers possédés',
+  drive_shared_with_me: 'Partagés avec moi',
+  drive_shared_drives: 'Drives partagés',
 };
 
 const PROVIDER_NAMES: Record<string, string> = {

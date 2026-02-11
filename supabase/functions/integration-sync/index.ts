@@ -108,6 +108,94 @@ async function syncGoogle(accessToken: string, userId: string, integrationId: st
     }
   } catch (e) { console.error("Google storage sync error:", e); }
 
+  // Fetch Drive file stats (using drive.metadata.readonly scope)
+  try {
+    // Count all files accessible to the authenticated user
+    let totalFiles = 0;
+    let sharedWithMeFiles = 0;
+    let sharedDrivesCount = 0;
+
+    // Get total file count (owned files)
+    const ownedRes = await fetch(
+      "https://www.googleapis.com/drive/v3/files?q='me'+in+owners&fields=nextPageToken&pageSize=1&supportsAllDrives=true",
+      { headers }
+    );
+    if (ownedRes.ok) {
+      // Use a paginated count approach
+      let pageToken: string | null = null;
+      let ownedCount = 0;
+      do {
+        const url = `https://www.googleapis.com/drive/v3/files?q='me'+in+owners&fields=nextPageToken,files(id)&pageSize=1000&supportsAllDrives=true${pageToken ? `&pageToken=${pageToken}` : ""}`;
+        const res = await fetch(url, { headers });
+        if (!res.ok) break;
+        const data = await res.json();
+        ownedCount += (data.files || []).length;
+        pageToken = data.nextPageToken || null;
+        // Limit to 5 pages to avoid timeout
+        if (ownedCount > 4000) break;
+      } while (pageToken);
+      totalFiles = ownedCount;
+    }
+
+    // Count shared with me files
+    const sharedRes = await fetch(
+      "https://www.googleapis.com/drive/v3/files?q=sharedWithMe=true&fields=nextPageToken,files(id)&pageSize=1000&supportsAllDrives=true",
+      { headers }
+    );
+    if (sharedRes.ok) {
+      const sharedData = await sharedRes.json();
+      sharedWithMeFiles = (sharedData.files || []).length;
+      // Follow one more page if available
+      if (sharedData.nextPageToken) {
+        const res2 = await fetch(
+          `https://www.googleapis.com/drive/v3/files?q=sharedWithMe=true&fields=nextPageToken,files(id)&pageSize=1000&supportsAllDrives=true&pageToken=${sharedData.nextPageToken}`,
+          { headers }
+        );
+        if (res2.ok) {
+          const data2 = await res2.json();
+          sharedWithMeFiles += (data2.files || []).length;
+        }
+      }
+    }
+
+    // Count shared drives
+    const drivesRes = await fetch(
+      "https://www.googleapis.com/drive/v3/drives?pageSize=100&fields=drives(id,name),nextPageToken",
+      { headers }
+    );
+    if (drivesRes.ok) {
+      const drivesData = await drivesRes.json();
+      sharedDrivesCount = (drivesData.drives || []).length;
+    }
+
+    // Get storage quota from Drive about endpoint
+    const aboutRes = await fetch(
+      "https://www.googleapis.com/drive/v3/about?fields=storageQuota",
+      { headers }
+    );
+    if (aboutRes.ok) {
+      const aboutData = await aboutRes.json();
+      const quota = aboutData.storageQuota;
+      if (quota) {
+        if (quota.limit) {
+          metrics.push({ metric_type: "drive", metric_key: "drive_quota_total_gb", metric_value: Math.round(Number(quota.limit) / (1024 ** 3) * 10) / 10, metric_unit: "GB" });
+        }
+        if (quota.usage) {
+          metrics.push({ metric_type: "drive", metric_key: "drive_quota_used_gb", metric_value: Math.round(Number(quota.usage) / (1024 ** 3) * 10) / 10, metric_unit: "GB" });
+        }
+        if (quota.usageInDriveTrash) {
+          metrics.push({ metric_type: "drive", metric_key: "drive_trash_gb", metric_value: Math.round(Number(quota.usageInDriveTrash) / (1024 ** 3) * 100) / 100, metric_unit: "GB" });
+        }
+      }
+    }
+
+    metrics.push(
+      { metric_type: "drive", metric_key: "drive_owned_files", metric_value: totalFiles, metric_unit: "count" },
+      { metric_type: "drive", metric_key: "drive_shared_with_me", metric_value: sharedWithMeFiles, metric_unit: "count" },
+      { metric_type: "drive", metric_key: "drive_shared_drives", metric_value: sharedDrivesCount, metric_unit: "count" },
+    );
+  } catch (e) { console.error("Google Drive sync error:", e); }
+
   // Store metrics
   await storeMetrics(supabase, userId, integrationId, metrics);
 }
