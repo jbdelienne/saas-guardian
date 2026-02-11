@@ -124,27 +124,46 @@ export default function Integrations() {
                   {connected ? (
                     <div className="mt-auto space-y-3">
                       <MetricPreview integrationId={integration.id} />
-                      <div className="flex items-center justify-between">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="gap-1 text-xs"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            syncIntegration.mutate(integration.id, {
-                              onSuccess: () => toast.success('Sync terminée'),
-                              onError: (err) => toast.error(err.message),
-                            });
-                          }}
-                          disabled={syncIntegration.isPending}
-                        >
-                          {syncIntegration.isPending ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <RefreshCw className="w-3 h-3" />
-                          )}
-                          Sync
-                        </Button>
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1 text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              syncIntegration.mutate(integration.id, {
+                                onSuccess: () => toast.success('Sync terminée'),
+                                onError: (err) => toast.error(err.message),
+                              });
+                            }}
+                            disabled={syncIntegration.isPending}
+                          >
+                            {syncIntegration.isPending ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <RefreshCw className="w-3 h-3" />
+                            )}
+                            Sync
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="gap-1 text-xs text-muted-foreground"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startOAuth.mutate(type);
+                            }}
+                            disabled={startOAuth.isPending}
+                          >
+                            {startOAuth.isPending ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <ExternalLink className="w-3 h-3" />
+                            )}
+                            Reconnecter
+                          </Button>
+                        </div>
                         <ChevronRight className="w-4 h-4 text-muted-foreground" />
                       </div>
                     </div>
