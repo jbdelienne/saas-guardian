@@ -1,4 +1,4 @@
-import { LayoutGrid, Activity, Table, BarChart3 } from 'lucide-react';
+import { LayoutGrid, Activity, Table, BarChart3, Cloud } from 'lucide-react';
 import { WidgetConfig } from './WidgetRenderer';
 
 export interface DashboardTemplate {
@@ -6,6 +6,8 @@ export interface DashboardTemplate {
   name: string;
   description: string;
   icon: typeof LayoutGrid;
+  /** If true, uses integration metrics instead of services */
+  isIntegration?: boolean;
   generateWidgets: (serviceIds: string[]) => Omit<WidgetConfig, 'id'>[];
 }
 
@@ -96,5 +98,20 @@ export const templates: DashboardTemplate[] = [
       });
       return widgets;
     },
+  },
+  {
+    id: 'google_drive',
+    name: 'Google Drive',
+    description: 'Storage usage, file counts & shared drives',
+    icon: Cloud,
+    isIntegration: true,
+    generateWidgets: () => [
+      { widget_type: 'drive_storage_gauge', title: 'Drive Storage', config: {}, width: 2, height: 2 },
+      { widget_type: 'integration_metric', title: 'Fichiers possédés', config: { metric_key: 'drive_owned_files' }, width: 1, height: 1 },
+      { widget_type: 'integration_metric', title: 'Partagés avec moi', config: { metric_key: 'drive_shared_with_me' }, width: 1, height: 1 },
+      { widget_type: 'integration_metric', title: 'Drives partagés', config: { metric_key: 'drive_shared_drives' }, width: 1, height: 1 },
+      { widget_type: 'integration_metric', title: 'Corbeille', config: { metric_key: 'drive_trash_gb' }, width: 1, height: 1 },
+      { widget_type: 'alert_list', title: 'Alerts', config: {}, width: 2, height: 2 },
+    ],
   },
 ];

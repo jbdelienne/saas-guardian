@@ -2,6 +2,7 @@ import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useServices, Service } from '@/hooks/use-supabase';
 import { useDashboards, useCreateDashboard, useDeleteDashboard, useDashboardWidgets, useCreateDashboardWidgets } from '@/hooks/use-dashboards';
+import { useLatestSyncMetrics, SyncMetric } from '@/hooks/use-all-sync-data';
 import { templates } from '@/components/dashboard/DashboardTemplates';
 import WidgetRenderer, { WidgetConfig } from '@/components/dashboard/WidgetRenderer';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import { Label } from '@/components/ui/label';
 
 export default function Dashboard() {
   const { data: services = [] } = useServices();
+  const { data: syncMetrics = [] } = useLatestSyncMetrics();
   const { data: dashboards = [], isLoading } = useDashboards();
   const createDashboard = useCreateDashboard();
   const deleteDashboard = useDeleteDashboard();
@@ -27,6 +29,9 @@ export default function Dashboard() {
 
   const selectedDashboard = dashboards.find((d) => d.id === selectedDashboardId);
 
+  // Hook for creating widgets
+  const createDashboardWidgets = useCreateDashboardWidgets();
+
   const handleCreate = async () => {
     if (!newName.trim() || !selectedTemplate) return;
     const template = templates.find((t) => t.id === selectedTemplate);
@@ -34,7 +39,6 @@ export default function Dashboard() {
 
     const dashboard = await createDashboard.mutateAsync({ name: newName, template: selectedTemplate });
     const widgetDefs = template.generateWidgets(services.map((s) => s.id));
-    // Widgets will be created via the hook
     await createDashboardWidgets.mutateAsync({
       dashboardId: dashboard.id,
       widgets: widgetDefs,
@@ -45,9 +49,6 @@ export default function Dashboard() {
     setNewName('');
     setSelectedTemplate(null);
   };
-
-  // Hook for creating widgets
-  const createDashboardWidgets = useCreateDashboardWidgets();
 
   if (isLoading) {
     return (
@@ -67,6 +68,7 @@ export default function Dashboard() {
           dashboardId={selectedDashboard.id}
           dashboardName={selectedDashboard.name}
           services={services}
+          syncMetrics={syncMetrics}
           onBack={() => setSelectedDashboardId(null)}
           onDelete={async () => {
             await deleteDashboard.mutateAsync(selectedDashboard.id);
@@ -173,12 +175,6 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {services.length === 0 && (
-              <p className="text-xs text-warning">
-                ⚠️ No services found. Add services first to populate dashboard widgets.
-              </p>
-            )}
-
             <Button
               onClick={handleCreate}
               disabled={!newName.trim() || !selectedTemplate || createDashboard.isPending}
@@ -199,12 +195,14 @@ function DashboardDetailView({
   dashboardId,
   dashboardName,
   services,
+  syncMetrics,
   onBack,
   onDelete,
 }: {
   dashboardId: string;
   dashboardName: string;
   services: Service[];
+  syncMetrics: SyncMetric[];
   onBack: () => void;
   onDelete: () => void;
 }) {
@@ -250,7 +248,7 @@ function DashboardDetailView({
                 key={widget.id}
                 className={`bg-card border border-border rounded-xl p-4 ${colSpan} ${minHeight}`}
               >
-                <WidgetRenderer widget={widget} services={services} />
+                <WidgetRenderer widget={widget} services={services} syncMetrics={syncMetrics} />
               </div>
             );
           })}
