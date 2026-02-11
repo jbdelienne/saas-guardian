@@ -195,12 +195,6 @@ export default function IntegrationDetail() {
 
                 // Special rendering for shared drives
                 if (metricType === 'shared_drive') {
-                  const syncedCount = rows.filter(r => {
-                    const meta = (r.metadata || {}) as Record<string, any>;
-                    return !meta.pending && (meta.object_count ?? r.metric_value) >= 0;
-                  }).length;
-                  const pendingCount = rows.length - syncedCount;
-
                   return (
                     <div key={metricType}>
                       <div className="flex items-center gap-2 mb-3">
@@ -208,12 +202,6 @@ export default function IntegrationDetail() {
                         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                           {sectionLabel} ({rows.length})
                         </h2>
-                        {pendingCount > 0 && (
-                          <span className="text-xs text-amber-500 flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {pendingCount} en attente
-                          </span>
-                        )}
                         {type === 'google' && (
                           <Button
                             size="sm"
@@ -233,43 +221,29 @@ export default function IntegrationDetail() {
                           const objectCount = meta.object_count ?? row.metric_value;
                           const objectLimit = meta.object_limit ?? 400000;
                           const storageGb = meta.storage_used_gb ?? 0;
-                          const isPending = meta.pending || objectCount < 0;
-                          const partialCount = meta.object_count_partial;
-                          const isPartial = isPending && partialCount > 0;
-                          const displayCount = isPartial ? partialCount : objectCount;
-                          const objectPct = isPending && !isPartial ? 0 : Math.round((displayCount / objectLimit) * 100);
+                          const objectPct = Math.round((objectCount / objectLimit) * 100);
 
                           return (
-                            <div key={row.id} className={`bg-card border rounded-lg p-4 space-y-3 ${isPending ? 'border-dashed border-amber-500/30' : 'border-border'}`}>
+                            <div key={row.id} className="bg-card border border-border rounded-lg p-4 space-y-3">
                               <div className="flex items-center gap-2">
-                                <FolderOpen className={`w-4 h-4 ${isPending ? 'text-amber-500' : 'text-primary'}`} />
+                                <FolderOpen className="w-4 h-4 text-primary" />
                                 <span className="font-semibold text-foreground truncate">{meta.name || row.metric_key}</span>
-                                {isPending && <Loader2 className="w-3 h-3 text-amber-500 ml-auto animate-spin" />}
                               </div>
 
-                              {isPending && !isPartial ? (
-                                <p className="text-xs text-amber-500">En attente de synchronisation...</p>
-                              ) : (
-                                <>
-                                  <div>
-                                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                                      <span>Objets</span>
-                                      <span className={objectPct >= 80 ? 'text-destructive font-medium' : ''}>
-                                        {isPartial ? '~' : ''}{displayCount.toLocaleString('fr-FR')} / {objectLimit.toLocaleString('fr-FR')}
-                                        {isPartial && <span className="text-amber-500 ml-1">(en cours...)</span>}
-                                      </span>
-                                    </div>
-                                    <Progress value={Math.min(objectPct, 100)} className="h-2" />
-                                    <p className="text-[10px] text-muted-foreground mt-0.5">{isPartial ? '~' : ''}{objectPct}%</p>
-                                  </div>
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-xs text-muted-foreground">Stockage</span>
-                                    <span className="text-sm font-semibold text-foreground">
-                                      {isPartial ? '~' : ''}{isPartial ? meta.storage_used_gb_partial || storageGb : storageGb} GB
-                                    </span>
-                                  </div>
-                                </>
-                              )}
+                              <div>
+                                <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                                  <span>Objets</span>
+                                  <span className={objectPct >= 80 ? 'text-destructive font-medium' : ''}>
+                                    {objectCount.toLocaleString('fr-FR')} / {objectLimit.toLocaleString('fr-FR')}
+                                  </span>
+                                </div>
+                                <Progress value={Math.min(objectPct, 100)} className="h-2" />
+                                <p className="text-[10px] text-muted-foreground mt-0.5">{objectPct}%</p>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-muted-foreground">Stockage</span>
+                                <span className="text-sm font-semibold text-foreground">{storageGb} GB</span>
+                              </div>
 
                               {meta.created_time && (
                                 <p className="text-[10px] text-muted-foreground">

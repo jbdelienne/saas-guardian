@@ -56,7 +56,6 @@ async function getAccessToken(
       const newTokenData = await refreshGoogleToken(refreshToken);
       accessToken = newTokenData.access_token;
 
-      // Re-encrypt and store
       const enc = new TextEncoder();
       const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(encryptionKey), "PBKDF2", false, ["deriveKey"]);
       const key = await crypto.subtle.deriveKey(
@@ -83,23 +82,25 @@ async function getAccessToken(
   return accessToken;
 }
 
-// Full count for initial sync
-async function fullCountDrive(
+// Simple: count all files in a shared drive, with a hard cap to avoid infinite loops
+async function countDriveFiles(
   driveId: string,
-  driveName: string,
-  headers: Record<string, string>
+  headers: Record<string, string>,
+  maxPages = 500 // safety cap ~500k files
 ): Promise<{ objectCount: number; totalSize: number }> {
   const q = encodeURIComponent("trashed=false");
-  const baseUrl = `https://www.googleapis.com/drive/v3/files?q=${q}&driveId=${driveId}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&fields=nextPageToken,files(id,size)&pageSize=1000`;
+  const baseUrl = `https://www.googleapis.com/drive/v3/files?q=${q}&driveId=${driveId}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&fields=nextPageToken,files(size)&pageSize=1000`;
+  
   let objectCount = 0;
   let totalSize = 0;
   let pageToken: string | undefined;
+  let pages = 0;
 
   do {
     const url = pageToken ? `${baseUrl}&pageToken=${pageToken}` : baseUrl;
     const res = await fetch(url, { headers });
     if (!res.ok) {
-      console.error(`Drive files API error for ${driveName}: ${res.status}`);
+      console.error(`Drive API error: ${res.status}`);
       break;
     }
     const data = await res.json();
@@ -107,68 +108,10 @@ async function fullCountDrive(
     objectCount += files.length;
     for (const f of files) totalSize += Number(f.size || 0);
     pageToken = data.nextPageToken;
-  } while (pageToken);
+    pages++;
+  } while (pageToken && pages < maxPages);
 
   return { objectCount, totalSize };
-}
-
-// Incremental update using Changes API
-async function incrementalCountDrive(
-  driveId: string,
-  driveName: string,
-  changeToken: string,
-  currentCount: number,
-  currentSize: number,
-  headers: Record<string, string>
-): Promise<{ objectCount: number; totalSize: number; newChangeToken: string }> {
-  let objectCount = currentCount;
-  let totalSize = currentSize;
-  let pageToken: string | undefined = changeToken;
-  let newChangeToken = changeToken;
-
-  do {
-    const url = `https://www.googleapis.com/drive/v3/changes?pageToken=${pageToken}&driveId=${driveId}&includeItemsFromAllDrives=true&supportsAllDrives=true&fields=nextPageToken,newStartPageToken,changes(type,removed,file(id,size,trashed))&pageSize=1000`;
-    const res = await fetch(url, { headers });
-    if (!res.ok) {
-      console.error(`Changes API error for ${driveName}: ${res.status}`);
-      break;
-    }
-    const data = await res.json();
-    const changes = data.changes || [];
-
-    for (const change of changes) {
-      if (change.type !== "file") continue;
-      if (change.removed || change.file?.trashed) {
-        // File removed
-        objectCount = Math.max(0, objectCount - 1);
-        totalSize = Math.max(0, totalSize - Number(change.file?.size || 0));
-      } else {
-        // File added or modified - for simplicity, count as new
-        objectCount += 1;
-        totalSize += Number(change.file?.size || 0);
-      }
-    }
-
-    if (data.newStartPageToken) {
-      newChangeToken = data.newStartPageToken;
-      pageToken = undefined;
-    } else {
-      pageToken = data.nextPageToken;
-    }
-  } while (pageToken);
-
-  return { objectCount, totalSize, newChangeToken };
-}
-
-// Get the change start token for a drive
-async function getChangeToken(driveId: string, headers: Record<string, string>): Promise<string | null> {
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/changes/startPageToken?driveId=${driveId}&supportsAllDrives=true`,
-    { headers }
-  );
-  if (!res.ok) return null;
-  const data = await res.json();
-  return data.startPageToken || null;
 }
 
 Deno.serve(async (req) => {
@@ -185,39 +128,19 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Optional: specific integration_id and drive_id from query params (for manual trigger)
-    const url = new URL(req.url);
-    const specificIntegrationId = url.searchParams.get("integration_id");
-    const specificDriveId = url.searchParams.get("drive_id");
+    // Find all connected Google integrations
+    const { data: googleIntegrations } = await supabaseAdmin.from("integrations")
+      .select("*")
+      .eq("integration_type", "google")
+      .eq("is_connected", true);
 
-    // Auth: either Bearer token (manual) or cron (no auth needed, service role)
-    let userId: string | undefined;
-    const authHeader = req.headers.get("Authorization");
-    if (authHeader?.startsWith("Bearer ")) {
-      const supabaseUser = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_ANON_KEY")!,
-        { global: { headers: { Authorization: authHeader } } }
-      );
-      const token = authHeader.replace("Bearer ", "");
-      const { data: claimsData } = await supabaseUser.auth.getClaims(token);
-      userId = claimsData?.claims?.sub as string | undefined;
-    }
-
-    // Find Google integrations to process
-    let integrationsQuery = supabaseAdmin.from("integrations").select("*")
-      .eq("integration_type", "google").eq("is_connected", true);
-    if (specificIntegrationId) integrationsQuery = integrationsQuery.eq("id", specificIntegrationId);
-    if (userId) integrationsQuery = integrationsQuery.eq("user_id", userId);
-
-    const { data: googleIntegrations } = await integrationsQuery;
     if (!googleIntegrations?.length) {
       return new Response(JSON.stringify({ message: "No Google integrations found" }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const results: Array<{ integration_id: string; drive_name: string; status: string }> = [];
+    const results: Array<{ integration_id: string; drives_synced: number }> = [];
 
     for (const integration of googleIntegrations) {
       if (!integration.access_token_encrypted) continue;
@@ -232,7 +155,7 @@ Deno.serve(async (req) => {
 
       const headers = { Authorization: `Bearer ${accessToken}` };
 
-      // Get the list of shared drives from the cached drive list
+      // Get cached drive list
       const { data: driveListRows } = await supabaseAdmin.from("integration_sync_data")
         .select("*")
         .eq("integration_id", integration.id)
@@ -240,197 +163,55 @@ Deno.serve(async (req) => {
         .eq("metric_type", "shared_drive_list");
 
       if (!driveListRows?.length) {
-        console.log(`No drive list cached for integration ${integration.id}, skipping`);
+        console.log(`No drive list for integration ${integration.id}, skipping`);
         continue;
       }
 
-      // Each row in shared_drive_list has metadata with all drives
-      const driveListMeta = (driveListRows[0].metadata || {}) as any;
-      const drives: Array<{ id: string; name: string; createdTime: string }> = driveListMeta.drives || [];
+      const drives: Array<{ id: string; name: string; createdTime: string }> =
+        (driveListRows[0].metadata as any)?.drives || [];
 
-      if (!drives.length) {
-        console.log(`Empty drive list for integration ${integration.id}`);
-        continue;
-      }
+      if (!drives.length) continue;
 
-      // Get existing drive detail rows
-      const { data: existingDetails } = await supabaseAdmin.from("integration_sync_data")
-        .select("*")
+      // Delete all old shared_drive entries for this integration
+      await supabaseAdmin.from("integration_sync_data").delete()
         .eq("integration_id", integration.id)
         .eq("user_id", integration.user_id)
         .eq("metric_type", "shared_drive");
 
-      const existingByDriveId = new Map<string, any>();
-      for (const d of existingDetails || []) {
-        const driveId = (d.metadata as any)?.drive_id;
-        if (driveId) existingByDriveId.set(driveId, d);
-      }
+      // Process ALL drives
+      for (let i = 0; i < drives.length; i++) {
+        const drive = drives[i];
+        console.log(`Counting drive "${drive.name}" (${i + 1}/${drives.length})`);
 
-      // Determine which drive to process
-      let driveToProcess: { id: string; name: string; createdTime: string } | undefined;
-      let driveIndex = 0;
+        try {
+          const { objectCount, totalSize } = await countDriveFiles(drive.id, headers);
+          const storageGb = Math.round(totalSize / (1024 ** 3) * 100) / 100;
 
-      if (specificDriveId) {
-        // Manual: process specific drive
-        driveToProcess = drives.find(d => d.id === specificDriveId);
-        driveIndex = drives.findIndex(d => d.id === specificDriveId);
-      } else {
-        // Cron: collect all pending drives, then oldest stale drives
-        const TEN_MINUTES = 10 * 60 * 1000;
-        const pendingDrives: Array<{ drive: typeof drives[0]; index: number }> = [];
-        const staleDrives: Array<{ drive: typeof drives[0]; index: number; syncedAt: number }> = [];
+          await supabaseAdmin.from("integration_sync_data").insert({
+            user_id: integration.user_id,
+            integration_id: integration.id,
+            metric_type: "shared_drive",
+            metric_key: `shared_drive_${i}`,
+            metric_value: objectCount,
+            metric_unit: "objects",
+            metadata: {
+              drive_id: drive.id,
+              name: drive.name,
+              created_time: drive.createdTime || null,
+              object_limit: OBJECT_LIMIT,
+              object_count: objectCount,
+              storage_used_gb: storageGb,
+            },
+            synced_at: new Date().toISOString(),
+          });
 
-        for (let i = 0; i < drives.length; i++) {
-          const existing = existingByDriveId.get(drives[i].id);
-          if (!existing) {
-            pendingDrives.push({ drive: drives[i], index: i });
-            continue;
-          }
-          const meta = (existing.metadata as any) || {};
-          if (meta.pending || (meta.object_count !== undefined && meta.object_count < 0)) {
-            pendingDrives.push({ drive: drives[i], index: i });
-            continue;
-          }
-          const syncedAt = new Date(existing.synced_at).getTime();
-          if ((Date.now() - syncedAt) > TEN_MINUTES) {
-            staleDrives.push({ drive: drives[i], index: i, syncedAt });
-          }
-        }
-
-        // Sort stale by oldest first
-        staleDrives.sort((a, b) => a.syncedAt - b.syncedAt);
-
-        // Pick first pending, or first stale
-        const candidate = pendingDrives[0] || staleDrives[0];
-        if (candidate) {
-          driveToProcess = candidate.drive;
-          driveIndex = candidate.index;
+          console.log(`Drive "${drive.name}": ${objectCount} objects, ${storageGb} GB`);
+        } catch (e) {
+          console.error(`Error counting drive "${drive.name}":`, e);
         }
       }
 
-      if (!driveToProcess) {
-        console.log(`All drives are fresh for integration ${integration.id}`);
-        results.push({ integration_id: integration.id, drive_name: "none", status: "all_fresh" });
-        continue;
-      }
-
-      console.log(`Processing drive "${driveToProcess.name}" (${driveToProcess.id})`);
-
-      const existing = existingByDriveId.get(driveToProcess.id);
-      const existingMeta = existing ? (existing.metadata as any) : null;
-      const existingChangeToken = existingMeta?.change_token;
-
-      let objectCount: number = 0;
-      let totalSize: number = 0;
-      let changeToken: string | null = null;
-      let syncCompleted = false;
-      let resumePageToken: string | null = null;
-
-      const TIMEOUT_MS = 120_000;
-      const startTime = Date.now();
-
-      try {
-        if (existingChangeToken && !existingMeta?.pending) {
-          // Incremental sync (drive already fully counted before)
-          console.log(`Incremental sync for "${driveToProcess.name}"`);
-          const result = await incrementalCountDrive(
-            driveToProcess.id,
-            driveToProcess.name,
-            existingChangeToken,
-            existingMeta.object_count || 0,
-            Math.round((existingMeta.storage_used_gb || 0) * (1024 ** 3)),
-            headers
-          );
-          objectCount = result.objectCount;
-          totalSize = result.totalSize;
-          changeToken = result.newChangeToken;
-          syncCompleted = true;
-        } else {
-          // Full sync - resumable: pick up from where we left off
-          const savedPageToken = existingMeta?.resume_page_token;
-          const savedCount = existingMeta?.pending ? (existingMeta.object_count_partial || 0) : 0;
-          const savedSize = existingMeta?.pending ? Math.round((existingMeta.storage_used_gb_partial || 0) * (1024 ** 3)) : 0;
-
-          objectCount = savedCount;
-          totalSize = savedSize;
-
-          console.log(`Full sync for "${driveToProcess.name}" (resuming from ${objectCount} objects)`);
-
-          const q = encodeURIComponent("trashed=false");
-          const baseUrl = `https://www.googleapis.com/drive/v3/files?q=${q}&driveId=${driveToProcess.id}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&fields=nextPageToken,files(id,size)&pageSize=1000`;
-          let pageToken: string | undefined = savedPageToken || undefined;
-
-          // If no saved token and count > 0, we're resuming but lost the token - restart
-          if (!pageToken && objectCount > 0) {
-            objectCount = 0;
-            totalSize = 0;
-          }
-
-          let isFirstPage = !pageToken;
-          do {
-            if (Date.now() - startTime > TIMEOUT_MS) {
-              console.log(`Timeout after ${objectCount} objects, saving progress`);
-              resumePageToken = pageToken || null;
-              break;
-            }
-            const url = pageToken ? `${baseUrl}&pageToken=${pageToken}` : baseUrl;
-            const res = await fetch(url, { headers });
-            if (!res.ok) {
-              console.error(`API error: ${res.status}`);
-              break;
-            }
-            const data = await res.json();
-            const files = data.files || [];
-            objectCount += files.length;
-            for (const f of files) totalSize += Number(f.size || 0);
-            pageToken = data.nextPageToken;
-          } while (pageToken);
-
-          syncCompleted = !pageToken && !resumePageToken;
-          if (syncCompleted) {
-            changeToken = await getChangeToken(driveToProcess.id, headers);
-          }
-        }
-      } catch (e) {
-        console.error(`Sync error for ${driveToProcess.name}:`, e);
-      }
-
-      const storageGb = Math.round(totalSize / (1024 ** 3) * 100) / 100;
-      console.log(`Drive "${driveToProcess.name}": ${objectCount} objects, ${storageGb} GB (complete: ${syncCompleted})`);
-
-      // Delete ALL entries with this metric_key for this integration (clean duplicates)
-      await supabaseAdmin.from("integration_sync_data").delete()
-        .eq("integration_id", integration.id)
-        .eq("user_id", integration.user_id)
-        .eq("metric_type", "shared_drive")
-        .eq("metric_key", `shared_drive_${driveIndex}`);
-
-      const storageGbFinal = storageGb;
-      await supabaseAdmin.from("integration_sync_data").insert({
-        user_id: integration.user_id,
-        integration_id: integration.id,
-        metric_type: "shared_drive",
-        metric_key: `shared_drive_${driveIndex}`,
-        metric_value: syncCompleted ? objectCount : -1,
-        metric_unit: "objects",
-        metadata: {
-          drive_id: driveToProcess.id,
-          name: driveToProcess.name,
-          created_time: driveToProcess.createdTime || null,
-          object_limit: OBJECT_LIMIT,
-          object_count: objectCount,
-          storage_used_gb: storageGbFinal,
-          change_token: changeToken || null,
-          has_more: !syncCompleted,
-          pending: !syncCompleted,
-          resume_page_token: resumePageToken || null,
-          object_count_partial: !syncCompleted ? objectCount : null,
-          storage_used_gb_partial: !syncCompleted ? storageGbFinal : null,
-        },
-        synced_at: new Date().toISOString(),
-      });
-
-      results.push({ integration_id: integration.id, drive_name: driveToProcess.name, status: syncCompleted ? "synced" : "partial" });
+      results.push({ integration_id: integration.id, drives_synced: drives.length });
     }
 
     return new Response(JSON.stringify({ success: true, results }), {
