@@ -1,9 +1,12 @@
 import { Service } from '@/hooks/use-supabase';
+import { SyncMetric } from '@/hooks/use-all-sync-data';
 import StatusCardWidget from './widgets/StatusCardWidget';
 import UptimeChartWidget from './widgets/UptimeChartWidget';
 import ResponseTimeChartWidget from './widgets/ResponseTimeChartWidget';
 import AlertListWidget from './widgets/AlertListWidget';
 import ServiceTableWidget from './widgets/ServiceTableWidget';
+import IntegrationMetricCardWidget from './widgets/IntegrationMetricCardWidget';
+import DriveStorageGaugeWidget from './widgets/DriveStorageGaugeWidget';
 
 export interface WidgetConfig {
   id: string;
@@ -11,6 +14,7 @@ export interface WidgetConfig {
   title: string;
   config: {
     service_id?: string;
+    metric_key?: string;
     [key: string]: unknown;
   };
   width: number;
@@ -20,9 +24,10 @@ export interface WidgetConfig {
 interface WidgetRendererProps {
   widget: WidgetConfig;
   services: Service[];
+  syncMetrics?: SyncMetric[];
 }
 
-export default function WidgetRenderer({ widget, services }: WidgetRendererProps) {
+export default function WidgetRenderer({ widget, services, syncMetrics = [] }: WidgetRendererProps) {
   const service = widget.config.service_id
     ? services.find((s) => s.id === widget.config.service_id)
     : undefined;
@@ -38,6 +43,10 @@ export default function WidgetRenderer({ widget, services }: WidgetRendererProps
       return <AlertListWidget />;
     case 'service_table':
       return <ServiceTableWidget />;
+    case 'integration_metric':
+      return <IntegrationMetricCardWidget metricKey={widget.config.metric_key ?? ''} metrics={syncMetrics} />;
+    case 'drive_storage_gauge':
+      return <DriveStorageGaugeWidget metrics={syncMetrics} />;
     default:
       return <div className="h-full flex items-center justify-center text-sm text-muted-foreground">Unknown widget</div>;
   }
