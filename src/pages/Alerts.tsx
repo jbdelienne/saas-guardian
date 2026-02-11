@@ -33,7 +33,7 @@ export default function Alerts() {
   ];
 
   return (
-    <AppLayout tvMode={false} onToggleTvMode={() => {}} onAddService={() => {}}>
+    <AppLayout>
       <div className="max-w-3xl animate-fade-in">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-foreground mb-1">Alerts</h1>

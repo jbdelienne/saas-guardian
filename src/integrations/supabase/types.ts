@@ -97,6 +97,83 @@ export type Database = {
           },
         ]
       }
+      dashboard_widgets: {
+        Row: {
+          config: Json
+          created_at: string
+          dashboard_id: string
+          height: number
+          id: string
+          position_x: number
+          position_y: number
+          title: string
+          user_id: string
+          widget_type: string
+          width: number
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          dashboard_id: string
+          height?: number
+          id?: string
+          position_x?: number
+          position_y?: number
+          title: string
+          user_id: string
+          widget_type: string
+          width?: number
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          dashboard_id?: string
+          height?: number
+          id?: string
+          position_x?: number
+          position_y?: number
+          title?: string
+          user_id?: string
+          widget_type?: string
+          width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_widgets_dashboard_id_fkey"
+            columns: ["dashboard_id"]
+            isOneToOne: false
+            referencedRelation: "dashboards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dashboards: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          template: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          template?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          template?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       integrations: {
         Row: {
           created_at: string
