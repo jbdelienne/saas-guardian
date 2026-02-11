@@ -398,29 +398,14 @@ Deno.serve(async (req) => {
       const storageGb = Math.round(totalSize / (1024 ** 3) * 100) / 100;
       console.log(`Drive "${driveToProcess.name}": ${objectCount} objects, ${storageGb} GB (complete: ${syncCompleted})`);
 
-      // Delete ALL existing entries for this drive (by drive_id in metadata)
-      if (existing) {
-        // Delete by drive_id to avoid duplicates
-        const { data: dupes } = await supabaseAdmin.from("integration_sync_data")
-          .select("id")
-          .eq("integration_id", integration.id)
-          .eq("user_id", integration.user_id)
-          .eq("metric_type", "shared_drive");
-        
-        for (const d of dupes || []) {
-          await supabaseAdmin.from("integration_sync_data").delete().eq("id", d.id)
-            .eq("metric_type", "shared_drive");
-        }
-        // Hmm, that would delete ALL drives. Let me be more targeted:
-      }
-
-      // Delete existing entry for this specific drive
+      // Delete ALL entries with this metric_key for this integration (clean duplicates)
       await supabaseAdmin.from("integration_sync_data").delete()
         .eq("integration_id", integration.id)
         .eq("user_id", integration.user_id)
         .eq("metric_type", "shared_drive")
         .eq("metric_key", `shared_drive_${driveIndex}`);
 
+      const storageGbFinal = storageGb;
       await supabaseAdmin.from("integration_sync_data").insert({
         user_id: integration.user_id,
         integration_id: integration.id,
@@ -433,15 +418,14 @@ Deno.serve(async (req) => {
           name: driveToProcess.name,
           created_time: driveToProcess.createdTime || null,
           object_limit: OBJECT_LIMIT,
-          object_count: syncCompleted ? objectCount : objectCount,
-          storage_used_gb: syncCompleted ? storageGb : storageGb,
-          change_token: changeToken,
+          object_count: objectCount,
+          storage_used_gb: storageGbFinal,
+          change_token: changeToken || null,
           has_more: !syncCompleted,
           pending: !syncCompleted,
-          // Resumable state
-          resume_page_token: resumePageToken,
-          object_count_partial: syncCompleted ? undefined : objectCount,
-          storage_used_gb_partial: syncCompleted ? undefined : storageGb,
+          resume_page_token: resumePageToken || null,
+          object_count_partial: !syncCompleted ? objectCount : null,
+          storage_used_gb_partial: !syncCompleted ? storageGbFinal : null,
         },
         synced_at: new Date().toISOString(),
       });
