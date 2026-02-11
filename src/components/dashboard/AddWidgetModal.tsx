@@ -41,19 +41,10 @@ const WIDGET_TYPES = [
 ] as const;
 
 const METRIC_KEYS = [
-  { value: 'drive_owned_files', label: 'Fichiers possédés', group: 'Drive' },
-  { value: 'drive_shared_with_me', label: 'Partagés avec moi', group: 'Drive' },
-  { value: 'drive_shared_drives', label: 'Drives partagés', group: 'Drive' },
-  { value: 'drive_trash_gb', label: 'Corbeille (GB)', group: 'Drive' },
-  { value: 'drive_quota_used_gb', label: 'Quota utilisé (GB)', group: 'Drive' },
   { value: 'drive_quota_total_gb', label: 'Quota total (GB)', group: 'Drive' },
-  { value: 'storage_docs', label: 'Stockage Docs', group: 'Par type' },
-  { value: 'storage_sheets', label: 'Stockage Sheets', group: 'Par type' },
-  { value: 'storage_slides', label: 'Stockage Slides', group: 'Par type' },
-  { value: 'storage_pdfs', label: 'Stockage PDFs', group: 'Par type' },
-  { value: 'storage_images', label: 'Stockage Images', group: 'Par type' },
-  { value: 'storage_videos', label: 'Stockage Vidéos', group: 'Par type' },
-  { value: 'storage_audio', label: 'Stockage Audio', group: 'Par type' },
+  { value: 'drive_quota_used_gb', label: 'Quota utilisé (GB)', group: 'Drive' },
+  { value: 'drive_trash_gb', label: 'Corbeille (GB)', group: 'Drive' },
+  { value: 'drive_shared_drives_count', label: 'Nb drives partagés', group: 'Drive' },
 ];
 
 interface Props {
