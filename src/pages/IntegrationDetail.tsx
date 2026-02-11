@@ -7,9 +7,12 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, RefreshCw, Loader2, HardDrive, Users, Shield, MessageSquare, Hash, Key, FolderOpen, Trash2, Database } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Loader2, HardDrive, Users, Shield, MessageSquare, Hash, Key, FolderOpen, Trash2, Database, Clock } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 
 const METRIC_ICONS: Record<string, typeof Users> = {
   users: Users,
@@ -82,6 +85,10 @@ export default function IntegrationDetail() {
   const updateThreshold = useUpdateThreshold();
   const syncIntegration = useSyncIntegration();
 
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [syncingDrives, setSyncingDrives] = useState(false);
+
   const handleSync = () => {
     if (!integration) return;
     syncIntegration.mutate(integration.id, {
@@ -90,11 +97,45 @@ export default function IntegrationDetail() {
     });
   };
 
-  // Group sync data by metric_type
-  const grouped = syncData.reduce<Record<string, typeof syncData>>((acc, row) => {
-    (acc[row.metric_type] = acc[row.metric_type] || []).push(row);
-    return acc;
-  }, {});
+  const handleSyncDrives = async () => {
+    if (!integration) return;
+    setSyncingDrives(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-drive-details?integration_id=${integration.id}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+        },
+      });
+
+      if (!response.ok) throw new Error('Sync failed');
+      const data = await response.json();
+      const result = data.results?.[0];
+      if (result?.status === 'all_fresh') {
+        toast.info('Tous les drives sont à jour');
+      } else if (result?.drive_name) {
+        toast.success(`Drive "${result.drive_name}" synchronisé`);
+      }
+      queryClient.invalidateQueries({ queryKey: ['sync-data'] });
+    } catch (e: any) {
+      toast.error(`Erreur: ${e.message}`);
+    } finally {
+      setSyncingDrives(false);
+    }
+  };
+
+  // Group sync data by metric_type, exclude internal types
+  const grouped = syncData
+    .filter(row => row.metric_type !== 'shared_drive_list')
+    .reduce<Record<string, typeof syncData>>((acc, row) => {
+      (acc[row.metric_type] = acc[row.metric_type] || []).push(row);
+      return acc;
+    }, {});
 
   if (!type) return null;
 
@@ -154,6 +195,12 @@ export default function IntegrationDetail() {
 
                 // Special rendering for shared drives
                 if (metricType === 'shared_drive') {
+                  const syncedCount = rows.filter(r => {
+                    const meta = (r.metadata || {}) as Record<string, any>;
+                    return !meta.pending && (meta.object_count ?? r.metric_value) >= 0;
+                  }).length;
+                  const pendingCount = rows.length - syncedCount;
+
                   return (
                     <div key={metricType}>
                       <div className="flex items-center gap-2 mb-3">
@@ -161,6 +208,24 @@ export default function IntegrationDetail() {
                         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                           {sectionLabel} ({rows.length})
                         </h2>
+                        {pendingCount > 0 && (
+                          <span className="text-xs text-amber-500 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {pendingCount} en attente
+                          </span>
+                        )}
+                        {type === 'google' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleSyncDrives}
+                            disabled={syncingDrives}
+                            className="ml-auto h-7 text-xs gap-1"
+                          >
+                            {syncingDrives ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                            Sync drives
+                          </Button>
+                        )}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {rows.map((row) => {
@@ -168,33 +233,37 @@ export default function IntegrationDetail() {
                           const objectCount = meta.object_count ?? row.metric_value;
                           const objectLimit = meta.object_limit ?? 400000;
                           const storageGb = meta.storage_used_gb ?? 0;
-                          const objectPct = Math.round((objectCount / objectLimit) * 100);
-                          const hasMore = meta.has_more;
+                          const isPending = meta.pending || objectCount < 0;
+                          const objectPct = isPending ? 0 : Math.round((objectCount / objectLimit) * 100);
 
                           return (
-                            <div key={row.id} className="bg-card border border-border rounded-lg p-4 space-y-3">
+                            <div key={row.id} className={`bg-card border rounded-lg p-4 space-y-3 ${isPending ? 'border-dashed border-amber-500/30 opacity-70' : 'border-border'}`}>
                               <div className="flex items-center gap-2">
-                                <FolderOpen className="w-4 h-4 text-primary" />
+                                <FolderOpen className={`w-4 h-4 ${isPending ? 'text-amber-500' : 'text-primary'}`} />
                                 <span className="font-semibold text-foreground truncate">{meta.name || row.metric_key}</span>
+                                {isPending && <Clock className="w-3 h-3 text-amber-500 ml-auto" />}
                               </div>
 
-                              {/* Object usage */}
-                              <div>
-                                <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                                  <span>Objets</span>
-                                  <span className={objectPct >= 80 ? 'text-destructive font-medium' : ''}>
-                                    {hasMore ? '10 000+' : objectCount.toLocaleString('fr-FR')} / {objectLimit.toLocaleString('fr-FR')}
-                                  </span>
-                                </div>
-                                <Progress value={Math.min(objectPct, 100)} className="h-2" />
-                                <p className="text-[10px] text-muted-foreground mt-0.5">{objectPct}%</p>
-                              </div>
-
-                              {/* Storage */}
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-muted-foreground">Stockage</span>
-                                <span className="text-sm font-semibold text-foreground">{storageGb} GB</span>
-                              </div>
+                              {isPending ? (
+                                <p className="text-xs text-amber-500">En attente de synchronisation...</p>
+                              ) : (
+                                <>
+                                  <div>
+                                    <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                                      <span>Objets</span>
+                                      <span className={objectPct >= 80 ? 'text-destructive font-medium' : ''}>
+                                        {objectCount.toLocaleString('fr-FR')} / {objectLimit.toLocaleString('fr-FR')}
+                                      </span>
+                                    </div>
+                                    <Progress value={Math.min(objectPct, 100)} className="h-2" />
+                                    <p className="text-[10px] text-muted-foreground mt-0.5">{objectPct}%</p>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs text-muted-foreground">Stockage</span>
+                                    <span className="text-sm font-semibold text-foreground">{storageGb} GB</span>
+                                  </div>
+                                </>
+                              )}
 
                               {meta.created_time && (
                                 <p className="text-[10px] text-muted-foreground">
