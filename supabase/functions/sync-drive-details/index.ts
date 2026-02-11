@@ -275,33 +275,36 @@ Deno.serve(async (req) => {
         driveToProcess = drives.find(d => d.id === specificDriveId);
         driveIndex = drives.findIndex(d => d.id === specificDriveId);
       } else {
-        // Cron: find the drive that needs processing most
-        // Priority: 1. Never synced drives, 2. Oldest synced drive (> 10 min)
+        // Cron: collect all pending drives, then oldest stale drives
         const TEN_MINUTES = 10 * 60 * 1000;
-        let oldestTime = Infinity;
-        let oldestDrive: typeof driveToProcess;
-        let oldestIndex = 0;
+        const pendingDrives: Array<{ drive: typeof drives[0]; index: number }> = [];
+        const staleDrives: Array<{ drive: typeof drives[0]; index: number; syncedAt: number }> = [];
 
         for (let i = 0; i < drives.length; i++) {
           const existing = existingByDriveId.get(drives[i].id);
           if (!existing) {
-            // Never synced - top priority
-            driveToProcess = drives[i];
-            driveIndex = i;
-            break;
+            pendingDrives.push({ drive: drives[i], index: i });
+            continue;
+          }
+          const meta = (existing.metadata as any) || {};
+          if (meta.pending || (meta.object_count !== undefined && meta.object_count < 0)) {
+            pendingDrives.push({ drive: drives[i], index: i });
+            continue;
           }
           const syncedAt = new Date(existing.synced_at).getTime();
-          if (syncedAt < oldestTime) {
-            oldestTime = syncedAt;
-            oldestDrive = drives[i];
-            oldestIndex = i;
+          if ((Date.now() - syncedAt) > TEN_MINUTES) {
+            staleDrives.push({ drive: drives[i], index: i, syncedAt });
           }
         }
 
-        // If all drives have been synced at least once, pick the oldest (if > 10 min)
-        if (!driveToProcess && oldestDrive && (Date.now() - oldestTime) > TEN_MINUTES) {
-          driveToProcess = oldestDrive;
-          driveIndex = oldestIndex;
+        // Sort stale by oldest first
+        staleDrives.sort((a, b) => a.syncedAt - b.syncedAt);
+
+        // Pick first pending, or first stale
+        const candidate = pendingDrives[0] || staleDrives[0];
+        if (candidate) {
+          driveToProcess = candidate.drive;
+          driveIndex = candidate.index;
         }
       }
 
@@ -320,32 +323,64 @@ Deno.serve(async (req) => {
       let objectCount: number;
       let totalSize: number;
       let changeToken: string | null;
+      let syncCompleted = false;
 
-      if (existingChangeToken) {
-        // Incremental sync
-        console.log(`Incremental sync for "${driveToProcess.name}"`);
-        const result = await incrementalCountDrive(
-          driveToProcess.id,
-          driveToProcess.name,
-          existingChangeToken,
-          existingMeta.object_count || 0,
-          Math.round((existingMeta.storage_used_gb || 0) * (1024 ** 3)),
-          headers
-        );
-        objectCount = result.objectCount;
-        totalSize = result.totalSize;
-        changeToken = result.newChangeToken;
-      } else {
-        // Full initial sync
-        console.log(`Full sync for "${driveToProcess.name}"`);
-        const result = await fullCountDrive(driveToProcess.id, driveToProcess.name, headers);
-        objectCount = result.objectCount;
-        totalSize = result.totalSize;
-        changeToken = await getChangeToken(driveToProcess.id, headers);
+      // Wrap in a 120s timeout (edge functions can run up to 150s)
+      const TIMEOUT_MS = 120_000;
+      const startTime = Date.now();
+
+      try {
+        if (existingChangeToken && !existingMeta?.pending) {
+          // Incremental sync
+          console.log(`Incremental sync for "${driveToProcess.name}"`);
+          const result = await incrementalCountDrive(
+            driveToProcess.id,
+            driveToProcess.name,
+            existingChangeToken,
+            existingMeta.object_count || 0,
+            Math.round((existingMeta.storage_used_gb || 0) * (1024 ** 3)),
+            headers
+          );
+          objectCount = result.objectCount;
+          totalSize = result.totalSize;
+          changeToken = result.newChangeToken;
+          syncCompleted = true;
+        } else {
+          // Full initial sync with internal timeout check
+          console.log(`Full sync for "${driveToProcess.name}"`);
+          const q = encodeURIComponent("trashed=false");
+          const baseUrl = `https://www.googleapis.com/drive/v3/files?q=${q}&driveId=${driveToProcess.id}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&fields=nextPageToken,files(id,size)&pageSize=1000`;
+          objectCount = 0;
+          totalSize = 0;
+          let pageToken: string | undefined;
+
+          do {
+            if (Date.now() - startTime > TIMEOUT_MS) {
+              console.log(`Timeout reached for "${driveToProcess.name}" after ${objectCount} objects`);
+              break;
+            }
+            const url = pageToken ? `${baseUrl}&pageToken=${pageToken}` : baseUrl;
+            const res = await fetch(url, { headers });
+            if (!res.ok) break;
+            const data = await res.json();
+            const files = data.files || [];
+            objectCount += files.length;
+            for (const f of files) totalSize += Number(f.size || 0);
+            pageToken = data.nextPageToken;
+          } while (pageToken);
+
+          syncCompleted = !pageToken; // completed if no more pages
+          changeToken = syncCompleted ? await getChangeToken(driveToProcess.id, headers) : null;
+        }
+      } catch (e) {
+        console.error(`Sync error for ${driveToProcess.name}:`, e);
+        objectCount = objectCount! || 0;
+        totalSize = totalSize! || 0;
+        changeToken = null;
       }
 
       const storageGb = Math.round(totalSize / (1024 ** 3) * 100) / 100;
-      console.log(`Drive "${driveToProcess.name}": ${objectCount} objects, ${storageGb} GB`);
+      console.log(`Drive "${driveToProcess.name}": ${objectCount} objects, ${storageGb} GB (complete: ${syncCompleted})`);
 
       // Upsert the result
       if (existing) {
@@ -367,12 +402,13 @@ Deno.serve(async (req) => {
           object_count: objectCount,
           storage_used_gb: storageGb,
           change_token: changeToken,
-          has_more: false,
+          has_more: !syncCompleted,
+          pending: !syncCompleted, // if not completed, mark as still pending for next run to retry
         },
         synced_at: new Date().toISOString(),
       });
 
-      results.push({ integration_id: integration.id, drive_name: driveToProcess.name, status: "synced" });
+      results.push({ integration_id: integration.id, drive_name: driveToProcess.name, status: syncCompleted ? "synced" : "partial" });
     }
 
     return new Response(JSON.stringify({ success: true, results }), {
