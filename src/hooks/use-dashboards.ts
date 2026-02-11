@@ -121,3 +121,68 @@ export function useCreateDashboardWidgets() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['dashboard_widgets'] }),
   });
 }
+
+export function useAddDashboardWidget() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      dashboardId,
+      widget,
+    }: {
+      dashboardId: string;
+      widget: {
+        widget_type: string;
+        title: string;
+        config: Record<string, unknown>;
+        width: number;
+        height: number;
+        position_x: number;
+        position_y: number;
+      };
+    }) => {
+      const { data, error } = await supabase
+        .from('dashboard_widgets')
+        .insert({
+          dashboard_id: dashboardId,
+          user_id: user!.id,
+          ...widget,
+          config: widget.config as unknown as Record<string, never>,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as DashboardWidgetRow;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['dashboard_widgets'] }),
+  });
+}
+
+export function useUpdateWidgetPositions() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      updates: Array<{ id: string; position_x: number; position_y: number; width: number; height: number }>
+    ) => {
+      for (const u of updates) {
+        const { error } = await supabase
+          .from('dashboard_widgets')
+          .update({ position_x: u.position_x, position_y: u.position_y, width: u.width, height: u.height })
+          .eq('id', u.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['dashboard_widgets'] }),
+  });
+}
+
+export function useDeleteDashboardWidget() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('dashboard_widgets').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['dashboard_widgets'] }),
+  });
+}
