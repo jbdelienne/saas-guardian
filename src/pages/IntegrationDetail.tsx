@@ -3,11 +3,11 @@ import AppLayout from '@/components/layout/AppLayout';
 import { useIntegrations } from '@/hooks/use-supabase';
 import { useSyncData, useAlertThresholds, useUpdateThreshold, useSyncIntegration } from '@/hooks/use-integrations';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, RefreshCw, Loader2, HardDrive, Users, Shield, MessageSquare, Hash, Key } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Loader2, HardDrive, Users, Shield, MessageSquare, Hash, Key, FolderOpen, Trash2, Database } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -19,6 +19,7 @@ const METRIC_ICONS: Record<string, typeof Users> = {
   security: Shield,
   channels: Hash,
   team: MessageSquare,
+  shared_drive: FolderOpen,
 };
 
 const METRIC_LABELS: Record<string, string> = {
@@ -45,9 +46,18 @@ const METRIC_LABELS: Record<string, string> = {
   drive_quota_total_gb: 'Quota Drive total',
   drive_quota_used_gb: 'Quota Drive utilisé',
   drive_trash_gb: 'Drive corbeille',
-  drive_owned_files: 'Fichiers possédés',
-  drive_shared_with_me: 'Partagés avec moi',
-  drive_shared_drives: 'Drives partagés',
+  drive_shared_drives_count: 'Drives partagés',
+};
+
+const SECTION_LABELS: Record<string, string> = {
+  users: 'Utilisateurs',
+  storage: 'Stockage',
+  drive: 'Google Drive',
+  licenses: 'Licences',
+  security: 'Sécurité',
+  channels: 'Channels',
+  team: 'Workspace',
+  shared_drive: 'Drives partagés',
 };
 
 const PROVIDER_NAMES: Record<string, string> = {
@@ -140,20 +150,77 @@ export default function IntegrationDetail() {
             <div className="space-y-6 mb-10">
               {Object.entries(grouped).map(([metricType, rows]) => {
                 const Icon = METRIC_ICONS[metricType] || Users;
+                const sectionLabel = SECTION_LABELS[metricType] || metricType;
+
+                // Special rendering for shared drives
+                if (metricType === 'shared_drive') {
+                  return (
+                    <div key={metricType}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <FolderOpen className="w-4 h-4 text-muted-foreground" />
+                        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                          {sectionLabel} ({rows.length})
+                        </h2>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {rows.map((row) => {
+                          const meta = (row.metadata || {}) as Record<string, any>;
+                          const objectCount = meta.object_count ?? row.metric_value;
+                          const objectLimit = meta.object_limit ?? 400000;
+                          const storageGb = meta.storage_used_gb ?? 0;
+                          const objectPct = Math.round((objectCount / objectLimit) * 100);
+                          const hasMore = meta.has_more;
+
+                          return (
+                            <div key={row.id} className="bg-card border border-border rounded-lg p-4 space-y-3">
+                              <div className="flex items-center gap-2">
+                                <FolderOpen className="w-4 h-4 text-primary" />
+                                <span className="font-semibold text-foreground truncate">{meta.name || row.metric_key}</span>
+                              </div>
+
+                              {/* Object usage */}
+                              <div>
+                                <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                                  <span>Objets</span>
+                                  <span className={objectPct >= 80 ? 'text-destructive font-medium' : ''}>
+                                    {hasMore ? '10 000+' : objectCount.toLocaleString('fr-FR')} / {objectLimit.toLocaleString('fr-FR')}
+                                  </span>
+                                </div>
+                                <Progress value={Math.min(objectPct, 100)} className="h-2" />
+                                <p className="text-[10px] text-muted-foreground mt-0.5">{objectPct}%</p>
+                              </div>
+
+                              {/* Storage */}
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs text-muted-foreground">Stockage</span>
+                                <span className="text-sm font-semibold text-foreground">{storageGb} GB</span>
+                              </div>
+
+                              {meta.created_time && (
+                                <p className="text-[10px] text-muted-foreground">
+                                  Créé le {new Date(meta.created_time).toLocaleDateString('fr-FR')}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Default metric cards
                 return (
                   <div key={metricType}>
                     <div className="flex items-center gap-2 mb-3">
                       <Icon className="w-4 h-4 text-muted-foreground" />
                       <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                        {metricType}
+                        {sectionLabel}
                       </h2>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                       {rows.map((row) => (
-                        <div
-                          key={row.id}
-                          className="bg-card border border-border rounded-lg p-4"
-                        >
+                        <div key={row.id} className="bg-card border border-border rounded-lg p-4">
                           <p className="text-xs text-muted-foreground mb-1">
                             {METRIC_LABELS[row.metric_key] || row.metric_key}
                           </p>
