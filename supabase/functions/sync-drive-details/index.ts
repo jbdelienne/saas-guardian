@@ -82,34 +82,37 @@ async function getAccessToken(
   return accessToken;
 }
 
-// Count files in a shared drive - only request file IDs for speed
+// Simple: count all files in a shared drive
 async function countDriveFiles(
   driveId: string,
   accessToken: string,
-): Promise<number> {
+  maxPages = 500
+): Promise<{ objectCount: number; totalSize: number }> {
   const q = encodeURIComponent("trashed=false");
-  const baseUrl = `https://www.googleapis.com/drive/v3/files?q=${q}&driveId=${driveId}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&fields=nextPageToken,files(id)&pageSize=1000`;
+  const baseUrl = `https://www.googleapis.com/drive/v3/files?q=${q}&driveId=${driveId}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&fields=nextPageToken,files(size)&pageSize=1000`;
   
-  let count = 0;
+  let objectCount = 0;
+  let totalSize = 0;
   let pageToken: string | undefined;
+  let pages = 0;
 
   do {
     const url = pageToken ? `${baseUrl}&pageToken=${pageToken}` : baseUrl;
     const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
     if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Drive API ${res.status}: ${text.slice(0, 200)}`);
+      console.error(`Drive API error: ${res.status}`);
+      break;
     }
     const data = await res.json();
-    count += (data.files || []).length;
+    const files = data.files || [];
+    objectCount += files.length;
+    for (const f of files) totalSize += Number(f.size || 0);
     pageToken = data.nextPageToken;
-  } while (pageToken);
+    pages++;
+  } while (pageToken && pages < maxPages);
 
-  return count;
+  return { objectCount, totalSize };
 }
-
-// Get storage quota used by a shared drive via about endpoint (not available per-drive)
-// For now we skip storage - only count matters
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -125,6 +128,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Find all connected Google integrations
     const { data: googleIntegrations } = await supabaseAdmin.from("integrations")
       .select("*")
       .eq("integration_type", "google")
@@ -141,15 +145,6 @@ Deno.serve(async (req) => {
     for (const integration of googleIntegrations) {
       if (!integration.access_token_encrypted) continue;
 
-      // Get a fresh token
-      let accessToken: string;
-      try {
-        accessToken = await getAccessToken(integration, encryptionKey, supabaseAdmin);
-      } catch (e) {
-        console.error(`Token error for integration ${integration.id}:`, e);
-        continue;
-      }
-
       // Get cached drive list
       const { data: driveListRows } = await supabaseAdmin.from("integration_sync_data")
         .select("*")
@@ -157,68 +152,66 @@ Deno.serve(async (req) => {
         .eq("user_id", integration.user_id)
         .eq("metric_type", "shared_drive_list");
 
-      if (!driveListRows?.length) continue;
+      if (!driveListRows?.length) {
+        console.log(`No drive list for integration ${integration.id}, skipping`);
+        continue;
+      }
 
       const drives: Array<{ id: string; name: string; createdTime: string }> =
         (driveListRows[0].metadata as any)?.drives || [];
+
       if (!drives.length) continue;
 
-      // Count ALL drives in parallel (batches of 5 to avoid rate limits)
-      const BATCH_SIZE = 5;
-      const driveResults: Array<{ index: number; drive: typeof drives[0]; count: number }> = [];
-
-      for (let batch = 0; batch < drives.length; batch += BATCH_SIZE) {
-        // Refresh token for each batch to avoid expiry
-        const { data: freshIntegration } = await supabaseAdmin.from("integrations")
-          .select("*").eq("id", integration.id).single();
-        accessToken = await getAccessToken(freshIntegration || integration, encryptionKey, supabaseAdmin);
-
-        const batchDrives = drives.slice(batch, batch + BATCH_SIZE);
-        const batchResults = await Promise.allSettled(
-          batchDrives.map(async (drive, j) => {
-            const idx = batch + j;
-            console.log(`Counting drive "${drive.name}" (${idx + 1}/${drives.length})`);
-            const count = await countDriveFiles(drive.id, accessToken);
-            console.log(`Drive "${drive.name}": ${count} objects`);
-            return { index: idx, drive, count };
-          })
-        );
-
-        for (const r of batchResults) {
-          if (r.status === 'fulfilled') {
-            driveResults.push(r.value);
-          } else {
-            console.error(`Drive count failed:`, r.reason);
-          }
-        }
-      }
-
-      // Delete old entries and insert new ones
+      // Delete all old shared_drive entries for this integration
       await supabaseAdmin.from("integration_sync_data").delete()
         .eq("integration_id", integration.id)
         .eq("user_id", integration.user_id)
         .eq("metric_type", "shared_drive");
 
-      for (const { index, drive, count } of driveResults) {
-        await supabaseAdmin.from("integration_sync_data").insert({
-          user_id: integration.user_id,
-          integration_id: integration.id,
-          metric_type: "shared_drive",
-          metric_key: `shared_drive_${index}`,
-          metric_value: count,
-          metric_unit: "objects",
-          metadata: {
-            drive_id: drive.id,
-            name: drive.name,
-            created_time: drive.createdTime || null,
-            object_limit: OBJECT_LIMIT,
-            object_count: count,
-          },
-          synced_at: new Date().toISOString(),
-        });
+      // Process ALL drives - refresh token before each to avoid 401
+      for (let i = 0; i < drives.length; i++) {
+        const drive = drives[i];
+        console.log(`Counting drive "${drive.name}" (${i + 1}/${drives.length})`);
+
+        try {
+          // Re-fetch integration to get latest token_expires_at
+          const { data: freshIntegration } = await supabaseAdmin.from("integrations")
+            .select("*").eq("id", integration.id).single();
+          
+          const accessToken = await getAccessToken(
+            freshIntegration || integration,
+            encryptionKey,
+            supabaseAdmin
+          );
+
+          const { objectCount, totalSize } = await countDriveFiles(drive.id, accessToken);
+          const storageGb = Math.round(totalSize / (1024 ** 3) * 100) / 100;
+
+          await supabaseAdmin.from("integration_sync_data").insert({
+            user_id: integration.user_id,
+            integration_id: integration.id,
+            metric_type: "shared_drive",
+            metric_key: `shared_drive_${i}`,
+            metric_value: objectCount,
+            metric_unit: "objects",
+            metadata: {
+              drive_id: drive.id,
+              name: drive.name,
+              created_time: drive.createdTime || null,
+              object_limit: OBJECT_LIMIT,
+              object_count: objectCount,
+              storage_used_gb: storageGb,
+            },
+            synced_at: new Date().toISOString(),
+          });
+
+          console.log(`Drive "${drive.name}": ${objectCount} objects, ${storageGb} GB`);
+        } catch (e) {
+          console.error(`Error counting drive "${drive.name}":`, e);
+        }
       }
 
-      results.push({ integration_id: integration.id, drives_synced: driveResults.length });
+      results.push({ integration_id: integration.id, drives_synced: drives.length });
     }
 
     return new Response(JSON.stringify({ success: true, results }), {
