@@ -137,8 +137,10 @@ async function syncGoogle(accessToken: string, userId: string, integrationId: st
       "https://www.googleapis.com/drive/v3/drives?pageSize=100&fields=drives(id,name,createdTime),nextPageToken",
       { headers }
     );
+    console.log("Shared drives API status:", drivesRes.status);
     if (drivesRes.ok) {
       const drivesData = await drivesRes.json();
+      console.log("Shared drives found:", (drivesData.drives || []).length);
       const drives = drivesData.drives || [];
 
       metrics.push({ metric_type: "drive", metric_key: "drive_shared_drives_count", metric_value: drives.length, metric_unit: "count" });

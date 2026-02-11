@@ -13,7 +13,7 @@ const PROVIDERS: Record<string, { authUrl: string; scopes: string; clientIdEnv: 
       "openid",
       "https://www.googleapis.com/auth/userinfo.email",
       "https://www.googleapis.com/auth/userinfo.profile",
-      "https://www.googleapis.com/auth/drive.metadata.readonly",
+      "https://www.googleapis.com/auth/drive.readonly",
       "https://www.googleapis.com/auth/admin.directory.user.readonly",
       "https://www.googleapis.com/auth/admin.directory.domain.readonly",
       "https://www.googleapis.com/auth/admin.reports.usage.readonly",
