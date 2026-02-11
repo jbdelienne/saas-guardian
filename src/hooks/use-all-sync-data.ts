@@ -9,6 +9,7 @@ export interface SyncMetric {
   metric_key: string;
   metric_value: number;
   metric_unit: string | null;
+  metadata: Record<string, unknown> | null;
   synced_at: string;
 }
 
@@ -19,7 +20,7 @@ export function useAllSyncData() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('integration_sync_data')
-        .select('id, integration_id, metric_type, metric_key, metric_value, metric_unit, synced_at')
+        .select('id, integration_id, metric_type, metric_key, metric_value, metric_unit, metadata, synced_at')
         .order('synced_at', { ascending: false });
       if (error) throw error;
       return data as SyncMetric[];
