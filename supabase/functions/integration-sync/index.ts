@@ -131,8 +131,8 @@ async function syncGoogle(accessToken: string, userId: string, integrationId: st
       }
     }
 
-    // Fetch shared drives with details + per-drive storage & object count
-    const OBJECT_LIMIT = 400000; // Google Workspace shared drive object limit
+    // Fetch shared drives - lightweight: just list drives, then one quick query per drive for count
+    const OBJECT_LIMIT = 400000;
     const drivesRes = await fetch(
       "https://www.googleapis.com/drive/v3/drives?pageSize=100&fields=drives(id,name,createdTime),nextPageToken",
       { headers }
@@ -140,57 +140,69 @@ async function syncGoogle(accessToken: string, userId: string, integrationId: st
     console.log("Shared drives API status:", drivesRes.status);
     if (drivesRes.ok) {
       const drivesData = await drivesRes.json();
-      console.log("Shared drives found:", (drivesData.drives || []).length);
       const drives = drivesData.drives || [];
+      console.log("Shared drives found:", drives.length);
 
       metrics.push({ metric_type: "drive", metric_key: "drive_shared_drives_count", metric_value: drives.length, metric_unit: "count" });
 
-      for (let i = 0; i < drives.length; i++) {
-        const d = drives[i];
-
-        // Count objects in this shared drive (paginated)
-        let objectCount = 0;
-        let totalSize = 0;
-        let pageToken: string | null = null;
+      // Fetch per-drive stats in parallel (one small request each for size estimate)
+      const drivePromises = drives.map(async (d: any, i: number) => {
         try {
-          do {
-            const q = encodeURIComponent("trashed=false");
-            const url = `https://www.googleapis.com/drive/v3/files?q=${q}&driveId=${d.id}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&fields=nextPageToken,files(size)&pageSize=1000${pageToken ? `&pageToken=${pageToken}` : ""}`;
-            const res = await fetch(url, { headers });
-            if (!res.ok) break;
-            const data = await res.json();
-            const files = data.files || [];
-            objectCount += files.length;
-            for (const f of files) {
-              totalSize += Number(f.size || 0);
-            }
-            pageToken = data.nextPageToken || null;
-            // Safety: stop after 10 pages (10k items counted exactly, estimate beyond)
-            if (objectCount >= 10000 && pageToken) {
-              // Rough estimate: multiply by ratio of pages remaining
-              // For now just mark as 10000+ and break
-              break;
-            }
-          } while (pageToken);
-        } catch (e) { console.error(`Drive object count error for ${d.name}:`, e); }
+          // Single request: get first page to estimate count + sum sizes
+          const q = encodeURIComponent("trashed=false");
+          const url = `https://www.googleapis.com/drive/v3/files?q=${q}&driveId=${d.id}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&fields=nextPageToken,files(size)&pageSize=1000`;
+          const res = await fetch(url, { headers });
+          if (!res.ok) {
+            console.error(`Drive files API error for ${d.name}: ${res.status}`);
+            return null;
+          }
+          const data = await res.json();
+          const files = data.files || [];
+          let objectCount = files.length;
+          let totalSize = 0;
+          for (const f of files) totalSize += Number(f.size || 0);
+          const hasMore = !!data.nextPageToken;
 
-        const storageGb = Math.round(totalSize / (1024 ** 3) * 100) / 100;
+          // If there's more than 1000 files, do a few more pages (up to 5 total = 5000 files max)
+          let pageToken = data.nextPageToken;
+          let pages = 1;
+          while (pageToken && pages < 5) {
+            const nextUrl = `${url}&pageToken=${pageToken}`;
+            const nextRes = await fetch(nextUrl, { headers });
+            if (!nextRes.ok) break;
+            const nextData = await nextRes.json();
+            const nextFiles = nextData.files || [];
+            objectCount += nextFiles.length;
+            for (const f of nextFiles) totalSize += Number(f.size || 0);
+            pageToken = nextData.nextPageToken;
+            pages++;
+          }
 
-        metrics.push({
-          metric_type: "shared_drive",
-          metric_key: `shared_drive_${i}`,
-          metric_value: objectCount,
-          metric_unit: "objects",
-          metadata: {
-            drive_id: d.id,
-            name: d.name,
-            created_time: d.createdTime || null,
-            object_limit: OBJECT_LIMIT,
-            object_count: objectCount,
-            storage_used_gb: storageGb,
-            has_more: !!pageToken, // true if we hit the 10k safety limit
-          },
-        });
+          const storageGb = Math.round(totalSize / (1024 ** 3) * 100) / 100;
+          return {
+            metric_type: "shared_drive",
+            metric_key: `shared_drive_${i}`,
+            metric_value: objectCount,
+            metric_unit: "objects",
+            metadata: {
+              drive_id: d.id,
+              name: d.name,
+              created_time: d.createdTime || null,
+              object_limit: OBJECT_LIMIT,
+              object_count: objectCount,
+              storage_used_gb: storageGb,
+              has_more: !!pageToken,
+            },
+          };
+        } catch (e) {
+          console.error(`Drive stats error for ${d.name}:`, e);
+          return null;
+        }
+      });
+
+      const driveResults = await Promise.all(drivePromises);
+      for (const r of driveResults) {
+        if (r) metrics.push(r);
       }
     }
   } catch (e) { console.error("Google Drive sync error:", e); }
