@@ -1,14 +1,19 @@
 import { LayoutGrid, Activity, Table, BarChart3, Cloud } from 'lucide-react';
 import { WidgetConfig } from './WidgetRenderer';
 
+export interface SourceSelection {
+  serviceIds: string[];
+  integrationIds: string[];
+}
+
 export interface DashboardTemplate {
   id: string;
   name: string;
   description: string;
   icon: typeof LayoutGrid;
-  /** If true, uses integration metrics instead of services */
-  isIntegration?: boolean;
-  generateWidgets: (serviceIds: string[]) => Omit<WidgetConfig, 'id'>[];
+  /** Which source types this template supports */
+  sourceTypes: ('service' | 'integration')[];
+  generateWidgets: (sources: SourceSelection) => Omit<WidgetConfig, 'id'>[];
 }
 
 export const templates: DashboardTemplate[] = [
@@ -17,8 +22,9 @@ export const templates: DashboardTemplate[] = [
     name: 'Service Overview',
     description: 'Status cards for each service + alert feed',
     icon: LayoutGrid,
-    generateWidgets: (serviceIds) => {
-      const widgets: Omit<WidgetConfig, 'id'>[] = serviceIds.slice(0, 6).map((sid) => ({
+    sourceTypes: ['service'],
+    generateWidgets: ({ serviceIds }) => {
+      const widgets: Omit<WidgetConfig, 'id'>[] = serviceIds.slice(0, 8).map((sid) => ({
         widget_type: 'status_card',
         title: 'Service Status',
         config: { service_id: sid },
@@ -40,9 +46,10 @@ export const templates: DashboardTemplate[] = [
     name: 'Performance Monitor',
     description: 'Response time & uptime charts for each service',
     icon: Activity,
-    generateWidgets: (serviceIds) => {
+    sourceTypes: ['service'],
+    generateWidgets: ({ serviceIds }) => {
       const widgets: Omit<WidgetConfig, 'id'>[] = [];
-      serviceIds.slice(0, 4).forEach((sid) => {
+      serviceIds.slice(0, 6).forEach((sid) => {
         widgets.push({
           widget_type: 'response_time_chart',
           title: 'Response Time',
@@ -66,6 +73,7 @@ export const templates: DashboardTemplate[] = [
     name: 'Compact Table',
     description: 'All services in a table + top alerts',
     icon: Table,
+    sourceTypes: ['service'],
     generateWidgets: () => [
       { widget_type: 'service_table', title: 'All Services', config: {}, width: 2, height: 2 },
       { widget_type: 'alert_list', title: 'Recent Alerts', config: {}, width: 2, height: 2 },
@@ -76,7 +84,8 @@ export const templates: DashboardTemplate[] = [
     name: 'Analytics Deep Dive',
     description: 'Detailed charts and metrics for all services',
     icon: BarChart3,
-    generateWidgets: (serviceIds) => {
+    sourceTypes: ['service'],
+    generateWidgets: ({ serviceIds }) => {
       const widgets: Omit<WidgetConfig, 'id'>[] = [
         { widget_type: 'service_table', title: 'All Services', config: {}, width: 2, height: 1 },
       ];
@@ -104,7 +113,7 @@ export const templates: DashboardTemplate[] = [
     name: 'Google Drive',
     description: 'Storage usage, file counts & shared drives',
     icon: Cloud,
-    isIntegration: true,
+    sourceTypes: ['integration'],
     generateWidgets: () => [
       { widget_type: 'drive_storage_gauge', title: 'Drive Storage', config: {}, width: 2, height: 2 },
       { widget_type: 'integration_metric', title: 'Fichiers possédés', config: { metric_key: 'drive_owned_files' }, width: 1, height: 1 },
@@ -113,5 +122,41 @@ export const templates: DashboardTemplate[] = [
       { widget_type: 'integration_metric', title: 'Corbeille', config: { metric_key: 'drive_trash_gb' }, width: 1, height: 1 },
       { widget_type: 'alert_list', title: 'Alerts', config: {}, width: 2, height: 2 },
     ],
+  },
+  {
+    id: 'mixed',
+    name: 'Mixed Dashboard',
+    description: 'Combine services and integrations in one view',
+    icon: LayoutGrid,
+    sourceTypes: ['service', 'integration'],
+    generateWidgets: ({ serviceIds, integrationIds }) => {
+      const widgets: Omit<WidgetConfig, 'id'>[] = [];
+      // Add service status cards
+      serviceIds.slice(0, 4).forEach((sid) => {
+        widgets.push({
+          widget_type: 'status_card',
+          title: 'Service Status',
+          config: { service_id: sid },
+          width: 1,
+          height: 1,
+        });
+      });
+      // Add integration widgets if we have integrations
+      if (integrationIds.length > 0) {
+        widgets.push(
+          { widget_type: 'drive_storage_gauge', title: 'Drive Storage', config: {}, width: 2, height: 2 },
+          { widget_type: 'integration_metric', title: 'Fichiers possédés', config: { metric_key: 'drive_owned_files' }, width: 1, height: 1 },
+          { widget_type: 'integration_metric', title: 'Drives partagés', config: { metric_key: 'drive_shared_drives' }, width: 1, height: 1 },
+        );
+      }
+      widgets.push({
+        widget_type: 'alert_list',
+        title: 'Recent Alerts',
+        config: {},
+        width: 2,
+        height: 2,
+      });
+      return widgets;
+    },
   },
 ];
