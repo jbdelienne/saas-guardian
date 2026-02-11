@@ -1,17 +1,19 @@
 import { useState, useMemo } from 'react';
-import { mockServices, MockService } from '@/lib/mock-data';
+import { useServices, useAddService, useDeleteService, Service } from '@/hooks/use-supabase';
 import ServiceCard from '@/components/dashboard/ServiceCard';
 import EmptyState from '@/components/dashboard/EmptyState';
 import AddServiceModal from '@/components/dashboard/AddServiceModal';
 import ServiceDetailModal from '@/components/dashboard/ServiceDetailModal';
 import AppLayout from '@/components/layout/AppLayout';
-import { CheckCircle, AlertTriangle, XCircle } from 'lucide-react';
+import { CheckCircle, AlertTriangle, XCircle, Loader2 } from 'lucide-react';
 
 export default function Dashboard() {
-  const [services, setServices] = useState<MockService[]>(mockServices);
+  const { data: services = [], isLoading } = useServices();
+  const addService = useAddService();
+  const deleteService = useDeleteService();
   const [tvMode, setTvMode] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
-  const [selectedService, setSelectedService] = useState<MockService | null>(null);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
 
   const stats = useMemo(() => {
     const up = services.filter((s) => s.status === 'up').length;
@@ -20,22 +22,24 @@ export default function Dashboard() {
     return { up, degraded, down, total: services.length };
   }, [services]);
 
-  const handleAddService = (svc: { name: string; icon: string; url: string; check_interval: number }) => {
-    const newService: MockService = {
-      id: crypto.randomUUID(),
-      ...svc,
-      status: 'unknown',
-      uptime_percentage: 0,
-      avg_response_time: 0,
-      last_check: '',
-    };
-    setServices((prev) => [...prev, newService]);
+  const handleAddService = async (svc: { name: string; icon: string; url: string; check_interval: number }) => {
+    await addService.mutateAsync(svc);
   };
 
-  const handleDeleteService = (id: string) => {
-    setServices((prev) => prev.filter((s) => s.id !== id));
+  const handleDeleteService = async (id: string) => {
+    await deleteService.mutateAsync(id);
     setSelectedService(null);
   };
+
+  if (isLoading) {
+    return (
+      <AppLayout tvMode={false} onToggleTvMode={() => {}} onAddService={() => {}}>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout tvMode={tvMode} onToggleTvMode={() => setTvMode(!tvMode)} onAddService={() => setAddModalOpen(true)}>

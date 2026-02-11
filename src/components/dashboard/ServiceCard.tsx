@@ -1,9 +1,9 @@
-import { MockService } from '@/lib/mock-data';
+import { Service } from '@/hooks/use-supabase';
 import { formatDistanceToNow } from 'date-fns';
 
 interface ServiceCardProps {
-  service: MockService;
-  onClick: (service: MockService) => void;
+  service: Service;
+  onClick: (service: Service) => void;
 }
 
 const statusDotClass: Record<string, string> = {
@@ -33,21 +33,21 @@ export default function ServiceCard({ service, onClick }: ServiceCardProps) {
           <h3 className="font-semibold text-card-foreground text-sm">{service.name}</h3>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">{statusLabel[service.status]}</span>
-          <div className={statusDotClass[service.status]} />
+          <span className="text-xs text-muted-foreground">{statusLabel[service.status] ?? 'Unknown'}</span>
+          <div className={statusDotClass[service.status] ?? 'status-dot-unknown'} />
         </div>
       </div>
 
       <div className="mb-3">
         <span className="text-3xl font-bold text-card-foreground tracking-tight">
-          {service.status === 'unknown' ? '—' : `${service.uptime_percentage}%`}
+          {service.status === 'unknown' ? '—' : `${service.uptime_percentage ?? 0}%`}
         </span>
         <span className="text-xs text-muted-foreground ml-1.5">uptime</span>
       </div>
 
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>
-          {service.avg_response_time > 0 ? `${service.avg_response_time}ms avg` : '—'}
+          {(service.avg_response_time ?? 0) > 0 ? `${service.avg_response_time}ms avg` : '—'}
         </span>
         <span>Checked {lastChecked}</span>
       </div>

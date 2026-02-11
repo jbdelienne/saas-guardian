@@ -1,10 +1,10 @@
-import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
-import { mockAlerts, MockAlert } from '@/lib/mock-data';
-import { AlertTriangle, AlertCircle, Info, X, CheckCircle } from 'lucide-react';
+import { useAlerts, useDismissAlert, Alert } from '@/hooks/use-supabase';
+import { AlertTriangle, AlertCircle, Info, CheckCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useState } from 'react';
 
-const severityConfig = {
+const severityConfig: Record<string, { icon: typeof AlertCircle; dotClass: string; badgeBg: string; badgeText: string }> = {
   critical: { icon: AlertCircle, dotClass: 'bg-destructive', badgeBg: 'bg-destructive/10', badgeText: 'text-destructive' },
   warning: { icon: AlertTriangle, dotClass: 'bg-warning', badgeBg: 'bg-warning/10', badgeText: 'text-warning' },
   info: { icon: Info, dotClass: 'bg-info', badgeBg: 'bg-info/10', badgeText: 'text-info' },
@@ -13,12 +13,9 @@ const severityConfig = {
 type FilterTab = 'all' | 'critical' | 'warning' | 'dismissed';
 
 export default function Alerts() {
-  const [alerts, setAlerts] = useState<MockAlert[]>(mockAlerts);
+  const { data: alerts = [], isLoading } = useAlerts();
+  const dismissAlert = useDismissAlert();
   const [filter, setFilter] = useState<FilterTab>('all');
-
-  const dismiss = (id: string) => {
-    setAlerts((prev) => prev.map((a) => (a.id === id ? { ...a, is_dismissed: true } : a)));
-  };
 
   const filtered = alerts.filter((a) => {
     if (filter === 'dismissed') return a.is_dismissed;
@@ -59,7 +56,11 @@ export default function Alerts() {
           ))}
         </div>
 
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <div className="flex justify-center py-16">
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <CheckCircle className="w-12 h-12 mx-auto mb-3 text-success" />
             <p className="font-medium text-foreground">All systems operational ✓</p>
@@ -68,7 +69,7 @@ export default function Alerts() {
         ) : (
           <div className="space-y-3">
             {filtered.map((alert) => {
-              const config = severityConfig[alert.severity];
+              const config = severityConfig[alert.severity] ?? severityConfig.info;
               const Icon = config.icon;
               return (
                 <div
@@ -90,7 +91,13 @@ export default function Alerts() {
                       {!alert.is_dismissed && (
                         <div className="flex gap-2 mt-3">
                           <Button variant="outline" size="sm" className="text-xs">View Details</Button>
-                          <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => dismiss(alert.id)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs text-muted-foreground"
+                            onClick={() => dismissAlert.mutate(alert.id)}
+                            disabled={dismissAlert.isPending}
+                          >
                             Dismiss
                           </Button>
                         </div>

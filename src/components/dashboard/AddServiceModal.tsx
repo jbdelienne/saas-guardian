@@ -4,12 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle } from 'lucide-react';
+import { CheckCircle, Loader2 } from 'lucide-react';
 
 interface AddServiceModalProps {
   open: boolean;
   onClose: () => void;
-  onAdd: (service: { name: string; icon: string; url: string; check_interval: number }) => void;
+  onAdd: (service: { name: string; icon: string; url: string; check_interval: number }) => Promise<void>;
 }
 
 const emojiOptions = ['🌐', '💳', '🐙', '💬', '☁️', '▲', '🐕', '✉️', '📞', '🔒', '📊', '🛒'];
@@ -20,19 +20,26 @@ export default function AddServiceModal({ open, onClose, onAdd }: AddServiceModa
   const [url, setUrl] = useState('');
   const [interval, setInterval] = useState('5');
   const [success, setSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onAdd({ name, icon, url, check_interval: Number(interval) });
-    setSuccess(true);
-    setTimeout(() => {
-      setSuccess(false);
-      setName('');
-      setUrl('');
-      setIcon('🌐');
-      setInterval('5');
-      onClose();
-    }, 1500);
+    setLoading(true);
+    try {
+      await onAdd({ name, icon, url, check_interval: Number(interval) });
+      setSuccess(true);
+      setTimeout(() => {
+        setSuccess(false);
+        setName('');
+        setUrl('');
+        setIcon('🌐');
+        setInterval('5');
+        setLoading(false);
+        onClose();
+      }, 1500);
+    } catch {
+      setLoading(false);
+    }
   };
 
   return (
@@ -90,7 +97,12 @@ export default function AddServiceModal({ open, onClose, onAdd }: AddServiceModa
               </Select>
             </div>
 
-            <Button type="submit" className="w-full gradient-primary text-primary-foreground hover:opacity-90 transition-opacity">
+            <Button
+              type="submit"
+              className="w-full gradient-primary text-primary-foreground hover:opacity-90 transition-opacity"
+              disabled={loading}
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Start Monitoring
             </Button>
           </form>

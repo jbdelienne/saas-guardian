@@ -22,6 +22,8 @@ export type Database = {
           id: string
           integration_type: string | null
           is_dismissed: boolean
+          is_read: boolean
+          metadata: Json | null
           severity: string
           title: string
           user_id: string
@@ -33,6 +35,8 @@ export type Database = {
           id?: string
           integration_type?: string | null
           is_dismissed?: boolean
+          is_read?: boolean
+          metadata?: Json | null
           severity?: string
           title: string
           user_id: string
@@ -44,6 +48,8 @@ export type Database = {
           id?: string
           integration_type?: string | null
           is_dismissed?: boolean
+          is_read?: boolean
+          metadata?: Json | null
           severity?: string
           title?: string
           user_id?: string
@@ -53,26 +59,32 @@ export type Database = {
       checks: {
         Row: {
           checked_at: string
+          error_message: string | null
           id: string
           response_time: number
           service_id: string
           status: string
+          status_code: number | null
           user_id: string
         }
         Insert: {
           checked_at?: string
+          error_message?: string | null
           id?: string
           response_time?: number
           service_id: string
           status: string
+          status_code?: number | null
           user_id: string
         }
         Update: {
           checked_at?: string
+          error_message?: string | null
           id?: string
           response_time?: number
           service_id?: string
           status?: string
+          status_code?: number | null
           user_id?: string
         }
         Relationships: [
@@ -108,6 +120,36 @@ export type Database = {
           integration_type?: string
           is_connected?: boolean
           last_sync?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notification_settings: {
+        Row: {
+          created_at: string
+          email_enabled: boolean
+          id: string
+          min_severity: string
+          slack_webhook_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          min_severity?: string
+          slack_webhook_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_enabled?: boolean
+          id?: string
+          min_severity?: string
+          slack_webhook_url?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
