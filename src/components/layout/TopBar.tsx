@@ -1,4 +1,5 @@
-import { Bell, LogOut, Menu } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Bell, LogOut, Menu, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -14,6 +15,12 @@ export default function TopBar({ onToggleSidebar, sidebarCollapsed }: TopBarProp
   const { data: alerts = [] } = useAlerts();
   const initials = user?.email?.slice(0, 2).toUpperCase() ?? 'U';
   const unreadCount = alerts.filter((a) => !a.is_dismissed).length;
+  const [tvMode, setTvMode] = useState(false);
+
+  useEffect(() => {
+    document.body.classList.toggle('tv-mode', tvMode);
+    return () => document.body.classList.remove('tv-mode');
+  }, [tvMode]);
 
   return (
     <header className="h-[60px] border-b border-border bg-card flex items-center justify-between px-4 sticky top-0 z-20">
@@ -24,6 +31,16 @@ export default function TopBar({ onToggleSidebar, sidebarCollapsed }: TopBarProp
       </div>
 
       <div className="flex items-center gap-2">
+        <Button
+          variant={tvMode ? 'default' : 'ghost'}
+          size="icon"
+          onClick={() => setTvMode(!tvMode)}
+          className="text-muted-foreground"
+          title="TV Mode"
+        >
+          <Monitor className="w-5 h-5" />
+        </Button>
+
         <Button variant="ghost" size="icon" className="relative text-muted-foreground">
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
