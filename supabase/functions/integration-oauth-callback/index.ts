@@ -62,7 +62,8 @@ Deno.serve(async (req) => {
     const clientSecret = Deno.env.get(config.clientSecretEnv)!;
     const encryptionKey = Deno.env.get("INTEGRATION_ENCRYPTION_KEY");
     if (!encryptionKey) {
-      return new Response("INTEGRATION_ENCRYPTION_KEY not configured", { status: 500 });
+      console.error("INTEGRATION_ENCRYPTION_KEY not configured");
+      return new Response("Server configuration error. Please contact support.", { status: 500 });
     }
 
     const callbackUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/integration-oauth-callback`;
@@ -84,8 +85,8 @@ Deno.serve(async (req) => {
 
     const tokenData = await tokenRes.json();
     if (!tokenRes.ok) {
-      console.error("Token exchange failed:", tokenData);
-      return new Response(`Token exchange failed: ${JSON.stringify(tokenData)}`, { status: 400 });
+      console.error("Token exchange failed:", JSON.stringify(tokenData));
+      return new Response("Authentication failed. Please try again.", { status: 400 });
     }
 
     // Encrypt tokens
@@ -151,7 +152,7 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error("OAuth callback error:", error);
-    return new Response(`Callback error: ${error instanceof Error ? error.message : "Unknown"}`, {
+    return new Response("An error occurred during authentication. Please try again.", {
       status: 500,
     });
   }

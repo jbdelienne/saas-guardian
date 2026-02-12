@@ -86,8 +86,9 @@ Deno.serve(async (req) => {
     const config = PROVIDERS[provider];
     const clientId = Deno.env.get(config.clientIdEnv);
     if (!clientId) {
+      console.error(`${config.clientIdEnv} not configured`);
       return new Response(
-        JSON.stringify({ error: `${config.clientIdEnv} not configured` }),
+        JSON.stringify({ error: "Provider not configured. Please contact support.", code: "CONFIG_ERROR" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -115,7 +116,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("OAuth initiation error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "An error occurred initiating authentication", code: "AUTH_ERROR" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
