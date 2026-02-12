@@ -39,6 +39,7 @@ const METRIC_LABELS: Record<string, string> = {
   total_licenses: 'Licences totales',
   used_licenses: 'Licences utilisées',
   active_licenses: 'Licences actives',
+  remaining_licenses: 'Licences restantes',
   mfa_enabled: 'MFA activé',
   mfa_total_users: 'Utilisateurs MFA total',
   mfa_disabled_percent: 'MFA désactivé (%)',
@@ -221,7 +222,13 @@ export default function IntegrationDetail() {
                           const objectCount = meta.object_count ?? row.metric_value;
                           const objectLimit = meta.object_limit ?? 400000;
                           const storageGb = meta.storage_used_gb ?? 0;
-                          const objectPct = Math.round((objectCount / objectLimit) * 100);
+                          const isPending = objectCount === -1;
+                          const objectPct = isPending ? 0 : Math.round((objectCount / objectLimit) * 100);
+
+                          // Find workspace total quota for the "X Go / Y To" display
+                          const quotaTotalRow = syncData.find(r => r.metric_key === 'drive_quota_total_gb');
+                          const totalQuotaGb = quotaTotalRow ? Number(quotaTotalRow.metric_value) : 0;
+                          const totalQuotaTb = totalQuotaGb >= 1024 ? `${(totalQuotaGb / 1024).toFixed(1)} To` : `${totalQuotaGb} Go`;
 
                           return (
                             <div key={row.id} className="bg-card border border-border rounded-lg p-4 space-y-3">
@@ -230,19 +237,31 @@ export default function IntegrationDetail() {
                                 <span className="font-semibold text-foreground truncate">{meta.name || row.metric_key}</span>
                               </div>
 
-                              <div>
-                                <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                                  <span>Objets</span>
-                                  <span className={objectPct >= 80 ? 'text-destructive font-medium' : ''}>
-                                    {objectCount.toLocaleString('fr-FR')} / {objectLimit.toLocaleString('fr-FR')}
-                                  </span>
+                              {/* Objects progress bar - only shown after 2nd sync */}
+                              {isPending ? (
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <Clock className="w-3 h-3" />
+                                  <span>Objets : en attente de sync</span>
                                 </div>
-                                <Progress value={Math.min(objectPct, 100)} className="h-2" />
-                                <p className="text-[10px] text-muted-foreground mt-0.5">{objectPct}%</p>
-                              </div>
+                              ) : (
+                                <div>
+                                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                                    <span>Objets</span>
+                                    <span className={objectPct >= 80 ? 'text-destructive font-medium' : ''}>
+                                      {objectCount.toLocaleString('fr-FR')} / {objectLimit.toLocaleString('fr-FR')}
+                                    </span>
+                                  </div>
+                                  <Progress value={Math.min(objectPct, 100)} className="h-2" />
+                                  <p className="text-[10px] text-muted-foreground mt-0.5">{objectPct}%</p>
+                                </div>
+                              )}
+
+                              {/* Storage as "X Go / Y To" */}
                               <div className="flex items-center justify-between">
                                 <span className="text-xs text-muted-foreground">Stockage</span>
-                                <span className="text-sm font-semibold text-foreground">{storageGb} GB</span>
+                                <span className="text-sm font-semibold text-foreground">
+                                  {isPending ? '—' : `${storageGb} Go`} / {totalQuotaTb}
+                                </span>
                               </div>
 
                               {meta.created_time && (
