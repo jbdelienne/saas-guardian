@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CheckCircle, Loader2 } from 'lucide-react';
+import IconPicker from './IconPicker';
 
 interface AddServiceModalProps {
   open: boolean;
@@ -12,11 +13,9 @@ interface AddServiceModalProps {
   onAdd: (service: { name: string; icon: string; url: string; check_interval: number }) => Promise<void>;
 }
 
-const emojiOptions = ['🌐', '💳', '🐙', '💬', '☁️', '▲', '🐕', '✉️', '📞', '🔒', '📊', '🛒'];
-
 export default function AddServiceModal({ open, onClose, onAdd }: AddServiceModalProps) {
   const [name, setName] = useState('');
-  const [icon, setIcon] = useState('🌐');
+  const [icon, setIcon] = useState('');
   const [url, setUrl] = useState('');
   const [interval, setInterval] = useState('5');
   const [success, setSuccess] = useState(false);
@@ -32,7 +31,7 @@ export default function AddServiceModal({ open, onClose, onAdd }: AddServiceModa
         setSuccess(false);
         setName('');
         setUrl('');
-        setIcon('🌐');
+        setIcon('');
         setInterval('5');
         setLoading(false);
         onClose();
@@ -64,20 +63,7 @@ export default function AddServiceModal({ open, onClose, onAdd }: AddServiceModa
 
             <div className="space-y-2">
               <Label>Icon</Label>
-              <div className="flex gap-2 flex-wrap">
-                {emojiOptions.map((e) => (
-                  <button
-                    type="button"
-                    key={e}
-                    onClick={() => setIcon(e)}
-                    className={`w-10 h-10 rounded-lg text-xl flex items-center justify-center border transition-colors ${
-                      icon === e ? 'border-primary bg-primary/10' : 'border-border bg-card hover:border-primary/30'
-                    }`}
-                  >
-                    {e}
-                  </button>
-                ))}
-              </div>
+              <IconPicker value={icon} onChange={setIcon} />
             </div>
 
             <div className="space-y-2">
