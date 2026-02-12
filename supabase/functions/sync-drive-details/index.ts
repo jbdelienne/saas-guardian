@@ -163,6 +163,7 @@ Deno.serve(async (req) => {
     let totalSize = sizeSoFar;
     let pageToken: string | undefined = resumeToken || undefined;
     const startTime = Date.now();
+    let rateLimited = false;
     let timedOut = false;
 
     do {
@@ -177,8 +178,14 @@ Deno.serve(async (req) => {
 
       if (!res.ok) {
         const status = res.status;
-        // Retry transient errors (429, 500, 503) up to 3 times with backoff
-        if (status === 429 || status >= 500) {
+
+        if (status === 429) {
+          // Rate limited — save progress, sleep 10s, then self-continue
+          console.log(`Drive "${driveName}": rate limited (429) at ${objectCount} objects, sleeping 10s then self-continuing...`);
+          rateLimited = true;
+          break;
+        } else if (status >= 500) {
+          // Server errors — retry up to 3 times with backoff
           let retried = false;
           for (let attempt = 1; attempt <= 3; attempt++) {
             console.log(`Drive API error ${status}, retry ${attempt}/3 after ${attempt}s...`);
@@ -197,17 +204,14 @@ Deno.serve(async (req) => {
           }
           if (timedOut) break;
           if (!retried) {
-            // All retries failed — save progress and self-continue instead of giving up
             console.error(`Drive API error ${status} persists after 3 retries, will self-continue`);
             timedOut = true;
             break;
           }
         } else if (status === 401) {
-          // Token expired mid-pagination
           const { data: freshIntegration } = await supabaseAdmin.from("integrations")
             .select("*").eq("id", integration.id).single();
           accessToken = await getAccessToken(freshIntegration || integration, encryptionKey, supabaseAdmin);
-          // Re-do this page with fresh token
           continue;
         } else {
           console.error(`Drive API fatal error: ${status}`);
@@ -222,9 +226,9 @@ Deno.serve(async (req) => {
       }
     } while (pageToken);
 
-    if (timedOut && pageToken) {
-      // Save progress and self-continue
-      console.log(`Drive "${driveName}": timeout after ${objectCount} objects, continuing...`);
+    if ((timedOut || rateLimited) && pageToken) {
+      const reason = rateLimited ? "rate-limited" : "timeout";
+      console.log(`Drive "${driveName}": ${reason} after ${objectCount} objects, continuing...`);
 
       // Update partial progress in DB
       const storageGb = Math.round(totalSize / (1024 ** 3) * 100) / 100;
@@ -246,6 +250,12 @@ Deno.serve(async (req) => {
         .eq("metric_type", "shared_drive")
         .filter("metadata->>drive_id", "eq", driveId);
 
+      // If rate limited, sleep 10s before self-calling
+      if (rateLimited) {
+        console.log(`Sleeping 10s before retry...`);
+        await new Promise(r => setTimeout(r, 10000));
+      }
+
       // Self-call to continue (fire and forget)
       const selfUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/sync-drive-details?integration_id=${integrationId}&drive_id=${driveId}&resume_token=${encodeURIComponent(pageToken)}&count_so_far=${objectCount}&size_so_far=${totalSize}`;
       fetch(selfUrl, {
@@ -256,7 +266,7 @@ Deno.serve(async (req) => {
         },
       }).catch(e => console.error("Self-call error:", e));
 
-      return new Response(JSON.stringify({ status: "continuing", objectCount, driveName }), {
+      return new Response(JSON.stringify({ status: "continuing", objectCount, driveName, reason }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
