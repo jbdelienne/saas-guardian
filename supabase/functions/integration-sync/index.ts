@@ -63,6 +63,8 @@ async function syncGoogle(accessToken: string, userId: string, integrationId: st
   const metrics: Array<{ metric_type: string; metric_key: string; metric_value: number; metric_unit: string; metadata?: Record<string, unknown> }> = [];
 
   // Fetch users
+  let totalUsers = 0;
+  let activeUsers = 0;
   try {
     const usersRes = await fetch("https://admin.googleapis.com/admin/directory/v1/users?customer=my_customer&maxResults=500", { headers });
     if (usersRes.ok) {
@@ -70,8 +72,9 @@ async function syncGoogle(accessToken: string, userId: string, integrationId: st
       const users = usersData.users || [];
       const now = Date.now();
       const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
-      const totalUsers = users.length;
+      totalUsers = users.length;
       const suspendedUsers = users.filter((u: any) => u.suspended).length;
+      activeUsers = totalUsers - suspendedUsers;
       const inactiveUsers = users.filter((u: any) => {
         const lastLogin = new Date(u.lastLoginTime).getTime();
         return !u.suspended && lastLogin < thirtyDaysAgo;
@@ -80,10 +83,34 @@ async function syncGoogle(accessToken: string, userId: string, integrationId: st
         { metric_type: "users", metric_key: "total_users", metric_value: totalUsers, metric_unit: "count" },
         { metric_type: "users", metric_key: "suspended_users", metric_value: suspendedUsers, metric_unit: "count" },
         { metric_type: "users", metric_key: "inactive_users_30d", metric_value: inactiveUsers, metric_unit: "count" },
-        { metric_type: "licenses", metric_key: "active_users", metric_value: totalUsers - suspendedUsers, metric_unit: "count" }
+        { metric_type: "licenses", metric_key: "active_users", metric_value: activeUsers, metric_unit: "count" }
       );
     }
   } catch (e) { console.error("Google users sync error:", e); }
+
+  // Fetch license info (remaining = total seats - assigned)
+  try {
+    const customerRes = await fetch("https://admin.googleapis.com/admin/directory/v1/customers/my_customer", { headers });
+    if (customerRes.ok) {
+      const customerData = await customerRes.json();
+      console.log("Google customer data:", JSON.stringify(customerData));
+    }
+    // Try subscriptions via reseller API (may not be available for all orgs)
+    // Fallback: use Licensing API to count assigned licenses
+    const licUrl = "https://www.googleapis.com/apps/licensing/v1/product/Google-Apps/sku/Google-Apps-Unlimited/users?maxResults=1000&customerId=my_customer";
+    const licRes = await fetch(licUrl, { headers });
+    console.log("Google licensing API status:", licRes.status);
+    if (licRes.ok) {
+      const licData = await licRes.json();
+      const items = licData.items || [];
+      const totalLicenses = items.length;
+      const remainingLicenses = Math.max(0, totalLicenses - activeUsers);
+      metrics.push(
+        { metric_type: "licenses", metric_key: "total_licenses", metric_value: totalLicenses, metric_unit: "count" },
+        { metric_type: "licenses", metric_key: "remaining_licenses", metric_value: remainingLicenses, metric_unit: "count" }
+      );
+    }
+  } catch (e) { console.error("Google license sync error:", e); }
 
   // Fetch drive usage (via reports API)
   try {
@@ -150,27 +177,18 @@ async function syncGoogle(accessToken: string, userId: string, integrationId: st
         synced_at: new Date().toISOString(),
       });
 
-      // Create placeholder entries for drives that don't have detail data yet
-      const { data: existingDetails } = await supabase.from("integration_sync_data")
-        .select("metadata").eq("integration_id", integrationId).eq("user_id", userId).eq("metric_type", "shared_drive");
+      // Delete old shared_drive entries and create fresh placeholders
+      await supabase.from("integration_sync_data").delete()
+        .eq("integration_id", integrationId).eq("user_id", userId).eq("metric_type", "shared_drive");
 
-      const existingDriveIds = new Set<string>();
-      for (const d of existingDetails || []) {
-        const driveId = (d.metadata as any)?.drive_id;
-        if (driveId) existingDriveIds.add(driveId);
-      }
-
-      // Insert placeholder for new drives (object_count = -1 means "pending")
       for (let i = 0; i < drives.length; i++) {
-        if (!existingDriveIds.has(drives[i].id)) {
-          await supabase.from("integration_sync_data").insert({
-            user_id: userId, integration_id: integrationId,
-            metric_type: "shared_drive", metric_key: `shared_drive_${i}`,
-            metric_value: -1, metric_unit: "objects",
-            metadata: { drive_id: drives[i].id, name: drives[i].name, created_time: drives[i].createdTime || null, object_limit: 400000, object_count: -1, storage_used_gb: 0, has_more: false, pending: true },
-            synced_at: new Date().toISOString(),
-          });
-        }
+        await supabase.from("integration_sync_data").insert({
+          user_id: userId, integration_id: integrationId,
+          metric_type: "shared_drive", metric_key: `shared_drive_${i}`,
+          metric_value: -1, metric_unit: "objects",
+          metadata: { drive_id: drives[i].id, name: drives[i].name, created_time: drives[i].createdTime || null, object_limit: 400000, object_count: -1, storage_used_gb: 0 },
+          synced_at: new Date().toISOString(),
+        });
       }
     }
   } catch (e) { console.error("Google shared drives sync error:", e); }
