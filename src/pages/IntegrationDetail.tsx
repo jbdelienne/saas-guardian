@@ -88,7 +88,7 @@ export default function IntegrationDetail() {
 
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const [syncingDrives, setSyncingDrives] = useState(false);
+  const [syncingDriveIds, setSyncingDriveIds] = useState<Set<string>>(new Set());
 
   const handleSync = () => {
     if (!integration) return;
@@ -98,14 +98,14 @@ export default function IntegrationDetail() {
     });
   };
 
-  const handleSyncDrives = async () => {
+  const handleSyncDrive = async (driveId: string, driveName: string) => {
     if (!integration) return;
-    setSyncingDrives(true);
+    setSyncingDriveIds(prev => new Set(prev).add(driveId));
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-drive-details?integration_id=${integration.id}`;
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sync-drive-details?integration_id=${integration.id}&drive_id=${driveId}`;
       const response = await fetch(url, {
         method: 'POST',
         headers: {
@@ -116,18 +116,40 @@ export default function IntegrationDetail() {
 
       if (!response.ok) throw new Error('Sync failed');
       const data = await response.json();
-      const result = data.results?.[0];
-      if (result?.status === 'all_fresh') {
-        toast.info('Tous les drives sont à jour');
-      } else if (result?.drive_name) {
-        toast.success(`Drive "${result.drive_name}" synchronisé`);
+
+      if (data.status === 'continuing') {
+        toast.info(`"${driveName}" en cours de sync (${data.objectCount.toLocaleString('fr-FR')} objets comptés)...`);
+        // Poll until done
+        pollDriveSync(driveId, driveName);
+      } else {
+        toast.success(`"${driveName}" : ${data.objectCount.toLocaleString('fr-FR')} objets`);
+        setSyncingDriveIds(prev => { const s = new Set(prev); s.delete(driveId); return s; });
+        queryClient.invalidateQueries({ queryKey: ['sync-data'] });
       }
-      queryClient.invalidateQueries({ queryKey: ['sync-data'] });
     } catch (e: any) {
       toast.error(`Erreur: ${e.message}`);
-    } finally {
-      setSyncingDrives(false);
+      setSyncingDriveIds(prev => { const s = new Set(prev); s.delete(driveId); return s; });
     }
+  };
+
+  const pollDriveSync = (driveId: string, driveName: string) => {
+    const interval = setInterval(async () => {
+      await queryClient.invalidateQueries({ queryKey: ['sync-data'] });
+      // Check if still syncing by looking at the data
+      const freshData = queryClient.getQueryData<typeof syncData>(['sync-data', integration?.id]);
+      const driveRow = freshData?.find(r => r.metric_type === 'shared_drive' && (r.metadata as any)?.drive_id === driveId);
+      const meta = (driveRow?.metadata || {}) as Record<string, any>;
+      if (!meta.syncing && driveRow && driveRow.metric_value >= 0) {
+        clearInterval(interval);
+        setSyncingDriveIds(prev => { const s = new Set(prev); s.delete(driveId); return s; });
+        toast.success(`"${driveName}" : ${driveRow.metric_value.toLocaleString('fr-FR')} objets`);
+      }
+    }, 5000);
+    // Safety timeout: stop polling after 10 minutes
+    setTimeout(() => {
+      clearInterval(interval);
+      setSyncingDriveIds(prev => { const s = new Set(prev); s.delete(driveId); return s; });
+    }, 600000);
   };
 
   // Group sync data by metric_type, exclude internal types
@@ -203,27 +225,17 @@ export default function IntegrationDetail() {
                         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                           {sectionLabel} ({rows.length})
                         </h2>
-                        {type === 'google' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={handleSyncDrives}
-                            disabled={syncingDrives}
-                            className="ml-auto h-7 text-xs gap-1"
-                          >
-                            {syncingDrives ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                            Sync drives
-                          </Button>
-                        )}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         {rows.map((row) => {
                           const meta = (row.metadata || {}) as Record<string, any>;
                           const objectCount = meta.object_count ?? row.metric_value;
-                          const objectLimit = meta.object_limit ?? 400000;
+                          const objectLimit = meta.object_limit ?? 500000;
                           const storageGb = meta.storage_used_gb ?? 0;
                           const isPending = objectCount === -1;
-                          const objectPct = isPending ? 0 : Math.round((objectCount / objectLimit) * 100);
+                          const isSyncing = objectCount === -2 || syncingDriveIds.has(meta.drive_id);
+                          const isDone = objectCount >= 0;
+                          const objectPct = isDone ? Math.round((objectCount / objectLimit) * 100) : 0;
 
                           // Find workspace total quota for the "X Go / Y To" display
                           const quotaTotalRow = syncData.find(r => r.metric_key === 'drive_quota_total_gb');
@@ -234,11 +246,31 @@ export default function IntegrationDetail() {
                             <div key={row.id} className="bg-card border border-border rounded-lg p-4 space-y-3">
                               <div className="flex items-center gap-2">
                                 <FolderOpen className="w-4 h-4 text-primary" />
-                                <span className="font-semibold text-foreground truncate">{meta.name || row.metric_key}</span>
+                                <span className="font-semibold text-foreground truncate flex-1">{meta.name || row.metric_key}</span>
+                                {type === 'google' && (
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6 shrink-0"
+                                    disabled={isSyncing}
+                                    onClick={() => handleSyncDrive(meta.drive_id, meta.name || row.metric_key)}
+                                  >
+                                    {isSyncing ? (
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                    ) : (
+                                      <RefreshCw className="w-3.5 h-3.5" />
+                                    )}
+                                  </Button>
+                                )}
                               </div>
 
-                              {/* Objects progress bar - only shown after 2nd sync */}
-                              {isPending ? (
+                              {/* Objects progress bar */}
+                              {isSyncing ? (
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                  <span>Comptage en cours{meta.partial_count ? ` (${meta.partial_count.toLocaleString('fr-FR')} objets)` : ''}...</span>
+                                </div>
+                              ) : isPending ? (
                                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                   <Clock className="w-3 h-3" />
                                   <span>Objets : en attente de sync</span>
@@ -260,7 +292,7 @@ export default function IntegrationDetail() {
                               <div className="flex items-center justify-between">
                                 <span className="text-xs text-muted-foreground">Stockage</span>
                                 <span className="text-sm font-semibold text-foreground">
-                                  {isPending ? '—' : `${storageGb} Go`} / {totalQuotaTb}
+                                  {isDone ? `${storageGb} Go` : '—'} / {totalQuotaTb}
                                 </span>
                               </div>
 
