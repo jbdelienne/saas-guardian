@@ -52,7 +52,31 @@ Deno.serve(async (req) => {
       return new Response("Missing code or state", { status: 400 });
     }
 
-    const { provider, userId } = JSON.parse(atob(stateParam));
+    let provider: string;
+    let userId: string;
+
+    try {
+      const decoded = atob(stateParam);
+      const parsed = JSON.parse(decoded);
+
+      if (!parsed.provider || !parsed.userId) {
+        return new Response("Invalid state format", { status: 400 });
+      }
+
+      provider = parsed.provider;
+      userId = parsed.userId;
+
+      // Validate UUID format for userId
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(userId)) {
+        console.error("Invalid userId format in OAuth state");
+        return new Response("Invalid state", { status: 400 });
+      }
+    } catch (parseError) {
+      console.error("State parsing error:", parseError);
+      return new Response("Invalid state parameter", { status: 400 });
+    }
+
     const config = TOKEN_ENDPOINTS[provider];
     if (!config) {
       return new Response("Invalid provider", { status: 400 });
