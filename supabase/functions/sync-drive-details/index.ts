@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    const accessToken = await getAccessToken(integration, encryptionKey, supabaseAdmin);
+    let accessToken = await getAccessToken(integration, encryptionKey, supabaseAdmin);
 
     // Find the drive name from cached drive list
     const { data: driveListRows } = await supabaseAdmin.from("integration_sync_data")
@@ -176,23 +176,41 @@ Deno.serve(async (req) => {
       const res = await fetch(fetchUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
 
       if (!res.ok) {
-        // Token might have expired mid-pagination, refresh and retry once
-        if (res.status === 401) {
-          const { data: freshIntegration } = await supabaseAdmin.from("integrations")
-            .select("*").eq("id", integration.id).single();
-          const newToken = await getAccessToken(freshIntegration || integration, encryptionKey, supabaseAdmin);
-          const retryRes = await fetch(fetchUrl, { headers: { Authorization: `Bearer ${newToken}` } });
-          if (!retryRes.ok) {
-            console.error(`Drive API error after retry: ${retryRes.status}`);
+        const status = res.status;
+        // Retry transient errors (429, 500, 503) up to 3 times with backoff
+        if (status === 429 || status >= 500) {
+          let retried = false;
+          for (let attempt = 1; attempt <= 3; attempt++) {
+            console.log(`Drive API error ${status}, retry ${attempt}/3 after ${attempt}s...`);
+            await new Promise(r => setTimeout(r, attempt * 1000));
+            if (Date.now() - startTime > MAX_RUNTIME_MS) { timedOut = true; break; }
+            const retryRes = await fetch(fetchUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
+            if (retryRes.ok) {
+              const retryData = await retryRes.json();
+              const files = retryData.files || [];
+              objectCount += files.length;
+              for (const f of files) totalSize += Number(f.size || 0);
+              pageToken = retryData.nextPageToken;
+              retried = true;
+              break;
+            }
+          }
+          if (timedOut) break;
+          if (!retried) {
+            // All retries failed — save progress and self-continue instead of giving up
+            console.error(`Drive API error ${status} persists after 3 retries, will self-continue`);
+            timedOut = true;
             break;
           }
-          const retryData = await retryRes.json();
-          const files = retryData.files || [];
-          objectCount += files.length;
-          for (const f of files) totalSize += Number(f.size || 0);
-          pageToken = retryData.nextPageToken;
+        } else if (status === 401) {
+          // Token expired mid-pagination
+          const { data: freshIntegration } = await supabaseAdmin.from("integrations")
+            .select("*").eq("id", integration.id).single();
+          accessToken = await getAccessToken(freshIntegration || integration, encryptionKey, supabaseAdmin);
+          // Re-do this page with fresh token
+          continue;
         } else {
-          console.error(`Drive API error: ${res.status}`);
+          console.error(`Drive API fatal error: ${status}`);
           break;
         }
       } else {
