@@ -491,7 +491,8 @@ Deno.serve(async (req) => {
 
     const encryptionKey = Deno.env.get("INTEGRATION_ENCRYPTION_KEY");
     if (!encryptionKey) {
-      return new Response(JSON.stringify({ error: "INTEGRATION_ENCRYPTION_KEY not configured" }), {
+      console.error("INTEGRATION_ENCRYPTION_KEY not configured");
+      return new Response(JSON.stringify({ error: "Server configuration error", code: "CONFIG_ERROR" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -589,7 +590,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("Sync error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      JSON.stringify({ error: "An error occurred during synchronization", code: "SYNC_ERROR" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
