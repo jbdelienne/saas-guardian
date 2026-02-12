@@ -62,10 +62,8 @@ Deno.serve(async (req) => {
         responseTime = Math.round(end - start);
         statusCode = res.status;
 
-        if (res.status >= 200 && res.status < 400) {
+        if (res.status >= 200 && res.status < 500) {
           status = "up";
-        } else if (res.status >= 400 && res.status < 500) {
-          status = "degraded";
         } else {
           status = "down";
         }
