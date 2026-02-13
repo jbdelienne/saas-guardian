@@ -10,6 +10,12 @@
 
 @import url("https://fonts.googleapis.com/css2?family=Inconsolata:wght@400;700&display=swap");
 
+@import url("https://fonts.googleapis.com/css2?family=Work+Sans&display=swap");
+
+@import url("https://fonts.googleapis.com/css2?family=Lora&display=swap");
+
+@import url("https://fonts.googleapis.com/css2?family=Inconsolata&display=swap");
+
 @layer base {
   :root {
     --background: 0 0% 96%;
@@ -88,15 +94,15 @@
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 25%;
     --popover-foreground: 0 0% 98%;
-    --primary: 158 64% 51%;
-    --primary-foreground: 165 91% 9%;
+    --primary: 122 43% 45%;
+    --primary-foreground: 0 0% 100%;
     --primary-hover: 239 84% 75%;
     --secondary: 0 0% 45%;
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 45%;
     --muted-foreground: 0 0% 98%;
-    --accent: 178 84% 10%;
-    --accent-foreground: 172 66% 50%;
+    --accent: 164 91% 9%;
+    --accent-foreground: 158 64% 51%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 85% 97%;
     --success: 160 84% 39%;
