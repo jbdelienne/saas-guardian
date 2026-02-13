@@ -1,90 +1,26 @@
 import { Link } from "react-router-dom";
 import { Activity, Bell, BarChart3, Plug, Shield, Zap, Check, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "react-i18next";
+import { useLangPrefix } from "@/hooks/use-lang-prefix";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import duckLogo from "@/assets/moniduck-logo.png";
 
-const features = [
-  {
-    icon: Activity,
-    title: "Uptime Monitoring",
-    description:
-      "HTTP health checks on all your services with configurable intervals and instant alerts when things go down.",
-  },
-  {
-    icon: Plug,
-    title: "SaaS Integrations",
-    description: "Connect Google Workspace, Slack, and more. Pull real-time metrics into a single operational view.",
-  },
-  {
-    icon: Bell,
-    title: "Smart Alerts",
-    description: "Threshold-based alerting with severity levels. Get notified before your users notice anything.",
-  },
-  {
-    icon: BarChart3,
-    title: "Custom Dashboards",
-    description:
-      "Drag-and-drop widgets. Build the exact view your ops team needs — response times, storage, uptime charts.",
-  },
-  {
-    icon: Shield,
-    title: "Secure by Default",
-    description: "Row-level security, encrypted tokens, and scoped access. Your data stays yours.",
-  },
-  {
-    icon: Zap,
-    title: "Fast & Lightweight",
-    description: "Sub-second dashboard loads. No bloated agents to install. Just add your URLs and connect your tools.",
-  },
+const featureKeys = [
+  { key: "uptime", icon: Activity },
+  { key: "integrations", icon: Plug },
+  { key: "alerts", icon: Bell },
+  { key: "dashboards", icon: BarChart3 },
+  { key: "security", icon: Shield },
+  { key: "fast", icon: Zap },
 ];
 
-const pricingPlans = [
-  {
-    name: "Starter",
-    price: "0",
-    period: "/month",
-    description: "For small teams getting started",
-    features: ["5 services monitored", "1 dashboard", "2 integrations", "Email alerts", "5-min check interval"],
-    cta: "Get started free",
-    highlighted: false,
-  },
-  {
-    name: "Pro",
-    price: "29",
-    period: "/month",
-    description: "For growing teams who need visibility",
-    features: [
-      "25 services monitored",
-      "Unlimited dashboards",
-      "10 integrations",
-      "Slack + Email alerts",
-      "1-min check interval",
-      "Custom thresholds",
-      "TV mode",
-    ],
-    cta: "Start 14-day trial",
-    highlighted: true,
-  },
-  {
-    name: "Business",
-    price: "79",
-    period: "/month",
-    description: "For ops teams at scale",
-    features: [
-      "Unlimited services",
-      "Unlimited dashboards",
-      "Unlimited integrations",
-      "All alert channels",
-      "30-sec check interval",
-      "Priority support",
-      "SSO & team roles",
-    ],
-    cta: "Contact sales",
-    highlighted: false,
-  },
-];
+const planKeys = ["starter", "pro", "business"] as const;
 
 export default function Landing() {
+  const { t } = useTranslation();
+  const lp = useLangPrefix();
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Nav */}
@@ -96,18 +32,19 @@ export default function Landing() {
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors">
-              Features
+              {t("nav.features")}
             </a>
             <a href="#pricing" className="hover:text-foreground transition-colors">
-              Pricing
+              {t("nav.pricing")}
             </a>
           </div>
           <div className="flex items-center gap-3">
+            <LanguageSwitcher />
             <Button variant="ghost" size="sm" asChild>
-              <Link to="/auth">Sign in</Link>
+              <Link to={`${lp}/auth`}>{t("nav.signIn")}</Link>
             </Button>
             <Button size="sm" asChild>
-              <Link to="/auth">Get started</Link>
+              <Link to={`${lp}/auth`}>{t("nav.getStarted")}</Link>
             </Button>
           </div>
         </div>
@@ -118,25 +55,24 @@ export default function Landing() {
         <div className="max-w-3xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-card text-xs text-muted-foreground mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-success" />
-            All systems operational
+            {t("landing.badge")}
           </div>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-[1.1] mb-6">
-            Monitor your modern stack in
-            <span className="text-primary"> one place.</span>
+            {t("landing.heroTitle")}
+            <span className="text-primary">{t("landing.heroHighlight")}</span>
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-10 max-w-2xl">
-            Uptime checks, integration health, license tracking and operational dashboards — built for IT/Ops teams at
-            scaling companies.
+            {t("landing.heroSubtitle")}
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <Button size="lg" className="text-base px-8" asChild>
-              <Link to="/auth">
-                Start monitoring
+              <Link to={`${lp}/auth`}>
+                {t("landing.startMonitoring")}
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Link>
             </Button>
             <Button size="lg" variant="outline" className="text-base px-8" asChild>
-              <a href="#features">See how it works</a>
+              <a href="#features">{t("landing.seeHow")}</a>
             </Button>
           </div>
         </div>
@@ -152,25 +88,25 @@ export default function Landing() {
           <div className="p-6 md:p-8 font-mono text-sm text-muted-foreground space-y-2">
             <p>
               <span className="text-success">✓</span> api.production{" "}
-              <span className="text-muted-foreground/60">— 99.98% uptime — 142ms avg</span>
+              <span className="text-muted-foreground/60">— {t("landing.terminal.line1status")}</span>
             </p>
             <p>
               <span className="text-success">✓</span> auth.production{" "}
-              <span className="text-muted-foreground/60">— 99.99% uptime — 89ms avg</span>
+              <span className="text-muted-foreground/60">— {t("landing.terminal.line2status")}</span>
             </p>
             <p>
               <span className="text-warning">⚠</span> cdn.staging{" "}
-              <span className="text-muted-foreground/60">— 98.2% uptime — 340ms avg — degraded</span>
+              <span className="text-muted-foreground/60">— {t("landing.terminal.line3status")}</span>
             </p>
             <p>
               <span className="text-success">✓</span> google-workspace{" "}
-              <span className="text-muted-foreground/60">— synced 2m ago — 48/50 licenses</span>
+              <span className="text-muted-foreground/60">— {t("landing.terminal.line4status")}</span>
             </p>
             <p>
               <span className="text-success">✓</span> slack-workspace{" "}
-              <span className="text-muted-foreground/60">— synced 5m ago — all channels healthy</span>
+              <span className="text-muted-foreground/60">— {t("landing.terminal.line5status")}</span>
             </p>
-            <p className="text-primary">→ 4 services up · 1 degraded · 0 down</p>
+            <p className="text-primary">→ {t("landing.terminal.summary")}</p>
           </div>
         </div>
       </section>
@@ -179,19 +115,17 @@ export default function Landing() {
       <section id="features" className="border-t border-border bg-card/40">
         <div className="max-w-6xl mx-auto px-6 py-20 md:py-28">
           <div className="max-w-2xl mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">Everything ops teams need</h2>
-            <p className="text-muted-foreground text-lg">
-              No bloat, no complexity. Just the tools you need to keep your stack healthy.
-            </p>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">{t("landing.featuresTitle")}</h2>
+            <p className="text-muted-foreground text-lg">{t("landing.featuresSubtitle")}</p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((feature) => (
-              <div key={feature.title} className="group">
+            {featureKeys.map((f) => (
+              <div key={f.key} className="group">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/15 transition-colors">
-                  <feature.icon className="w-5 h-5 text-primary" />
+                  <f.icon className="w-5 h-5 text-primary" />
                 </div>
-                <h3 className="font-semibold text-base mb-2">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+                <h3 className="font-semibold text-base mb-2">{t(`features.${f.key}.title`)}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{t(`features.${f.key}.description`)}</p>
               </div>
             ))}
           </div>
@@ -202,39 +136,43 @@ export default function Landing() {
       <section id="pricing" className="border-t border-border">
         <div className="max-w-6xl mx-auto px-6 py-20 md:py-28">
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">Simple, transparent pricing.</h2>
-            <p className="text-muted-foreground text-lg">Start free. Scale as your team grows.</p>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">{t("landing.pricingTitle")}</h2>
+            <p className="text-muted-foreground text-lg">{t("landing.pricingSubtitle")}</p>
           </div>
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {pricingPlans.map((plan) => (
-              <div
-                key={plan.name}
-                className={`rounded-xl border p-6 flex flex-col ${
-                  plan.highlighted
-                    ? "border-primary bg-primary/5 shadow-lg ring-1 ring-primary/20"
-                    : "border-border bg-card"
-                }`}
-              >
-                {plan.highlighted && <span className="text-xs font-medium text-primary mb-3">Most popular</span>}
-                <h3 className="font-semibold text-lg">{plan.name}</h3>
-                <p className="text-sm text-muted-foreground mt-1 mb-4">{plan.description}</p>
-                <div className="mb-6">
-                  <span className="text-4xl font-bold">€{plan.price}</span>
-                  <span className="text-muted-foreground text-sm">{plan.period}</span>
+            {planKeys.map((planKey) => {
+              const highlighted = planKey === "pro";
+              const planFeatures = t(`pricing.${planKey}.features`, { returnObjects: true }) as string[];
+              return (
+                <div
+                  key={planKey}
+                  className={`rounded-xl border p-6 flex flex-col ${
+                    highlighted
+                      ? "border-primary bg-primary/5 shadow-lg ring-1 ring-primary/20"
+                      : "border-border bg-card"
+                  }`}
+                >
+                  {highlighted && <span className="text-xs font-medium text-primary mb-3">{t("landing.mostPopular")}</span>}
+                  <h3 className="font-semibold text-lg">{t(`pricing.${planKey}.name`)}</h3>
+                  <p className="text-sm text-muted-foreground mt-1 mb-4">{t(`pricing.${planKey}.description`)}</p>
+                  <div className="mb-6">
+                    <span className="text-4xl font-bold">€{planKey === "starter" ? "0" : planKey === "pro" ? "29" : "79"}</span>
+                    <span className="text-muted-foreground text-sm">/month</span>
+                  </div>
+                  <ul className="space-y-2.5 mb-8 flex-1">
+                    {planFeatures.map((f) => (
+                      <li key={f} className="flex items-start gap-2.5 text-sm">
+                        <Check className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button variant={highlighted ? "default" : "outline"} className="w-full" asChild>
+                    <Link to={`${lp}/auth`}>{t(`pricing.${planKey}.cta`)}</Link>
+                  </Button>
                 </div>
-                <ul className="space-y-2.5 mb-8 flex-1">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2.5 text-sm">
-                      <Check className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                      <span>{f}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button variant={plan.highlighted ? "default" : "outline"} className="w-full" asChild>
-                  <Link to="/auth">{plan.cta}</Link>
-                </Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -248,13 +186,13 @@ export default function Landing() {
           </div>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors">
-              Features
+              {t("nav.features")}
             </a>
             <a href="#pricing" className="hover:text-foreground transition-colors">
-              Pricing
+              {t("nav.pricing")}
             </a>
-            <Link to="/auth" className="hover:text-foreground transition-colors">
-              Sign in
+            <Link to={`${lp}/auth`} className="hover:text-foreground transition-colors">
+              {t("nav.signIn")}
             </Link>
           </div>
         </div>

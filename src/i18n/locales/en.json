@@ -1,0 +1,177 @@
+{
+  "nav": {
+    "features": "Features",
+    "pricing": "Pricing",
+    "signIn": "Sign in",
+    "getStarted": "Get started"
+  },
+  "landing": {
+    "badge": "All systems operational",
+    "heroTitle": "Monitor your modern stack in",
+    "heroHighlight": " one place.",
+    "heroSubtitle": "Uptime checks, integration health, license tracking and operational dashboards — built for IT/Ops teams at scaling companies.",
+    "startMonitoring": "Start monitoring",
+    "seeHow": "See how it works",
+    "featuresTitle": "Everything ops teams need",
+    "featuresSubtitle": "No bloat, no complexity. Just the tools you need to keep your stack healthy.",
+    "pricingTitle": "Simple, transparent pricing.",
+    "pricingSubtitle": "Start free. Scale as your team grows.",
+    "mostPopular": "Most popular",
+    "terminal": {
+      "line1status": "99.98% uptime — 142ms avg",
+      "line2status": "99.99% uptime — 89ms avg",
+      "line3status": "98.2% uptime — 340ms avg — degraded",
+      "line4status": "synced 2m ago — 48/50 licenses",
+      "line5status": "synced 5m ago — all channels healthy",
+      "summary": "4 services up · 1 degraded · 0 down"
+    }
+  },
+  "features": {
+    "uptime": { "title": "Uptime Monitoring", "description": "HTTP health checks on all your services with configurable intervals and instant alerts when things go down." },
+    "integrations": { "title": "SaaS Integrations", "description": "Connect Google Workspace, Slack, and more. Pull real-time metrics into a single operational view." },
+    "alerts": { "title": "Smart Alerts", "description": "Threshold-based alerting with severity levels. Get notified before your users notice anything." },
+    "dashboards": { "title": "Custom Dashboards", "description": "Drag-and-drop widgets. Build the exact view your ops team needs — response times, storage, uptime charts." },
+    "security": { "title": "Secure by Default", "description": "Row-level security, encrypted tokens, and scoped access. Your data stays yours." },
+    "fast": { "title": "Fast & Lightweight", "description": "Sub-second dashboard loads. No bloated agents to install. Just add your URLs and connect your tools." }
+  },
+  "pricing": {
+    "starter": {
+      "name": "Starter",
+      "description": "For small teams getting started",
+      "cta": "Get started free",
+      "features": ["5 services monitored", "1 dashboard", "2 integrations", "Email alerts", "5-min check interval"]
+    },
+    "pro": {
+      "name": "Pro",
+      "description": "For growing teams who need visibility",
+      "cta": "Start 14-day trial",
+      "features": ["25 services monitored", "Unlimited dashboards", "10 integrations", "Slack + Email alerts", "1-min check interval", "Custom thresholds", "TV mode"]
+    },
+    "business": {
+      "name": "Business",
+      "description": "For ops teams at scale",
+      "cta": "Contact sales",
+      "features": ["Unlimited services", "Unlimited dashboards", "Unlimited integrations", "All alert channels", "30-sec check interval", "Priority support", "SSO & team roles"]
+    }
+  },
+  "auth": {
+    "createAccount": "Create your account",
+    "welcomeBack": "Welcome back",
+    "getStarted": "Get started with MoniDuck",
+    "signInToAccount": "Sign in to your account",
+    "displayName": "Display name",
+    "yourName": "Your name",
+    "email": "Email",
+    "password": "Password",
+    "loading": "Loading...",
+    "createAccountBtn": "Create account",
+    "signInBtn": "Sign in",
+    "alreadyHaveAccount": "Already have an account?",
+    "dontHaveAccount": "Don't have an account?",
+    "signUp": "Sign up",
+    "checkEmail": "Check your email",
+    "confirmationSent": "We sent you a confirmation link.",
+    "brandTagline": "Infrastructure monitoring,\nsimplified.",
+    "brandDescription": "Monitor your SaaS stack, track uptime, and get alerted before your users notice anything."
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "services": "Services",
+    "integrations": "Integrations",
+    "alerts": "Alerts",
+    "settings": "Settings",
+    "collapse": "Collapse"
+  },
+  "topbar": {
+    "exitTvMode": "Exit TV Mode"
+  },
+  "dashboard": {
+    "title": "Dashboards",
+    "subtitle": "Create custom views from your services and integrations",
+    "newDashboard": "New Dashboard",
+    "noDashboards": "No dashboards yet",
+    "noDashboardsDesc": "Create your first dashboard and add widgets to visualize your data.",
+    "createDashboard": "Create Dashboard",
+    "name": "Name",
+    "create": "Create",
+    "addWidget": "Add Widget",
+    "delete": "Delete",
+    "emptyDashboard": "Dashboard is empty",
+    "emptyDashboardDesc": "Add widgets to start visualizing your services and integrations data.",
+    "created": "Created"
+  },
+  "services": {
+    "title": "Services",
+    "subtitle": "Manage all monitored endpoints",
+    "addService": "Add Service",
+    "noServices": "No services yet. Add your first endpoint to start monitoring.",
+    "name": "Name",
+    "url": "URL",
+    "status": "Status",
+    "uptime": "Uptime",
+    "avgResponse": "Avg Response",
+    "lastCheck": "Last Check",
+    "actions": "Actions",
+    "operational": "Operational",
+    "down": "Down",
+    "degraded": "Degraded",
+    "pending": "Pending",
+    "paused": "Paused",
+    "never": "Never",
+    "deleteTitle": "Delete {{name}}?",
+    "deleteDesc": "This will permanently remove the service and all its monitoring history.",
+    "cancel": "Cancel"
+  },
+  "alerts": {
+    "title": "Alerts",
+    "activeAlerts": "{{count}} active alerts",
+    "all": "All",
+    "critical": "Critical",
+    "warning": "Warning",
+    "dismissed": "Dismissed",
+    "allOperational": "All systems operational ✓",
+    "noAlerts": "No alerts to show",
+    "viewDetails": "View Details",
+    "dismiss": "Dismiss"
+  },
+  "settings": {
+    "title": "Settings",
+    "email": "Email",
+    "workspace": "Workspace",
+    "myWorkspace": "My Workspace",
+    "saveChanges": "Save Changes",
+    "darkMode": "Dark Mode",
+    "darkModeDesc": "Switch between light and dark theme"
+  },
+  "integrations": {
+    "title": "Integrations",
+    "subtitle": "Connect your SaaS tools for operational monitoring",
+    "connected": "Connected",
+    "sync": "Sync",
+    "reconnect": "Reconnect",
+    "connectOAuth": "Connect via OAuth",
+    "comingSoon": "Coming soon",
+    "soon": "Soon",
+    "noData": "No data — run a sync",
+    "google": { "name": "Google Workspace", "description": "Drive storage, active licenses, inactive users, uptime" },
+    "microsoft": { "name": "Microsoft 365", "description": "Licenses, OneDrive/SharePoint storage, MFA, inactive users" },
+    "slack": { "name": "Slack", "description": "Abandoned channels, inactive users, messages/files stats" }
+  },
+  "integrationDetail": {
+    "lastSync": "Last sync: {{date}}",
+    "synchronize": "Synchronize",
+    "notConnected": "This integration is not yet connected.",
+    "backToIntegrations": "Back to integrations",
+    "noSyncData": "No data synced. Run a first synchronization.",
+    "syncNow": "Sync now",
+    "alertThresholds": "⚙️ Alert Thresholds",
+    "save": "Save",
+    "syncComplete": "Sync complete",
+    "thresholdUpdated": "Threshold updated"
+  },
+  "notFound": {
+    "title": "404",
+    "message": "Oops! Page not found",
+    "backHome": "Return to Home"
+  }
+}

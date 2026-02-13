@@ -3,6 +3,7 @@ import { useAlerts, useDismissAlert, Alert } from '@/hooks/use-supabase';
 import { AlertTriangle, AlertCircle, Info, CheckCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const severityConfig: Record<string, { icon: typeof AlertCircle; dotClass: string; badgeBg: string; badgeText: string }> = {
   critical: { icon: AlertCircle, dotClass: 'bg-destructive', badgeBg: 'bg-destructive/10', badgeText: 'text-destructive' },
@@ -16,6 +17,7 @@ export default function Alerts() {
   const { data: alerts = [], isLoading } = useAlerts();
   const dismissAlert = useDismissAlert();
   const [filter, setFilter] = useState<FilterTab>('all');
+  const { t } = useTranslation();
 
   const filtered = alerts.filter((a) => {
     if (filter === 'dismissed') return a.is_dismissed;
@@ -26,18 +28,18 @@ export default function Alerts() {
   const activeCount = alerts.filter((a) => !a.is_dismissed).length;
 
   const tabs: { key: FilterTab; label: string }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'critical', label: 'Critical' },
-    { key: 'warning', label: 'Warning' },
-    { key: 'dismissed', label: 'Dismissed' },
+    { key: 'all', label: t('alerts.all') },
+    { key: 'critical', label: t('alerts.critical') },
+    { key: 'warning', label: t('alerts.warning') },
+    { key: 'dismissed', label: t('alerts.dismissed') },
   ];
 
   return (
     <AppLayout>
       <div className="max-w-3xl animate-fade-in">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-foreground mb-1">Alerts</h1>
-          <p className="text-muted-foreground text-sm">{activeCount} active alerts</p>
+          <h1 className="text-2xl font-bold text-foreground mb-1">{t('alerts.title')}</h1>
+          <p className="text-muted-foreground text-sm">{t('alerts.activeAlerts', { count: activeCount })}</p>
         </div>
 
         <div className="flex gap-2 mb-6">
@@ -63,8 +65,8 @@ export default function Alerts() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <CheckCircle className="w-12 h-12 mx-auto mb-3 text-success" />
-            <p className="font-medium text-foreground">All systems operational ✓</p>
-            <p className="text-sm mt-1">No alerts to show</p>
+            <p className="font-medium text-foreground">{t('alerts.allOperational')}</p>
+            <p className="text-sm mt-1">{t('alerts.noAlerts')}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -90,7 +92,7 @@ export default function Alerts() {
                       <p className="text-sm text-muted-foreground mt-1">{alert.description}</p>
                       {!alert.is_dismissed && (
                         <div className="flex gap-2 mt-3">
-                          <Button variant="outline" size="sm" className="text-xs">View Details</Button>
+                          <Button variant="outline" size="sm" className="text-xs">{t('alerts.viewDetails')}</Button>
                           <Button
                             variant="ghost"
                             size="sm"
@@ -98,7 +100,7 @@ export default function Alerts() {
                             onClick={() => dismissAlert.mutate(alert.id)}
                             disabled={dismissAlert.isPending}
                           >
-                            Dismiss
+                            {t('alerts.dismiss')}
                           </Button>
                         </div>
                       )}

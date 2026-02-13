@@ -26,6 +26,7 @@ import { Label } from '@/components/ui/label';
 import { ResponsiveGridLayout, useContainerWidth, LayoutItem } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
+import { useTranslation } from 'react-i18next';
 
 export default function Dashboard() {
   const { data: services = [] } = useServices();
@@ -36,6 +37,7 @@ export default function Dashboard() {
   const [selectedDashboardId, setSelectedDashboardId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
+  const { t } = useTranslation();
 
   const selectedDashboard = dashboards.find((d) => d.id === selectedDashboardId);
 
@@ -80,27 +82,23 @@ export default function Dashboard() {
       <div className="max-w-5xl animate-fade-in">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Dashboards</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Create custom views from your services and integrations
-            </p>
+            <h1 className="text-2xl font-bold text-foreground">{t('dashboard.title')}</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">{t('dashboard.subtitle')}</p>
           </div>
           <Button onClick={() => setCreateOpen(true)} className="gap-2 gradient-primary text-primary-foreground hover:opacity-90">
             <Plus className="w-4 h-4" />
-            New Dashboard
+            {t('dashboard.newDashboard')}
           </Button>
         </div>
 
         {dashboards.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <LayoutDashboard className="w-12 h-12 text-muted-foreground/40 mb-4" />
-            <p className="text-lg font-medium text-foreground mb-1">No dashboards yet</p>
-            <p className="text-sm text-muted-foreground mb-6 max-w-md">
-              Create your first dashboard and add widgets to visualize your data.
-            </p>
+            <p className="text-lg font-medium text-foreground mb-1">{t('dashboard.noDashboards')}</p>
+            <p className="text-sm text-muted-foreground mb-6 max-w-md">{t('dashboard.noDashboardsDesc')}</p>
             <Button onClick={() => setCreateOpen(true)} className="gap-2 gradient-primary text-primary-foreground hover:opacity-90">
               <Plus className="w-4 h-4" />
-              Create Dashboard
+              {t('dashboard.createDashboard')}
             </Button>
           </div>
         ) : (
@@ -118,7 +116,7 @@ export default function Dashboard() {
                   <h3 className="font-semibold text-foreground">{db.name}</h3>
                 </div>
                 <p className="text-[10px] text-muted-foreground/60 mt-3">
-                  Created {new Date(db.created_at).toLocaleDateString()}
+                  {t('dashboard.created')} {new Date(db.created_at).toLocaleDateString()}
                 </p>
               </button>
             ))}
@@ -130,11 +128,11 @@ export default function Dashboard() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle>New Dashboard</DialogTitle>
+            <DialogTitle>{t('dashboard.newDashboard')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Name</Label>
+              <Label>{t('dashboard.name')}</Label>
               <Input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
@@ -148,7 +146,7 @@ export default function Dashboard() {
               className="w-full gradient-primary text-primary-foreground hover:opacity-90"
             >
               {createDashboard.isPending && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
-              Create
+              {t('dashboard.create')}
             </Button>
           </div>
         </DialogContent>
@@ -179,6 +177,7 @@ function DashboardDetailView({
   const [addOpen, setAddOpen] = useState(false);
   const layoutChangeRef = useRef<LayoutItem[]>([]);
   const { width: containerWidth, ref: containerRef } = useContainerWidth({ initialWidth: 1200 });
+  const { t } = useTranslation();
 
   const widgetConfigs: WidgetConfig[] = widgets.map((w) => ({
     id: w.id,
@@ -244,11 +243,11 @@ function DashboardDetailView({
         <div className="flex items-center gap-2">
           <Button onClick={() => setAddOpen(true)} className="gap-2 gradient-primary text-primary-foreground hover:opacity-90" size="sm">
             <Plus className="w-4 h-4" />
-            Add Widget
+            {t('dashboard.addWidget')}
           </Button>
           <Button variant="outline" size="sm" onClick={onDelete} className="gap-2 text-destructive hover:bg-destructive/10">
             <Trash2 className="w-4 h-4" />
-            Delete
+            {t('dashboard.delete')}
           </Button>
         </div>
       </div>
@@ -260,13 +259,11 @@ function DashboardDetailView({
       ) : widgetConfigs.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <LayoutDashboard className="w-12 h-12 text-muted-foreground/40 mb-4" />
-          <p className="text-lg font-medium text-foreground mb-1">Dashboard is empty</p>
-          <p className="text-sm text-muted-foreground mb-6 max-w-md">
-            Add widgets to start visualizing your services and integrations data.
-          </p>
+          <p className="text-lg font-medium text-foreground mb-1">{t('dashboard.emptyDashboard')}</p>
+          <p className="text-sm text-muted-foreground mb-6 max-w-md">{t('dashboard.emptyDashboardDesc')}</p>
           <Button onClick={() => setAddOpen(true)} className="gap-2 gradient-primary text-primary-foreground hover:opacity-90">
             <Plus className="w-4 h-4" />
-            Add Widget
+            {t('dashboard.addWidget')}
           </Button>
         </div>
       ) : (
@@ -286,7 +283,6 @@ function DashboardDetailView({
         >
           {widgetConfigs.map((widget) => (
             <div key={widget.id} className="bg-card border border-border rounded-xl overflow-hidden flex flex-col">
-              {/* Drag handle header */}
               <div className="widget-drag-handle flex items-center justify-between px-3 py-2 bg-muted/30 cursor-grab active:cursor-grabbing border-b border-border">
                 <span className="text-xs font-medium text-muted-foreground truncate">{widget.title}</span>
                 <button

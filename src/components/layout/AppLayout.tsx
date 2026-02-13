@@ -1,6 +1,7 @@
 import { useState, ReactNode } from 'react';
 import AppSidebar from './AppSidebar';
 import TopBar from './TopBar';
+import { useTranslation } from 'react-i18next';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -9,6 +10,7 @@ interface AppLayoutProps {
 export default function AppLayout({ children }: AppLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [tvMode, setTvMode] = useState(false);
+  const { t } = useTranslation();
 
   if (tvMode) {
     return (
@@ -18,7 +20,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             onClick={() => setTvMode(false)}
             className="bg-card/80 backdrop-blur border border-border rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            Exit TV Mode
+            {t('topbar.exitTvMode')}
           </button>
         </div>
         <main className="p-6">

@@ -1,0 +1,177 @@
+{
+  "nav": {
+    "features": "Funktionen",
+    "pricing": "Preise",
+    "signIn": "Anmelden",
+    "getStarted": "Loslegen"
+  },
+  "landing": {
+    "badge": "Alle Systeme betriebsbereit",
+    "heroTitle": "Überwachen Sie Ihren modernen Stack an",
+    "heroHighlight": " einem Ort.",
+    "heroSubtitle": "Uptime-Checks, Integrations-Health, Lizenzverfolgung und operative Dashboards — entwickelt für IT/Ops-Teams in wachsenden Unternehmen.",
+    "startMonitoring": "Monitoring starten",
+    "seeHow": "So funktioniert es",
+    "featuresTitle": "Alles, was Ops-Teams brauchen",
+    "featuresSubtitle": "Kein Ballast, keine Komplexität. Nur die Tools, die Sie brauchen, um Ihren Stack gesund zu halten.",
+    "pricingTitle": "Einfache, transparente Preise.",
+    "pricingSubtitle": "Kostenlos starten. Skalieren Sie mit Ihrem Team.",
+    "mostPopular": "Am beliebtesten",
+    "terminal": {
+      "line1status": "99,98% Uptime — 142ms Durchschn.",
+      "line2status": "99,99% Uptime — 89ms Durchschn.",
+      "line3status": "98,2% Uptime — 340ms Durchschn. — eingeschränkt",
+      "line4status": "synchronisiert vor 2 Min — 48/50 Lizenzen",
+      "line5status": "synchronisiert vor 5 Min — alle Channels OK",
+      "summary": "4 Services aktiv · 1 eingeschränkt · 0 ausgefallen"
+    }
+  },
+  "features": {
+    "uptime": { "title": "Uptime-Monitoring", "description": "HTTP-Health-Checks für alle Ihre Services mit konfigurierbaren Intervallen und sofortigen Alerts bei Ausfällen." },
+    "integrations": { "title": "SaaS-Integrationen", "description": "Verbinden Sie Google Workspace, Slack und mehr. Echtzeit-Metriken in einer einzigen operativen Ansicht." },
+    "alerts": { "title": "Intelligente Alerts", "description": "Schwellenwert-basiertes Alerting mit Schweregrad-Stufen. Benachrichtigung, bevor Ihre Nutzer etwas bemerken." },
+    "dashboards": { "title": "Individuelle Dashboards", "description": "Drag-and-Drop-Widgets. Erstellen Sie genau die Ansicht, die Ihr Ops-Team braucht." },
+    "security": { "title": "Standardmäßig sicher", "description": "Row-Level-Security, verschlüsselte Tokens und eingegrenzte Zugriffsrechte. Ihre Daten bleiben Ihre." },
+    "fast": { "title": "Schnell & Leichtgewichtig", "description": "Dashboard-Ladezeiten unter einer Sekunde. Keine aufgeblähten Agenten. Einfach URLs hinzufügen und Tools verbinden." }
+  },
+  "pricing": {
+    "starter": {
+      "name": "Starter",
+      "description": "Für kleine Teams zum Einstieg",
+      "cta": "Kostenlos starten",
+      "features": ["5 überwachte Services", "1 Dashboard", "2 Integrationen", "E-Mail-Alerts", "5-Min-Prüfintervall"]
+    },
+    "pro": {
+      "name": "Pro",
+      "description": "Für wachsende Teams mit Überblick",
+      "cta": "14-Tage-Testversion starten",
+      "features": ["25 überwachte Services", "Unbegrenzte Dashboards", "10 Integrationen", "Slack + E-Mail-Alerts", "1-Min-Prüfintervall", "Individuelle Schwellenwerte", "TV-Modus"]
+    },
+    "business": {
+      "name": "Business",
+      "description": "Für Ops-Teams im großen Maßstab",
+      "cta": "Vertrieb kontaktieren",
+      "features": ["Unbegrenzte Services", "Unbegrenzte Dashboards", "Unbegrenzte Integrationen", "Alle Alert-Kanäle", "30-Sek-Prüfintervall", "Prioritäts-Support", "SSO & Rollen"]
+    }
+  },
+  "auth": {
+    "createAccount": "Konto erstellen",
+    "welcomeBack": "Willkommen zurück",
+    "getStarted": "Starten Sie mit MoniDuck",
+    "signInToAccount": "Melden Sie sich an",
+    "displayName": "Anzeigename",
+    "yourName": "Ihr Name",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "loading": "Laden...",
+    "createAccountBtn": "Konto erstellen",
+    "signInBtn": "Anmelden",
+    "alreadyHaveAccount": "Bereits ein Konto?",
+    "dontHaveAccount": "Noch kein Konto?",
+    "signUp": "Registrieren",
+    "checkEmail": "E-Mail prüfen",
+    "confirmationSent": "Wir haben Ihnen einen Bestätigungslink gesendet.",
+    "brandTagline": "Infrastruktur-Monitoring,\nvereinfacht.",
+    "brandDescription": "Überwachen Sie Ihren SaaS-Stack, verfolgen Sie die Uptime und werden Sie benachrichtigt, bevor Ihre Nutzer etwas bemerken."
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "services": "Services",
+    "integrations": "Integrationen",
+    "alerts": "Alerts",
+    "settings": "Einstellungen",
+    "collapse": "Einklappen"
+  },
+  "topbar": {
+    "exitTvMode": "TV-Modus beenden"
+  },
+  "dashboard": {
+    "title": "Dashboards",
+    "subtitle": "Erstellen Sie individuelle Ansichten Ihrer Services und Integrationen",
+    "newDashboard": "Neues Dashboard",
+    "noDashboards": "Noch keine Dashboards",
+    "noDashboardsDesc": "Erstellen Sie Ihr erstes Dashboard und fügen Sie Widgets hinzu.",
+    "createDashboard": "Dashboard erstellen",
+    "name": "Name",
+    "create": "Erstellen",
+    "addWidget": "Widget hinzufügen",
+    "delete": "Löschen",
+    "emptyDashboard": "Dashboard ist leer",
+    "emptyDashboardDesc": "Fügen Sie Widgets hinzu, um Ihre Services und Integrationen zu visualisieren.",
+    "created": "Erstellt am"
+  },
+  "services": {
+    "title": "Services",
+    "subtitle": "Alle überwachten Endpoints verwalten",
+    "addService": "Service hinzufügen",
+    "noServices": "Noch keine Services. Fügen Sie Ihren ersten Endpoint hinzu.",
+    "name": "Name",
+    "url": "URL",
+    "status": "Status",
+    "uptime": "Uptime",
+    "avgResponse": "Durchschn. Antwort",
+    "lastCheck": "Letzter Check",
+    "actions": "Aktionen",
+    "operational": "Betriebsbereit",
+    "down": "Ausgefallen",
+    "degraded": "Eingeschränkt",
+    "pending": "Ausstehend",
+    "paused": "Pausiert",
+    "never": "Nie",
+    "deleteTitle": "{{name}} löschen?",
+    "deleteDesc": "Der Service und seine gesamte Monitoring-Historie werden dauerhaft gelöscht.",
+    "cancel": "Abbrechen"
+  },
+  "alerts": {
+    "title": "Alerts",
+    "activeAlerts": "{{count}} aktive Alerts",
+    "all": "Alle",
+    "critical": "Kritisch",
+    "warning": "Warnung",
+    "dismissed": "Verworfen",
+    "allOperational": "Alle Systeme betriebsbereit ✓",
+    "noAlerts": "Keine Alerts anzuzeigen",
+    "viewDetails": "Details anzeigen",
+    "dismiss": "Verwerfen"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "email": "E-Mail",
+    "workspace": "Arbeitsbereich",
+    "myWorkspace": "Mein Arbeitsbereich",
+    "saveChanges": "Speichern",
+    "darkMode": "Dunkelmodus",
+    "darkModeDesc": "Zwischen hellem und dunklem Design wechseln"
+  },
+  "integrations": {
+    "title": "Integrationen",
+    "subtitle": "Verbinden Sie Ihre SaaS-Tools für operative Überwachung",
+    "connected": "Verbunden",
+    "sync": "Sync",
+    "reconnect": "Neu verbinden",
+    "connectOAuth": "Via OAuth verbinden",
+    "comingSoon": "Demnächst verfügbar",
+    "soon": "Bald",
+    "noData": "Keine Daten — starten Sie eine Sync",
+    "google": { "name": "Google Workspace", "description": "Drive-Speicher, aktive Lizenzen, inaktive Nutzer, Uptime" },
+    "microsoft": { "name": "Microsoft 365", "description": "Lizenzen, OneDrive/SharePoint-Speicher, MFA, inaktive Nutzer" },
+    "slack": { "name": "Slack", "description": "Aufgegebene Channels, inaktive Nutzer, Nachrichten/Dateien-Stats" }
+  },
+  "integrationDetail": {
+    "lastSync": "Letzte Sync: {{date}}",
+    "synchronize": "Synchronisieren",
+    "notConnected": "Diese Integration ist noch nicht verbunden.",
+    "backToIntegrations": "Zurück zu Integrationen",
+    "noSyncData": "Keine synchronisierten Daten. Starten Sie eine erste Synchronisation.",
+    "syncNow": "Jetzt synchronisieren",
+    "alertThresholds": "⚙️ Alert-Schwellenwerte",
+    "save": "Speichern",
+    "syncComplete": "Synchronisation abgeschlossen",
+    "thresholdUpdated": "Schwellenwert aktualisiert"
+  },
+  "notFound": {
+    "title": "404",
+    "message": "Seite nicht gefunden",
+    "backHome": "Zur Startseite"
+  }
+}
