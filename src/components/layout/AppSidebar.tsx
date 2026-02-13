@@ -29,7 +29,7 @@ export default function AppSidebar({ collapsed, onToggle }: { collapsed: boolean
             to={item.url}
             end={item.url === "/"}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors text-sm font-medium"
-            activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+            activeClassName="bg-primary/10 text-primary font-semibold"
           >
             <item.icon className="w-5 h-5 flex-shrink-0" />
             {!collapsed && <span>{item.title}</span>}
