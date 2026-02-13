@@ -7,9 +7,9 @@
   },
   "landing": {
     "badge": "Tous les systèmes opérationnels",
-    "heroTitle": "Tous vos assets IT,",
-    "heroHighlight": " un seul dashboard.",
-    "heroSubtitle": "Vérifications d'uptime, santé des intégrations, suivi des licences et tableaux de bord opérationnels — conçu pour les équipes IT/Ops en pleine croissance.",
+    "heroTitle": "Votre infrastructure.",
+    "heroHighlight": "Vos dashboards.",
+    "heroSubtitle": "Surveillez vos endpoints HTTP, services cloud et outils SaaS. Créez des dashboards personnalisés pour votre équipe. Mode TV inclus. — conçu pour les équipes IT/Ops en pleine croissance.",
     "startMonitoring": "Commencer le monitoring",
     "seeHow": "Découvrir comment ça marche",
     "featuresTitle": "Tout ce dont les équipes ops ont besoin",
