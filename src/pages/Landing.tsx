@@ -98,8 +98,8 @@ export default function Landing() {
             <span className="w-1.5 h-1.5 rounded-full bg-success" />
             All systems operational
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-[1.1] mb-6">Monitor your modern stack in one place.
-
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-[1.1] mb-6">
+            Monitor your modern stack in
             <span className="text-primary"> one place.</span>
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-10 max-w-2xl">
