@@ -36,7 +36,7 @@ export default function Auth() {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Left panel - branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-card border-r border-border flex-col justify-between p-12">
+      <div className="hidden lg:flex lg:w-1/3 bg-card border-r border-border flex-col justify-between p-12">
         <div>
           <div className="flex items-center gap-3">
             <img src={duckLogo} alt="MoniDuck" className="w-10 h-10" />
