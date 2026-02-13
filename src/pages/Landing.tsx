@@ -202,7 +202,7 @@ export default function Landing() {
       <section id="pricing" className="border-t border-border">
         <div className="max-w-6xl mx-auto px-6 py-20 md:py-28">
           <div className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">Simple, transparent pricing</h2>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">Simple, transparent pricing.</h2>
             <p className="text-muted-foreground text-lg">Start free. Scale as your team grows.</p>
           </div>
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
@@ -219,7 +219,7 @@ export default function Landing() {
                 <h3 className="font-semibold text-lg">{plan.name}</h3>
                 <p className="text-sm text-muted-foreground mt-1 mb-4">{plan.description}</p>
                 <div className="mb-6">
-                  <span className="text-4xl font-bold">€{plan.price}</span>
+                  <span className="text-4xl font-bold">${plan.price}</span>
                   <span className="text-muted-foreground text-sm">{plan.period}</span>
                 </div>
                 <ul className="space-y-2.5 mb-8 flex-1">
