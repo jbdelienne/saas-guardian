@@ -39,7 +39,7 @@ export default function Auth() {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-3">
             <img src={duckLogo} alt="MoniDuck" className="w-40 h-40" />
-            <h1 className="text-8xl font-bold text-foreground">MoniDuck</h1>
+            <h1 className="text-4xl font-bold text-foreground">MoniDuck</h1>
           </div>
           <p className="text-muted-foreground">Monitor your SaaS stack with confidence</p>
         </div>
