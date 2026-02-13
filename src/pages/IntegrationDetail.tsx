@@ -13,6 +13,8 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import { useLangPrefix } from '@/hooks/use-lang-prefix';
 
 const METRIC_ICONS: Record<string, typeof Users> = {
   users: Users,
@@ -85,6 +87,8 @@ export default function IntegrationDetail() {
   const { data: thresholds = [] } = useAlertThresholds(type);
   const updateThreshold = useUpdateThreshold();
   const syncIntegration = useSyncIntegration();
+  const { t } = useTranslation();
+  const lp = useLangPrefix();
 
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -93,8 +97,8 @@ export default function IntegrationDetail() {
   const handleSync = () => {
     if (!integration) return;
     syncIntegration.mutate(integration.id, {
-      onSuccess: () => toast.success('Synchronisation terminée'),
-      onError: (e) => toast.error(`Erreur: ${e.message}`),
+      onSuccess: () => toast.success(t('integrationDetail.syncComplete')),
+      onError: (e) => toast.error(e.message),
     });
   };
 
@@ -167,7 +171,7 @@ export default function IntegrationDetail() {
       <div className="max-w-5xl animate-fade-in">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/integrations')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(`${lp}/integrations`)}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <span className="text-4xl">{PROVIDER_ICONS[type]}</span>
@@ -175,7 +179,7 @@ export default function IntegrationDetail() {
             <h1 className="text-2xl font-bold text-foreground">{PROVIDER_NAMES[type]}</h1>
             {integration?.last_sync && (
               <p className="text-xs text-muted-foreground">
-                Dernière sync : {new Date(integration.last_sync).toLocaleString('fr-FR')}
+                {t('integrationDetail.lastSync', { date: new Date(integration.last_sync).toLocaleString() })}
               </p>
             )}
           </div>
@@ -186,15 +190,15 @@ export default function IntegrationDetail() {
               ) : (
                 <RefreshCw className="w-4 h-4" />
               )}
-              Synchroniser
+              {t('integrationDetail.synchronize')}
             </Button>
           )}
         </div>
 
         {!integration ? (
           <div className="bg-card border border-border rounded-xl p-12 text-center">
-            <p className="text-muted-foreground mb-4">Cette intégration n'est pas encore connectée.</p>
-            <Button onClick={() => navigate('/integrations')}>Retour aux intégrations</Button>
+            <p className="text-muted-foreground mb-4">{t('integrationDetail.notConnected')}</p>
+            <Button onClick={() => navigate(`${lp}/integrations`)}>{t('integrationDetail.backToIntegrations')}</Button>
           </div>
         ) : syncLoading ? (
           <div className="flex justify-center py-16">
@@ -202,10 +206,10 @@ export default function IntegrationDetail() {
           </div>
         ) : syncData.length === 0 ? (
           <div className="bg-card border border-border rounded-xl p-12 text-center">
-            <p className="text-muted-foreground mb-4">Aucune donnée synchronisée. Lancez une première synchronisation.</p>
+            <p className="text-muted-foreground mb-4">{t('integrationDetail.noSyncData')}</p>
             <Button onClick={handleSync} disabled={syncIntegration.isPending} className="gap-2">
               <RefreshCw className="w-4 h-4" />
-              Synchroniser maintenant
+              {t('integrationDetail.syncNow')}
             </Button>
           </div>
         ) : (
@@ -343,7 +347,7 @@ export default function IntegrationDetail() {
             {/* Thresholds Config */}
             {thresholds.length > 0 && (
               <div>
-                <h2 className="text-lg font-semibold text-foreground mb-4">⚙️ Seuils d'alertes</h2>
+                <h2 className="text-lg font-semibold text-foreground mb-4">{t('integrationDetail.alertThresholds')}</h2>
                 <div className="bg-card border border-border rounded-xl divide-y divide-border">
                   {thresholds.map((t) => (
                     <ThresholdRow key={t.id} threshold={t} onUpdate={updateThreshold.mutate} />
@@ -378,7 +382,7 @@ function ThresholdRow({
 
   const save = () => {
     onUpdate({ id: threshold.id, threshold_value: value, severity, is_enabled: enabled });
-    toast.success('Seuil mis à jour');
+    toast.success('Threshold updated');
   };
 
   return (
@@ -406,7 +410,7 @@ function ThresholdRow({
           </SelectContent>
         </Select>
         <Button size="sm" variant="outline" onClick={save} className="h-8">
-          Sauver
+          Save
         </Button>
       </div>
     </div>

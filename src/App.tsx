@@ -2,9 +2,12 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import '@/i18n';
+import { useTranslation } from 'react-i18next';
+import { useEffect } from 'react';
 import Landing from "@/pages/Landing";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
@@ -17,24 +20,55 @@ import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  if (loading) return null;
-  if (!user) return <Navigate to="/auth" replace />;
+const SUPPORTED_LANGS = ['en', 'fr', 'de'];
+
+function LanguageWrapper({ children }: { children: React.ReactNode }) {
+  const { lang } = useParams<{ lang: string }>();
+  const { i18n } = useTranslation();
+
+  useEffect(() => {
+    if (lang && SUPPORTED_LANGS.includes(lang) && i18n.language !== lang) {
+      i18n.changeLanguage(lang);
+    }
+  }, [lang, i18n]);
+
   return <>{children}</>;
 }
 
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  const { lang } = useParams<{ lang: string }>();
+  if (loading) return null;
+  if (!user) return <Navigate to={`/${lang || 'en'}/auth`} replace />;
+  return <>{children}</>;
+}
+
+function RootRedirect() {
+  const browserLang = navigator.language?.split('-')[0] || 'en';
+  const lang = SUPPORTED_LANGS.includes(browserLang) ? browserLang : 'en';
+  return <Navigate to={`/${lang}`} replace />;
+}
+
+const LangRoutes = () => (
+  <LanguageWrapper>
+    <Routes>
+      <Route index element={<Landing />} />
+      <Route path="auth" element={<Auth />} />
+      <Route path="dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="services" element={<ProtectedRoute><ServicesPage /></ProtectedRoute>} />
+      <Route path="integrations" element={<ProtectedRoute><Integrations /></ProtectedRoute>} />
+      <Route path="integrations/:type" element={<ProtectedRoute><IntegrationDetail /></ProtectedRoute>} />
+      <Route path="alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
+      <Route path="settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  </LanguageWrapper>
+);
+
 const AppRoutes = () => (
   <Routes>
-    <Route path="/" element={<Landing />} />
-    <Route path="/auth" element={<Auth />} />
-    <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-    <Route path="/services" element={<ProtectedRoute><ServicesPage /></ProtectedRoute>} />
-    <Route path="/integrations" element={<ProtectedRoute><Integrations /></ProtectedRoute>} />
-    <Route path="/integrations/:type" element={<ProtectedRoute><IntegrationDetail /></ProtectedRoute>} />
-    <Route path="/alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
-    <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-    <Route path="*" element={<NotFound />} />
+    <Route path="/" element={<RootRedirect />} />
+    <Route path="/:lang/*" element={<LangRoutes />} />
   </Routes>
 );
 

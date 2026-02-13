@@ -23,13 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-
-const statusConfig: Record<string, { label: string; dotClass: string }> = {
-  up: { label: 'Operational', dotClass: 'status-dot-up' },
-  down: { label: 'Down', dotClass: 'status-dot-down' },
-  degraded: { label: 'Degraded', dotClass: 'status-dot-degraded' },
-  unknown: { label: 'Pending', dotClass: 'status-dot-unknown' },
-};
+import { useTranslation } from 'react-i18next';
 
 export default function ServicesPage() {
   const { data: services = [], isLoading } = useServices();
@@ -38,6 +32,14 @@ export default function ServicesPage() {
   const togglePause = useTogglePause();
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Service | null>(null);
+  const { t } = useTranslation();
+
+  const statusConfig: Record<string, { label: string; dotClass: string }> = {
+    up: { label: t('services.operational'), dotClass: 'status-dot-up' },
+    down: { label: t('services.down'), dotClass: 'status-dot-down' },
+    degraded: { label: t('services.degraded'), dotClass: 'status-dot-degraded' },
+    unknown: { label: t('services.pending'), dotClass: 'status-dot-unknown' },
+  };
 
   const handleAddService = async (svc: { name: string; icon: string; url: string; check_interval: number }) => {
     await addService.mutateAsync(svc);
@@ -54,14 +56,12 @@ export default function ServicesPage() {
       <div className="max-w-5xl animate-fade-in">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Services</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Manage all monitored endpoints
-            </p>
+            <h1 className="text-2xl font-bold text-foreground">{t('services.title')}</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">{t('services.subtitle')}</p>
           </div>
           <Button onClick={() => setAddModalOpen(true)} className="gap-2 gradient-primary text-primary-foreground hover:opacity-90">
             <Plus className="w-4 h-4" />
-            Add Service
+            {t('services.addService')}
           </Button>
         </div>
 
@@ -71,9 +71,9 @@ export default function ServicesPage() {
           </div>
         ) : services.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <p className="text-muted-foreground mb-4">No services yet. Add your first endpoint to start monitoring.</p>
+            <p className="text-muted-foreground mb-4">{t('services.noServices')}</p>
             <Button onClick={() => setAddModalOpen(true)} variant="outline" className="gap-2">
-              <Plus className="w-4 h-4" /> Add Service
+              <Plus className="w-4 h-4" /> {t('services.addService')}
             </Button>
           </div>
         ) : (
@@ -82,13 +82,13 @@ export default function ServicesPage() {
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-12"></TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>URL</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Uptime</TableHead>
-                  <TableHead className="text-right">Avg Response</TableHead>
-                  <TableHead>Last Check</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t('services.name')}</TableHead>
+                  <TableHead>{t('services.url')}</TableHead>
+                  <TableHead>{t('services.status')}</TableHead>
+                  <TableHead className="text-right">{t('services.uptime')}</TableHead>
+                  <TableHead className="text-right">{t('services.avgResponse')}</TableHead>
+                  <TableHead>{t('services.lastCheck')}</TableHead>
+                  <TableHead className="text-right">{t('services.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -102,7 +102,7 @@ export default function ServicesPage() {
                       <TableCell className="font-medium text-foreground">
                         {service.name}
                         {service.is_paused && (
-                          <span className="ml-2 text-[10px] uppercase tracking-wider text-warning font-semibold">Paused</span>
+                          <span className="ml-2 text-[10px] uppercase tracking-wider text-warning font-semibold">{t('services.paused')}</span>
                         )}
                       </TableCell>
                       <TableCell>
@@ -131,7 +131,7 @@ export default function ServicesPage() {
                       <TableCell className="text-xs text-muted-foreground">
                         {service.last_check
                           ? formatDistanceToNow(new Date(service.last_check), { addSuffix: true })
-                          : 'Never'}
+                          : t('services.never')}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -167,18 +167,16 @@ export default function ServicesPage() {
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {deleteTarget?.name}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently remove the service and all its monitoring history.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t('services.deleteTitle', { name: deleteTarget?.name })}</AlertDialogTitle>
+            <AlertDialogDescription>{t('services.deleteDesc')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('services.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {t('dashboard.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

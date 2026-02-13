@@ -1,0 +1,177 @@
+{
+  "nav": {
+    "features": "Fonctionnalités",
+    "pricing": "Tarifs",
+    "signIn": "Se connecter",
+    "getStarted": "Commencer"
+  },
+  "landing": {
+    "badge": "Tous les systèmes opérationnels",
+    "heroTitle": "Supervisez votre stack moderne en",
+    "heroHighlight": " un seul endroit.",
+    "heroSubtitle": "Vérifications d'uptime, santé des intégrations, suivi des licences et tableaux de bord opérationnels — conçu pour les équipes IT/Ops en pleine croissance.",
+    "startMonitoring": "Commencer le monitoring",
+    "seeHow": "Découvrir comment ça marche",
+    "featuresTitle": "Tout ce dont les équipes ops ont besoin",
+    "featuresSubtitle": "Pas de superflu, pas de complexité. Juste les outils nécessaires pour garder votre stack en bonne santé.",
+    "pricingTitle": "Tarification simple et transparente.",
+    "pricingSubtitle": "Commencez gratuitement. Évoluez avec votre équipe.",
+    "mostPopular": "Le plus populaire",
+    "terminal": {
+      "line1status": "99.98% uptime — 142ms moy",
+      "line2status": "99.99% uptime — 89ms moy",
+      "line3status": "98.2% uptime — 340ms moy — dégradé",
+      "line4status": "synchronisé il y a 2m — 48/50 licences",
+      "line5status": "synchronisé il y a 5m — tous les channels OK",
+      "summary": "4 services up · 1 dégradé · 0 down"
+    }
+  },
+  "features": {
+    "uptime": { "title": "Monitoring Uptime", "description": "Vérifications HTTP sur tous vos services avec intervalles configurables et alertes instantanées en cas de panne." },
+    "integrations": { "title": "Intégrations SaaS", "description": "Connectez Google Workspace, Slack et plus encore. Agrégez les métriques en temps réel dans une vue unique." },
+    "alerts": { "title": "Alertes intelligentes", "description": "Alertes basées sur des seuils avec niveaux de sévérité. Soyez prévenu avant que vos utilisateurs ne remarquent quoi que ce soit." },
+    "dashboards": { "title": "Dashboards personnalisés", "description": "Widgets glisser-déposer. Construisez exactement la vue dont votre équipe ops a besoin." },
+    "security": { "title": "Sécurisé par défaut", "description": "Sécurité au niveau des lignes, tokens chiffrés et accès délimités. Vos données restent les vôtres." },
+    "fast": { "title": "Rapide et léger", "description": "Chargement des dashboards en moins d'une seconde. Aucun agent lourd à installer. Ajoutez vos URLs et connectez vos outils." }
+  },
+  "pricing": {
+    "starter": {
+      "name": "Starter",
+      "description": "Pour les petites équipes qui démarrent",
+      "cta": "Commencer gratuitement",
+      "features": ["5 services surveillés", "1 dashboard", "2 intégrations", "Alertes email", "Intervalle de 5 min"]
+    },
+    "pro": {
+      "name": "Pro",
+      "description": "Pour les équipes en croissance",
+      "cta": "Essai gratuit 14 jours",
+      "features": ["25 services surveillés", "Dashboards illimités", "10 intégrations", "Alertes Slack + Email", "Intervalle de 1 min", "Seuils personnalisés", "Mode TV"]
+    },
+    "business": {
+      "name": "Business",
+      "description": "Pour les équipes ops à grande échelle",
+      "cta": "Contacter les ventes",
+      "features": ["Services illimités", "Dashboards illimités", "Intégrations illimitées", "Tous les canaux d'alerte", "Intervalle de 30 sec", "Support prioritaire", "SSO & rôles"]
+    }
+  },
+  "auth": {
+    "createAccount": "Créer votre compte",
+    "welcomeBack": "Bon retour",
+    "getStarted": "Commencez avec MoniDuck",
+    "signInToAccount": "Connectez-vous à votre compte",
+    "displayName": "Nom d'affichage",
+    "yourName": "Votre nom",
+    "email": "Email",
+    "password": "Mot de passe",
+    "loading": "Chargement...",
+    "createAccountBtn": "Créer le compte",
+    "signInBtn": "Se connecter",
+    "alreadyHaveAccount": "Vous avez déjà un compte ?",
+    "dontHaveAccount": "Pas encore de compte ?",
+    "signUp": "S'inscrire",
+    "checkEmail": "Vérifiez votre email",
+    "confirmationSent": "Nous vous avons envoyé un lien de confirmation.",
+    "brandTagline": "Supervision d'infrastructure,\nsimplifiée.",
+    "brandDescription": "Supervisez votre stack SaaS, suivez l'uptime et soyez alerté avant que vos utilisateurs ne remarquent quoi que ce soit."
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "services": "Services",
+    "integrations": "Intégrations",
+    "alerts": "Alertes",
+    "settings": "Paramètres",
+    "collapse": "Réduire"
+  },
+  "topbar": {
+    "exitTvMode": "Quitter le mode TV"
+  },
+  "dashboard": {
+    "title": "Dashboards",
+    "subtitle": "Créez des vues personnalisées de vos services et intégrations",
+    "newDashboard": "Nouveau Dashboard",
+    "noDashboards": "Aucun dashboard",
+    "noDashboardsDesc": "Créez votre premier dashboard et ajoutez des widgets pour visualiser vos données.",
+    "createDashboard": "Créer un Dashboard",
+    "name": "Nom",
+    "create": "Créer",
+    "addWidget": "Ajouter un Widget",
+    "delete": "Supprimer",
+    "emptyDashboard": "Dashboard vide",
+    "emptyDashboardDesc": "Ajoutez des widgets pour visualiser vos services et intégrations.",
+    "created": "Créé le"
+  },
+  "services": {
+    "title": "Services",
+    "subtitle": "Gérez tous les endpoints surveillés",
+    "addService": "Ajouter un Service",
+    "noServices": "Aucun service. Ajoutez votre premier endpoint pour commencer le monitoring.",
+    "name": "Nom",
+    "url": "URL",
+    "status": "Statut",
+    "uptime": "Uptime",
+    "avgResponse": "Temps moyen",
+    "lastCheck": "Dernier check",
+    "actions": "Actions",
+    "operational": "Opérationnel",
+    "down": "En panne",
+    "degraded": "Dégradé",
+    "pending": "En attente",
+    "paused": "En pause",
+    "never": "Jamais",
+    "deleteTitle": "Supprimer {{name}} ?",
+    "deleteDesc": "Cela supprimera définitivement le service et tout son historique de monitoring.",
+    "cancel": "Annuler"
+  },
+  "alerts": {
+    "title": "Alertes",
+    "activeAlerts": "{{count}} alertes actives",
+    "all": "Toutes",
+    "critical": "Critique",
+    "warning": "Avertissement",
+    "dismissed": "Ignorées",
+    "allOperational": "Tous les systèmes opérationnels ✓",
+    "noAlerts": "Aucune alerte à afficher",
+    "viewDetails": "Voir les détails",
+    "dismiss": "Ignorer"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "email": "Email",
+    "workspace": "Espace de travail",
+    "myWorkspace": "Mon espace de travail",
+    "saveChanges": "Enregistrer",
+    "darkMode": "Mode sombre",
+    "darkModeDesc": "Basculer entre le thème clair et sombre"
+  },
+  "integrations": {
+    "title": "Intégrations",
+    "subtitle": "Connectez vos outils SaaS pour la supervision opérationnelle",
+    "connected": "Connecté",
+    "sync": "Sync",
+    "reconnect": "Reconnecter",
+    "connectOAuth": "Connecter via OAuth",
+    "comingSoon": "Bientôt disponible",
+    "soon": "Bientôt",
+    "noData": "Aucune donnée — lancez une sync",
+    "google": { "name": "Google Workspace", "description": "Stockage Drive, licences actives, utilisateurs inactifs, uptime" },
+    "microsoft": { "name": "Microsoft 365", "description": "Licences, stockage OneDrive/SharePoint, MFA, utilisateurs inactifs" },
+    "slack": { "name": "Slack", "description": "Channels abandonnés, utilisateurs inactifs, messages/fichiers stats" }
+  },
+  "integrationDetail": {
+    "lastSync": "Dernière sync : {{date}}",
+    "synchronize": "Synchroniser",
+    "notConnected": "Cette intégration n'est pas encore connectée.",
+    "backToIntegrations": "Retour aux intégrations",
+    "noSyncData": "Aucune donnée synchronisée. Lancez une première synchronisation.",
+    "syncNow": "Synchroniser maintenant",
+    "alertThresholds": "⚙️ Seuils d'alertes",
+    "save": "Enregistrer",
+    "syncComplete": "Synchronisation terminée",
+    "thresholdUpdated": "Seuil mis à jour"
+  },
+  "notFound": {
+    "title": "404",
+    "message": "Oups ! Page non trouvée",
+    "backHome": "Retour à l'accueil"
+  }
+}
