@@ -73,8 +73,8 @@ export default function Landing() {
       <nav className="border-b border-border bg-card/60 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <img src={duckLogo} alt="MoniDuck" className="w-8 h-8" />
-            <span className="font-semibold text-lg tracking-tight">MoniDuck</span>
+            <img src={duckLogo} alt="MoniDuck" className="w-16 h-16" />
+            <span className="font-semibold text-4xl tracking-tight">MoniDuck</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors">Features</a>
