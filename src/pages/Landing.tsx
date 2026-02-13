@@ -219,7 +219,7 @@ export default function Landing() {
                 <h3 className="font-semibold text-lg">{plan.name}</h3>
                 <p className="text-sm text-muted-foreground mt-1 mb-4">{plan.description}</p>
                 <div className="mb-6">
-                  <span className="text-4xl font-bold">${plan.price}</span>
+                  <span className="text-4xl font-bold">€{plan.price}</span>
                   <span className="text-muted-foreground text-sm">{plan.period}</span>
                 </div>
                 <ul className="space-y-2.5 mb-8 flex-1">
