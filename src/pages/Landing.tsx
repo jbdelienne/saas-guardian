@@ -59,6 +59,7 @@ export default function Landing() {
           </div>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-[1.1] mb-6">
             {t("landing.heroTitle")}
+            <br />
             <span className="text-primary">{t("landing.heroHighlight")}</span>
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-10 max-w-2xl">
