@@ -3,7 +3,7 @@ import { NavLink } from "@/components/NavLink";
 import duckLogo from "@/assets/moniduck-logo.png";
 
 const navItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Services", url: "/services", icon: Server },
   { title: "Integrations", url: "/integrations", icon: Plug },
   { title: "Alerts", url: "/alerts", icon: Bell },
@@ -27,7 +27,7 @@ export default function AppSidebar({ collapsed, onToggle }: { collapsed: boolean
           <NavLink
             key={item.title}
             to={item.url}
-            end={item.url === "/"}
+            end={item.url === "/dashboard"}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-primary/5 hover:text-foreground transition-colors text-sm font-medium"
             activeClassName="bg-primary/10 text-primary font-semibold"
           >
