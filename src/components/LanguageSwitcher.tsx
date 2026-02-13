@@ -18,21 +18,17 @@ export default function LanguageSwitcher({ variant = 'ghost' }: { variant?: 'gho
   const currentLang = supportedLanguages.find((l) => l.code === i18n.language) ?? supportedLanguages[0];
 
   const switchLanguage = (code: string) => {
-    // Replace current lang prefix with new one
-    const pathParts = location.pathname.split('/');
-    const currentPrefix = pathParts[1];
+    // Extract the path after the current lang prefix
+    const pathParts = location.pathname.split('/').filter(Boolean);
+    const currentPrefix = pathParts[0];
     const isLangPrefix = supportedLanguages.some((l) => l.code === currentPrefix);
 
-    let newPath: string;
-    if (isLangPrefix) {
-      pathParts[1] = code;
-      newPath = pathParts.join('/');
-    } else {
-      newPath = `/${code}${location.pathname}`;
-    }
+    const restParts = isLangPrefix ? pathParts.slice(1) : pathParts;
+    const newPath = `/${code}${restParts.length ? '/' + restParts.join('/') : ''}`;
 
     i18n.changeLanguage(code);
-    navigate(newPath + location.search + location.hash, { replace: true });
+    // Use window.location for a clean navigation to avoid React Router nested route issues
+    window.location.href = newPath + location.search + location.hash;
   };
 
   return (
