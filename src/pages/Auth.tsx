@@ -34,35 +34,74 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen gradient-bg-auth flex items-center justify-center p-4">
-      <div className="w-full max-w-md animate-scale-in">
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-3 mb-3">
-            <img src={duckLogo} alt="MoniDuck" className="w-40 h-40" />
-            <h1 className="text-4xl font-bold text-foreground">MoniDuck</h1>
+    <div className="min-h-screen bg-background flex">
+      {/* Left panel - branding */}
+      <div className="hidden lg:flex lg:w-1/2 bg-card border-r border-border flex-col justify-between p-12">
+        <div>
+          <div className="flex items-center gap-3">
+            <img src={duckLogo} alt="MoniDuck" className="w-10 h-10" />
+            <span className="text-lg font-semibold text-foreground tracking-tight">MoniDuck</span>
           </div>
-          <p className="text-muted-foreground">Monitor your SaaS stack with confidence</p>
         </div>
 
-        <div className="bg-card border border-border rounded-2xl p-8 shadow-lg">
-          <h2 className="text-xl font-semibold mb-6 text-card-foreground">
-            {isSignUp ? "Create your account" : "Welcome back"}
+        <div className="space-y-6">
+          <h2 className="text-3xl font-semibold text-foreground tracking-tight leading-tight">
+            Infrastructure monitoring,<br />simplified.
           </h2>
+          <p className="text-muted-foreground text-sm leading-relaxed max-w-md">
+            Monitor your SaaS stack, track uptime, and get alerted before your users notice anything.
+          </p>
+          <div className="flex gap-6 text-xs text-muted-foreground font-mono uppercase tracking-widest">
+            <span>Uptime</span>
+            <span className="text-border">·</span>
+            <span>Integrations</span>
+            <span className="text-border">·</span>
+            <span>Alerts</span>
+          </div>
+        </div>
+
+        <p className="text-xs text-muted-foreground/60 font-mono">
+          © {new Date().getFullYear()} MoniDuck
+        </p>
+      </div>
+
+      {/* Right panel - form */}
+      <div className="flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-sm space-y-8">
+          {/* Mobile logo */}
+          <div className="lg:hidden flex items-center gap-3 mb-4">
+            <img src={duckLogo} alt="MoniDuck" className="w-10 h-10" />
+            <span className="text-lg font-semibold text-foreground tracking-tight">MoniDuck</span>
+          </div>
+
+          <div>
+            <h1 className="text-xl font-semibold text-foreground tracking-tight">
+              {isSignUp ? "Create your account" : "Welcome back"}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {isSignUp ? "Get started with MoniDuck" : "Sign in to your account"}
+            </p>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {isSignUp && (
-              <div className="space-y-2">
-                <Label htmlFor="name">Display name</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="name" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Display name
+                </Label>
                 <Input
                   id="name"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="Your name"
+                  className="h-10 bg-card border-border"
                 />
               </div>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Email
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -70,10 +109,13 @@ export default function Auth() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@company.com"
                 required
+                className="h-10 bg-card border-border"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="password" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Password
+              </Label>
               <Input
                 id="password"
                 type="password"
@@ -82,19 +124,20 @@ export default function Auth() {
                 placeholder="••••••••"
                 required
                 minLength={6}
+                className="h-10 bg-card border-border"
               />
             </div>
 
             <Button
               type="submit"
               disabled={submitting}
-              className="w-full gradient-primary text-primary-foreground hover:opacity-90 transition-opacity"
+              className="w-full h-10 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               {submitting ? "Loading..." : isSignUp ? "Create account" : "Sign in"}
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-muted-foreground">
+          <div className="text-center text-sm text-muted-foreground">
             {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
             <button onClick={() => setIsSignUp(!isSignUp)} className="text-primary font-medium hover:underline">
               {isSignUp ? "Sign in" : "Sign up"}
