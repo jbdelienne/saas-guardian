@@ -168,7 +168,8 @@ export default function Landing() {
                   <h3 className="font-semibold text-lg mt-1">{t(`pricing.${planKey}.name`)}</h3>
                   <div className="mt-3 mb-1">
                     <span className="text-4xl font-bold">
-                      {t(`pricing.${planKey}.price`) === "0" ? "0" : t(`pricing.${planKey}.price`)}€
+                      {t(`pricing.${planKey}.price`)}
+                      {planKey !== "enterprise" && "€"}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground mb-5">{t(`pricing.${planKey}.priceLabel`)}</p>
