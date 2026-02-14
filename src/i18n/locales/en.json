@@ -35,23 +35,69 @@
     "fast": { "title": "Fast & Lightweight", "description": "Sub-second dashboard loads. No bloated agents to install. Just add your URLs and connect your tools." }
   },
   "pricing": {
-    "starter": {
-      "name": "Starter",
-      "description": "For small teams getting started",
-      "cta": "Get started free",
-      "features": ["5 services monitored", "1 dashboard", "2 integrations", "Email alerts", "5-min check interval"]
+    "free": {
+      "name": "Free",
+      "price": "0",
+      "priceLabel": "forever",
+      "cta": "Start Free — No CC Required",
+      "services": { "title": "SERVICES", "items": ["5 endpoints", "5 min checks", "7 days history"] },
+      "integrations": { "title": "INTEGRATIONS", "items": [], "excluded": ["No integrations"] },
+      "dashboards": { "title": "DASHBOARDS", "items": ["1 dashboard", "Basic widgets"] },
+      "alerting": { "title": "ALERTING", "items": ["Email only"] },
+      "team": { "title": "TEAM", "items": ["1 user"] },
+      "support": { "title": "SUPPORT", "items": ["Documentation"] }
     },
-    "pro": {
-      "name": "Pro",
-      "description": "For growing teams who need visibility",
-      "cta": "Start 14-day trial",
-      "features": ["25 services monitored", "Unlimited dashboards", "10 integrations", "Slack + Email alerts", "1-min check interval", "Custom thresholds", "TV mode"]
+    "startup": {
+      "name": "Startup",
+      "price": "99",
+      "priceLabel": "/month",
+      "cta": "Start 14-Day Free Trial",
+      "badge": "Most Popular",
+      "highlights": ["TV Mode included", "2 workspace integrations"],
+      "services": { "title": "SERVICES", "items": ["100 endpoints", "2 min checks", "6 months history"] },
+      "integrations": { "title": "INTEGRATIONS", "items": ["Pick 2 workspace:", "Google Workspace", "Microsoft 365"] },
+      "dashboards": { "title": "DASHBOARDS", "items": ["3 custom dashboards", "TV Mode included"] },
+      "alerting": { "title": "ALERTING", "items": ["Email + Slack webhooks"] },
+      "team": { "title": "TEAM", "items": ["5 team members"] },
+      "support": { "title": "SUPPORT", "items": ["Email support (<48h)"] }
     },
-    "business": {
-      "name": "Business",
-      "description": "For ops teams at scale",
-      "cta": "Contact sales",
-      "features": ["Unlimited services", "Unlimited dashboards", "Unlimited integrations", "All alert channels", "30-sec check interval", "Priority support", "SSO & team roles"]
+    "scaleup": {
+      "name": "Scale-Up",
+      "price": "199",
+      "priceLabel": "/month",
+      "cta": "Start 14-Day Free Trial",
+      "highlights": ["Auto-discover AWS/GCP/Azure", "SLA Reporting"],
+      "services": { "title": "SERVICES", "items": ["250 endpoints", "1 min checks", "12 months history"] },
+      "integrations": { "title": "INTEGRATIONS", "items": ["All workspace (Google + Microsoft)", "Pick 1 cloud with auto-discovery:", "AWS", "GCP", "Azure", "Stripe"] },
+      "dashboards": { "title": "DASHBOARDS", "items": ["Unlimited custom dashboards", "TV Mode included", "SLA Reporting"] },
+      "alerting": { "title": "ALERTING", "items": ["Email + Slack + Webhooks"] },
+      "team": { "title": "TEAM", "items": ["15 team members", "Basic permissions"] },
+      "support": { "title": "SUPPORT", "items": ["Priority email (<24h)", "API access"] }
+    },
+    "enterprise": {
+      "name": "Enterprise",
+      "price": "Custom",
+      "priceLabel": "pricing",
+      "cta": "Contact Sales",
+      "highlights": ["Multi-cloud", "White-label"],
+      "services": { "title": "SERVICES", "items": ["Unlimited endpoints", "Custom check frequency", "Unlimited history"] },
+      "integrations": { "title": "INTEGRATIONS", "items": ["Multi-cloud (AWS + GCP + Azure)", "All workspace integrations", "Stripe", "Future integrations included"] },
+      "dashboards": { "title": "DASHBOARDS", "items": ["Unlimited dashboards", "TV Mode + White-label", "Custom branding"] },
+      "alerting": { "title": "ALERTING", "items": ["Advanced alerting", "Escalation rules", "On-call scheduling"] },
+      "team": { "title": "TEAM", "items": ["Unlimited users", "Multi-organizations", "SSO/SAML", "Advanced permissions"] },
+      "support": { "title": "SUPPORT", "items": ["Priority support (<4h)", "Dedicated Slack channel", "Onboarding", "99.9% SLA"] }
+    },
+    "perMonth": "/mo",
+    "faq": {
+      "title": "Frequently Asked Questions",
+      "items": [
+        { "q": "Can I change plans later?", "a": "Yes, upgrade or downgrade anytime. No questions asked." },
+        { "q": "What happens if I exceed my endpoints limit?", "a": "We'll notify you. You can upgrade or pay overage (+1€/endpoint for Startup, +0.75€ for Scale-Up)." },
+        { "q": "Do you offer annual billing discounts?", "a": "Yes! Save 20% with annual billing." },
+        { "q": "Is there a free trial?", "a": "Yes, 14 days free trial on all paid plans. No credit card required." },
+        { "q": "Can I cancel anytime?", "a": "Yes, cancel anytime. No questions, no penalties." },
+        { "q": "What payment methods do you accept?", "a": "Credit card (Visa, Mastercard, Amex) via Stripe. Invoicing available for Enterprise plans." }
+      ]
     }
   },
   "auth": {

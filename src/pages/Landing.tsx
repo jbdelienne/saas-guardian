@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
-import { Activity, Bell, BarChart3, Plug, Shield, Zap, Check, ArrowRight } from "lucide-react";
+import { Activity, Bell, BarChart3, Plug, Shield, Zap, Check, X, ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { useLangPrefix } from "@/hooks/use-lang-prefix";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import duckLogo from "@/assets/moniduck-logo.png";
 
 const featureKeys = [
@@ -15,7 +16,8 @@ const featureKeys = [
   { key: "fast", icon: Zap },
 ];
 
-const planKeys = ["starter", "pro", "business"] as const;
+const planKeys = ["free", "startup", "scaleup", "enterprise"] as const;
+const sectionKeys = ["services", "integrations", "dashboards", "alerting", "team", "support"] as const;
 
 export default function Landing() {
   const { t } = useTranslation();
@@ -135,45 +137,113 @@ export default function Landing() {
 
       {/* Pricing */}
       <section id="pricing" className="border-t border-border">
-        <div className="max-w-6xl mx-auto px-6 py-20 md:py-28">
+        <div className="max-w-7xl mx-auto px-6 py-20 md:py-28">
           <div className="text-center max-w-2xl mx-auto mb-16">
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">{t("landing.pricingTitle")}</h2>
             <p className="text-muted-foreground text-lg">{t("landing.pricingSubtitle")}</p>
           </div>
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto">
             {planKeys.map((planKey) => {
-              const highlighted = planKey === "pro";
-              const planFeatures = t(`pricing.${planKey}.features`, { returnObjects: true }) as string[];
+              const isPopular = planKey === "startup";
+              const highlights = t(`pricing.${planKey}.highlights`, { returnObjects: true, defaultValue: [] }) as string[];
+              const excluded = t(`pricing.${planKey}.integrations.excluded`, { returnObjects: true, defaultValue: [] }) as string[];
+              const badge = t(`pricing.${planKey}.badge`, { defaultValue: "" });
+
               return (
                 <div
                   key={planKey}
-                  className={`rounded-xl border p-6 flex flex-col ${
-                    highlighted
+                  className={`rounded-xl border p-5 flex flex-col relative ${
+                    isPopular
                       ? "border-primary bg-primary/5 shadow-lg ring-1 ring-primary/20"
                       : "border-border bg-card"
                   }`}
                 >
-                  {highlighted && <span className="text-xs font-medium text-primary mb-3">{t("landing.mostPopular")}</span>}
-                  <h3 className="font-semibold text-lg">{t(`pricing.${planKey}.name`)}</h3>
-                  <p className="text-sm text-muted-foreground mt-1 mb-4">{t(`pricing.${planKey}.description`)}</p>
-                  <div className="mb-6">
-                    <span className="text-4xl font-bold">€{planKey === "starter" ? "0" : planKey === "pro" ? "29" : "79"}</span>
-                    <span className="text-muted-foreground text-sm">/month</span>
+                  {badge && (
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-medium">
+                      {badge}
+                    </span>
+                  )}
+
+                  {/* Header */}
+                  <h3 className="font-semibold text-lg mt-1">{t(`pricing.${planKey}.name`)}</h3>
+                  <div className="mt-3 mb-1">
+                    <span className="text-4xl font-bold">
+                      {t(`pricing.${planKey}.price`) === "0" ? "0" : t(`pricing.${planKey}.price`)}€
+                    </span>
                   </div>
-                  <ul className="space-y-2.5 mb-8 flex-1">
-                    {planFeatures.map((f) => (
-                      <li key={f} className="flex items-start gap-2.5 text-sm">
-                        <Check className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-                        <span>{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button variant={highlighted ? "default" : "outline"} className="w-full" asChild>
-                    <Link to={`${lp}/auth`}>{t(`pricing.${planKey}.cta`)}</Link>
+                  <p className="text-sm text-muted-foreground mb-5">{t(`pricing.${planKey}.priceLabel`)}</p>
+
+                  {/* Highlights */}
+                  {Array.isArray(highlights) && highlights.length > 0 && (
+                    <div className="mb-4 space-y-1.5">
+                      {highlights.map((h) => (
+                        <div key={h} className="flex items-center gap-2 text-xs font-medium text-primary">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>{h}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Sections */}
+                  <div className="flex-1 space-y-4">
+                    {sectionKeys.map((section) => {
+                      const items = t(`pricing.${planKey}.${section}.items`, { returnObjects: true, defaultValue: [] }) as string[];
+                      const sectionTitle = t(`pricing.${planKey}.${section}.title`, { defaultValue: section.toUpperCase() });
+
+                      return (
+                        <div key={section}>
+                          <p className="text-[10px] font-semibold text-muted-foreground tracking-wider mb-1.5">{sectionTitle}</p>
+                          <ul className="space-y-1">
+                            {items.map((item) => (
+                              <li key={item} className="flex items-start gap-2 text-sm">
+                                <Check className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                            {section === "integrations" && excluded.length > 0 &&
+                              excluded.map((item) => (
+                                <li key={item} className="flex items-start gap-2 text-sm text-muted-foreground">
+                                  <X className="w-3.5 h-3.5 text-muted-foreground/50 mt-0.5 shrink-0" />
+                                  <span>{item}</span>
+                                </li>
+                              ))}
+                          </ul>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* CTA */}
+                  <Button
+                    variant={isPopular ? "default" : "outline"}
+                    className="w-full mt-6"
+                    asChild
+                  >
+                    <Link to={planKey === "enterprise" ? "#" : `${lp}/auth`}>
+                      {t(`pricing.${planKey}.cta`)}
+                    </Link>
                   </Button>
                 </div>
               );
             })}
+          </div>
+
+          {/* FAQ */}
+          <div className="max-w-3xl mx-auto mt-20 md:mt-28">
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-center mb-10">
+              {t("pricing.faq.title")}
+            </h2>
+            <Accordion type="single" collapsible className="w-full">
+              {(t("pricing.faq.items", { returnObjects: true }) as Array<{ q: string; a: string }>).map(
+                (item, i) => (
+                  <AccordionItem key={i} value={`faq-${i}`}>
+                    <AccordionTrigger className="text-left">{item.q}</AccordionTrigger>
+                    <AccordionContent>{item.a}</AccordionContent>
+                  </AccordionItem>
+                )
+              )}
+            </Accordion>
           </div>
         </div>
       </section>
