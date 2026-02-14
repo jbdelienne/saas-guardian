@@ -58,7 +58,7 @@ async function refreshMicrosoftToken(refreshToken: string): Promise<{ access_tok
 }
 
 // Provider sync functions
-async function syncGoogle(accessToken: string, userId: string, integrationId: string, supabase: ReturnType<typeof createClient>) {
+async function syncGoogle(accessToken: string, userId: string, integrationId: string, supabase: any) {
   const headers = { Authorization: `Bearer ${accessToken}` };
   const metrics: Array<{ metric_type: string; metric_key: string; metric_value: number; metric_unit: string; metadata?: Record<string, unknown> }> = [];
 
@@ -194,7 +194,7 @@ async function syncGoogle(accessToken: string, userId: string, integrationId: st
   } catch (e) { console.error("Google shared drives sync error:", e); }
 }
 
-async function syncMicrosoft(accessToken: string, userId: string, integrationId: string, supabase: ReturnType<typeof createClient>) {
+async function syncMicrosoft(accessToken: string, userId: string, integrationId: string, supabase: any) {
   const headers = { Authorization: `Bearer ${accessToken}` };
   const metrics: Array<{ metric_type: string; metric_key: string; metric_value: number; metric_unit: string; metadata?: Record<string, unknown> }> = [];
 
@@ -279,7 +279,7 @@ async function syncMicrosoft(accessToken: string, userId: string, integrationId:
   await storeMetrics(supabase, userId, integrationId, metrics);
 }
 
-async function syncSlack(accessToken: string, userId: string, integrationId: string, supabase: ReturnType<typeof createClient>) {
+async function syncSlack(accessToken: string, userId: string, integrationId: string, supabase: any) {
   const headers = { Authorization: `Bearer ${accessToken}` };
   const metrics: Array<{ metric_type: string; metric_key: string; metric_value: number; metric_unit: string; metadata?: Record<string, unknown> }> = [];
 
@@ -347,7 +347,7 @@ async function syncSlack(accessToken: string, userId: string, integrationId: str
 }
 
 async function storeMetrics(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   userId: string,
   integrationId: string,
   metrics: Array<{ metric_type: string; metric_key: string; metric_value: number; metric_unit: string; metadata?: Record<string, unknown> }>
@@ -385,7 +385,7 @@ async function storeMetrics(
 
 // Check thresholds and create alerts
 async function checkThresholds(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   userId: string,
   integrationId: string,
   integrationType: string

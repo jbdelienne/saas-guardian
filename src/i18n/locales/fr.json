@@ -35,23 +35,69 @@
     "fast": { "title": "Rapide et léger", "description": "Chargement des dashboards en moins d'une seconde. Aucun agent lourd à installer. Ajoutez vos URLs et connectez vos outils." }
   },
   "pricing": {
-    "starter": {
-      "name": "Starter",
-      "description": "Pour les petites équipes qui démarrent",
+    "free": {
+      "name": "Free",
+      "price": "0",
+      "priceLabel": "pour toujours",
       "cta": "Commencer gratuitement",
-      "features": ["5 services surveillés", "1 dashboard", "2 intégrations", "Alertes email", "Intervalle de 5 min"]
+      "services": { "title": "SERVICES", "items": ["5 endpoints", "Checks toutes les 5 min", "7 jours d'historique"] },
+      "integrations": { "title": "INTÉGRATIONS", "items": [], "excluded": ["Aucune intégration"] },
+      "dashboards": { "title": "DASHBOARDS", "items": ["1 dashboard", "Widgets basiques"] },
+      "alerting": { "title": "ALERTES", "items": ["Email uniquement"] },
+      "team": { "title": "ÉQUIPE", "items": ["1 utilisateur"] },
+      "support": { "title": "SUPPORT", "items": ["Documentation"] }
     },
-    "pro": {
-      "name": "Pro",
-      "description": "Pour les équipes en croissance",
+    "startup": {
+      "name": "Startup",
+      "price": "99",
+      "priceLabel": "/mois",
       "cta": "Essai gratuit 14 jours",
-      "features": ["25 services surveillés", "Dashboards illimités", "10 intégrations", "Alertes Slack + Email", "Intervalle de 1 min", "Seuils personnalisés", "Mode TV"]
+      "badge": "Le plus populaire",
+      "highlights": ["Mode TV inclus", "2 intégrations workspace"],
+      "services": { "title": "SERVICES", "items": ["100 endpoints", "Checks toutes les 2 min", "6 mois d'historique"] },
+      "integrations": { "title": "INTÉGRATIONS", "items": ["2 workspace au choix :", "Google Workspace", "Microsoft 365"] },
+      "dashboards": { "title": "DASHBOARDS", "items": ["3 dashboards personnalisés", "Mode TV inclus"] },
+      "alerting": { "title": "ALERTES", "items": ["Email + Webhooks Slack"] },
+      "team": { "title": "ÉQUIPE", "items": ["5 membres"] },
+      "support": { "title": "SUPPORT", "items": ["Support email (<48h)"] }
     },
-    "business": {
-      "name": "Business",
-      "description": "Pour les équipes ops à grande échelle",
+    "scaleup": {
+      "name": "Scale-Up",
+      "price": "199",
+      "priceLabel": "/mois",
+      "cta": "Essai gratuit 14 jours",
+      "highlights": ["Auto-découverte AWS/GCP/Azure", "Reporting SLA"],
+      "services": { "title": "SERVICES", "items": ["250 endpoints", "Checks toutes les minutes", "12 mois d'historique"] },
+      "integrations": { "title": "INTÉGRATIONS", "items": ["Tous les workspace (Google + Microsoft)", "1 cloud au choix avec auto-découverte :", "AWS", "GCP", "Azure", "Stripe"] },
+      "dashboards": { "title": "DASHBOARDS", "items": ["Dashboards illimités", "Mode TV inclus", "Reporting SLA"] },
+      "alerting": { "title": "ALERTES", "items": ["Email + Slack + Webhooks"] },
+      "team": { "title": "ÉQUIPE", "items": ["15 membres", "Permissions basiques"] },
+      "support": { "title": "SUPPORT", "items": ["Email prioritaire (<24h)", "Accès API"] }
+    },
+    "enterprise": {
+      "name": "Enterprise",
+      "price": "Sur mesure",
+      "priceLabel": "tarification",
       "cta": "Contacter les ventes",
-      "features": ["Services illimités", "Dashboards illimités", "Intégrations illimitées", "Tous les canaux d'alerte", "Intervalle de 30 sec", "Support prioritaire", "SSO & rôles"]
+      "highlights": ["Multi-cloud", "White-label"],
+      "services": { "title": "SERVICES", "items": ["Endpoints illimités", "Fréquence personnalisée", "Historique illimité"] },
+      "integrations": { "title": "INTÉGRATIONS", "items": ["Multi-cloud (AWS + GCP + Azure)", "Toutes les intégrations workspace", "Stripe", "Futures intégrations incluses"] },
+      "dashboards": { "title": "DASHBOARDS", "items": ["Dashboards illimités", "Mode TV + White-label", "Branding personnalisé"] },
+      "alerting": { "title": "ALERTES", "items": ["Alertes avancées", "Règles d'escalade", "Astreintes"] },
+      "team": { "title": "ÉQUIPE", "items": ["Utilisateurs illimités", "Multi-organisations", "SSO/SAML", "Permissions avancées"] },
+      "support": { "title": "SUPPORT", "items": ["Support prioritaire (<4h)", "Channel Slack dédié", "Onboarding", "SLA 99.9%"] }
+    },
+    "perMonth": "/mois",
+    "faq": {
+      "title": "Questions fréquentes",
+      "items": [
+        { "q": "Puis-je changer de plan plus tard ?", "a": "Oui, montez ou descendez en gamme à tout moment. Sans justification." },
+        { "q": "Que se passe-t-il si je dépasse ma limite d'endpoints ?", "a": "Nous vous prévenons. Vous pouvez upgrader ou payer le surplus (+1€/endpoint pour Startup, +0.75€ pour Scale-Up)." },
+        { "q": "Proposez-vous des réductions pour la facturation annuelle ?", "a": "Oui ! Économisez 20% avec la facturation annuelle." },
+        { "q": "Y a-t-il un essai gratuit ?", "a": "Oui, 14 jours d'essai gratuit sur tous les plans payants. Aucune carte bancaire requise." },
+        { "q": "Puis-je annuler à tout moment ?", "a": "Oui, annulez quand vous voulez. Sans questions, sans pénalités." },
+        { "q": "Quels moyens de paiement acceptez-vous ?", "a": "Carte bancaire (Visa, Mastercard, Amex) via Stripe. Facturation disponible pour les plans Enterprise." }
+      ]
     }
   },
   "auth": {

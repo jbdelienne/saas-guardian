@@ -35,23 +35,69 @@
     "fast": { "title": "Schnell & Leichtgewichtig", "description": "Dashboard-Ladezeiten unter einer Sekunde. Keine aufgeblähten Agenten. Einfach URLs hinzufügen und Tools verbinden." }
   },
   "pricing": {
-    "starter": {
-      "name": "Starter",
-      "description": "Für kleine Teams zum Einstieg",
-      "cta": "Kostenlos starten",
-      "features": ["5 überwachte Services", "1 Dashboard", "2 Integrationen", "E-Mail-Alerts", "5-Min-Prüfintervall"]
+    "free": {
+      "name": "Free",
+      "price": "0",
+      "priceLabel": "für immer",
+      "cta": "Kostenlos starten — Keine Kreditkarte",
+      "services": { "title": "SERVICES", "items": ["5 Endpoints", "5-Min-Checks", "7 Tage Verlauf"] },
+      "integrations": { "title": "INTEGRATIONEN", "items": [], "excluded": ["Keine Integrationen"] },
+      "dashboards": { "title": "DASHBOARDS", "items": ["1 Dashboard", "Basis-Widgets"] },
+      "alerting": { "title": "ALERTING", "items": ["Nur E-Mail"] },
+      "team": { "title": "TEAM", "items": ["1 Nutzer"] },
+      "support": { "title": "SUPPORT", "items": ["Dokumentation"] }
     },
-    "pro": {
-      "name": "Pro",
-      "description": "Für wachsende Teams mit Überblick",
-      "cta": "14-Tage-Testversion starten",
-      "features": ["25 überwachte Services", "Unbegrenzte Dashboards", "10 Integrationen", "Slack + E-Mail-Alerts", "1-Min-Prüfintervall", "Individuelle Schwellenwerte", "TV-Modus"]
+    "startup": {
+      "name": "Startup",
+      "price": "99",
+      "priceLabel": "/Monat",
+      "cta": "14-Tage-Test starten",
+      "badge": "Am beliebtesten",
+      "highlights": ["TV-Modus inklusive", "2 Workspace-Integrationen"],
+      "services": { "title": "SERVICES", "items": ["100 Endpoints", "2-Min-Checks", "6 Monate Verlauf"] },
+      "integrations": { "title": "INTEGRATIONEN", "items": ["2 Workspace wählen:", "Google Workspace", "Microsoft 365"] },
+      "dashboards": { "title": "DASHBOARDS", "items": ["3 individuelle Dashboards", "TV-Modus inklusive"] },
+      "alerting": { "title": "ALERTING", "items": ["E-Mail + Slack Webhooks"] },
+      "team": { "title": "TEAM", "items": ["5 Teammitglieder"] },
+      "support": { "title": "SUPPORT", "items": ["E-Mail-Support (<48h)"] }
     },
-    "business": {
-      "name": "Business",
-      "description": "Für Ops-Teams im großen Maßstab",
+    "scaleup": {
+      "name": "Scale-Up",
+      "price": "199",
+      "priceLabel": "/Monat",
+      "cta": "14-Tage-Test starten",
+      "highlights": ["Auto-Erkennung AWS/GCP/Azure", "SLA-Reporting"],
+      "services": { "title": "SERVICES", "items": ["250 Endpoints", "1-Min-Checks", "12 Monate Verlauf"] },
+      "integrations": { "title": "INTEGRATIONEN", "items": ["Alle Workspace (Google + Microsoft)", "1 Cloud mit Auto-Erkennung wählen:", "AWS", "GCP", "Azure", "Stripe"] },
+      "dashboards": { "title": "DASHBOARDS", "items": ["Unbegrenzte Dashboards", "TV-Modus inklusive", "SLA-Reporting"] },
+      "alerting": { "title": "ALERTING", "items": ["E-Mail + Slack + Webhooks"] },
+      "team": { "title": "TEAM", "items": ["15 Teammitglieder", "Basis-Berechtigungen"] },
+      "support": { "title": "SUPPORT", "items": ["Prioritäts-E-Mail (<24h)", "API-Zugang"] }
+    },
+    "enterprise": {
+      "name": "Enterprise",
+      "price": "Individuell",
+      "priceLabel": "Preisgestaltung",
       "cta": "Vertrieb kontaktieren",
-      "features": ["Unbegrenzte Services", "Unbegrenzte Dashboards", "Unbegrenzte Integrationen", "Alle Alert-Kanäle", "30-Sek-Prüfintervall", "Prioritäts-Support", "SSO & Rollen"]
+      "highlights": ["Multi-Cloud", "White-Label"],
+      "services": { "title": "SERVICES", "items": ["Unbegrenzte Endpoints", "Individuelle Check-Frequenz", "Unbegrenzter Verlauf"] },
+      "integrations": { "title": "INTEGRATIONEN", "items": ["Multi-Cloud (AWS + GCP + Azure)", "Alle Workspace-Integrationen", "Stripe", "Zukünftige Integrationen inklusive"] },
+      "dashboards": { "title": "DASHBOARDS", "items": ["Unbegrenzte Dashboards", "TV-Modus + White-Label", "Individuelles Branding"] },
+      "alerting": { "title": "ALERTING", "items": ["Erweitertes Alerting", "Eskalationsregeln", "Bereitschaftsplanung"] },
+      "team": { "title": "TEAM", "items": ["Unbegrenzte Nutzer", "Multi-Organisationen", "SSO/SAML", "Erweiterte Berechtigungen"] },
+      "support": { "title": "SUPPORT", "items": ["Prioritäts-Support (<4h)", "Dedizierter Slack-Kanal", "Onboarding", "99,9% SLA"] }
+    },
+    "perMonth": "/Mo.",
+    "faq": {
+      "title": "Häufig gestellte Fragen",
+      "items": [
+        { "q": "Kann ich den Plan später wechseln?", "a": "Ja, jederzeit upgraden oder downgraden. Ohne Rückfragen." },
+        { "q": "Was passiert, wenn ich mein Endpoint-Limit überschreite?", "a": "Wir benachrichtigen Sie. Sie können upgraden oder Überschreitungen bezahlen (+1€/Endpoint für Startup, +0,75€ für Scale-Up)." },
+        { "q": "Bieten Sie Rabatte bei jährlicher Abrechnung?", "a": "Ja! Sparen Sie 20% bei jährlicher Abrechnung." },
+        { "q": "Gibt es eine kostenlose Testphase?", "a": "Ja, 14 Tage kostenlos bei allen bezahlten Plänen. Keine Kreditkarte erforderlich." },
+        { "q": "Kann ich jederzeit kündigen?", "a": "Ja, jederzeit kündbar. Ohne Fragen, ohne Strafen." },
+        { "q": "Welche Zahlungsmethoden akzeptieren Sie?", "a": "Kreditkarte (Visa, Mastercard, Amex) über Stripe. Rechnungsstellung für Enterprise-Pläne verfügbar." }
+      ]
     }
   },
   "auth": {
