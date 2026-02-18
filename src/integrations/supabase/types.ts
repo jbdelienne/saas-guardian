@@ -372,6 +372,8 @@ export type Database = {
           is_paused: boolean
           last_check: string | null
           name: string
+          ssl_expiry_date: string | null
+          ssl_issuer: string | null
           status: string
           updated_at: string
           uptime_percentage: number | null
@@ -387,6 +389,8 @@ export type Database = {
           is_paused?: boolean
           last_check?: string | null
           name: string
+          ssl_expiry_date?: string | null
+          ssl_issuer?: string | null
           status?: string
           updated_at?: string
           uptime_percentage?: number | null
@@ -402,6 +406,8 @@ export type Database = {
           is_paused?: boolean
           last_check?: string | null
           name?: string
+          ssl_expiry_date?: string | null
+          ssl_issuer?: string | null
           status?: string
           updated_at?: string
           uptime_percentage?: number | null
