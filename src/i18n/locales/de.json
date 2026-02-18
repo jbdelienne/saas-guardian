@@ -192,7 +192,8 @@
     "noActiveDowntimes": "Keine aktiven Ausfälle ✓",
     "allServicesUp": "Alle überwachten Dienste antworten normal",
     "downtimeBanner": "{{count}} Dienst(e) derzeit ausgefallen",
-    "downSince": "Ausgefallen seit {{time}}"
+    "downSince": "Ausgefallen seit {{time}}",
+    "resolved": "Behoben"
   },
   "settings": {
     "title": "Einstellungen",

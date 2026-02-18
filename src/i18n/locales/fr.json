@@ -192,7 +192,8 @@
     "noActiveDowntimes": "Aucune panne active ✓",
     "allServicesUp": "Tous les services surveillés répondent normalement",
     "downtimeBanner": "{{count}} service(s) actuellement en panne",
-    "downSince": "En panne depuis {{time}}"
+    "downSince": "En panne depuis {{time}}",
+    "resolved": "Résolu"
   },
   "settings": {
     "title": "Paramètres",

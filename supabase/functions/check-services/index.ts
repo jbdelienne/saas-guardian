@@ -198,6 +198,7 @@ Deno.serve(async (req) => {
           await supabase
             .from("alerts")
             .update({
+              is_dismissed: true,
               metadata: {
                 ...meta,
                 resolved_at: now.toISOString(),
