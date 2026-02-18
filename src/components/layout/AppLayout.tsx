@@ -5,9 +5,10 @@ import { useTranslation } from 'react-i18next';
 
 interface AppLayoutProps {
   children: ReactNode;
+  centered?: boolean;
 }
 
-export default function AppLayout({ children }: AppLayoutProps) {
+export default function AppLayout({ children, centered = false }: AppLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [tvMode, setTvMode] = useState(false);
   const { t } = useTranslation();
@@ -40,7 +41,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           tvMode={tvMode}
           onToggleTvMode={() => setTvMode(true)}
         />
-        <main className="flex-1 p-6 flex items-center justify-center">
+        <main className={`flex-1 p-6 ${centered ? 'flex items-center justify-center' : ''}`}>
           {children}
         </main>
       </div>
