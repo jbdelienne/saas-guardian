@@ -187,7 +187,12 @@
     "detailMetadata": "Détails",
     "detailDowntime": "Durée d'indisponibilité",
     "detailOngoing": "en cours",
-    "detailResolved": "Résolu"
+    "detailResolved": "Résolu",
+    "activeDowntimes": "Pannes actives",
+    "noActiveDowntimes": "Aucune panne active ✓",
+    "allServicesUp": "Tous les services surveillés répondent normalement",
+    "downtimeBanner": "{{count}} service(s) actuellement en panne",
+    "downSince": "En panne depuis {{time}}"
   },
   "settings": {
     "title": "Paramètres",
