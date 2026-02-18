@@ -570,9 +570,18 @@ Deno.serve(async (req) => {
         } else {
           newTokenData = await refreshMicrosoftToken(refreshToken);
         }
+
+        if (!newTokenData?.access_token) {
+          console.error("Token refresh failed:", JSON.stringify(newTokenData));
+          return new Response(JSON.stringify({ error: "Token refresh failed. Please reconnect the integration.", code: "TOKEN_REFRESH_ERROR" }), {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
         accessToken = newTokenData.access_token;
 
-        // Re-encrypt and store new token - import encrypt inline
+        // Re-encrypt and store new token
         const enc = new TextEncoder();
         const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(encryptionKey), "PBKDF2", false, ["deriveKey"]);
         const key = await crypto.subtle.deriveKey(
@@ -589,11 +598,12 @@ Deno.serve(async (req) => {
         combined.set(new Uint8Array(ciphertext), iv.length);
         const newEncrypted = btoa(String.fromCharCode(...combined));
 
+        const expiresIn = newTokenData.expires_in || 3600;
         await supabaseAdmin
           .from("integrations")
           .update({
             access_token_encrypted: newEncrypted,
-            token_expires_at: new Date(Date.now() + newTokenData.expires_in * 1000).toISOString(),
+            token_expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
           })
           .eq("id", integrationId);
       }
