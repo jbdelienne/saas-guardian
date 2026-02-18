@@ -587,6 +587,13 @@ export type Database = {
       }
       get_auth_email: { Args: never; Returns: string }
       get_user_workspace_id: { Args: { _user_id: string }; Returns: string }
+      get_workspace_member_emails: {
+        Args: { _workspace_id: string }
+        Returns: {
+          email: string
+          user_id: string
+        }[]
+      }
       is_workspace_admin: {
         Args: { _user_id: string; _workspace_id: string }
         Returns: boolean

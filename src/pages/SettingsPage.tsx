@@ -203,7 +203,7 @@ export default function SettingsPage() {
                 <div className="space-y-2">
                   {members.map((member) => {
                     const isCurrentUser = member.user_id === user?.id;
-                    const displayName = member.profile?.display_name || member.email || member.user_id.slice(0, 8);
+                    const displayName = member.email || member.profile?.display_name || member.user_id.slice(0, 8);
 
                     return (
                       <div key={member.id} className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-muted/50 transition-colors">
