@@ -30,9 +30,16 @@ export function useAddService() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (svc: { name: string; icon: string; url: string; check_interval: number }) => {
+      // Get user's workspace_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('workspace_id')
+        .eq('user_id', user!.id)
+        .single();
+
       const { data, error } = await supabase
         .from('services')
-        .insert({ ...svc, user_id: user!.id })
+        .insert({ ...svc, user_id: user!.id, workspace_id: profile?.workspace_id })
         .select()
         .single();
       if (error) throw error;

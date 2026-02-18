@@ -197,12 +197,28 @@
   },
   "settings": {
     "title": "Settings",
+    "general": "General",
     "email": "Email",
     "workspace": "Workspace",
     "myWorkspace": "My Workspace",
     "saveChanges": "Save Changes",
+    "saved": "Settings saved",
     "darkMode": "Dark Mode",
-    "darkModeDesc": "Switch between light and dark theme"
+    "darkModeDesc": "Switch between light and dark theme",
+    "team": {
+      "title": "Team",
+      "invite": "Invite a team member",
+      "emailPlaceholder": "colleague@company.com",
+      "sendInvite": "Invite",
+      "inviteHint": "They must create an account first. The invitation will be linked automatically.",
+      "inviteSent": "Invitation sent!",
+      "inviteError": "Failed to send invitation",
+      "pending": "Pending invitations",
+      "members": "Team members",
+      "you": "you",
+      "roleAdmin": "Admin",
+      "roleMember": "Member"
+    }
   },
   "integrations": {
     "title": "Integrations",

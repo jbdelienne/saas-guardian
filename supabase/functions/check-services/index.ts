@@ -162,6 +162,7 @@ Deno.serve(async (req) => {
       if (status === "down" && service.status === "up") {
         await supabase.from("alerts").insert({
           user_id: service.user_id,
+          workspace_id: service.workspace_id,
           alert_type: "downtime",
           severity: "critical",
           title: `${service.name}: Service is down`,
