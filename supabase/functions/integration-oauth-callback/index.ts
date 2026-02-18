@@ -168,6 +168,33 @@ Deno.serve(async (req) => {
       p_integration_type: provider,
     });
 
+    // Get the integration id for auto-sync
+    const { data: intForSync } = await supabaseAdmin
+      .from("integrations")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("integration_type", provider)
+      .eq("is_connected", true)
+      .maybeSingle();
+
+    // Fire-and-forget: trigger integration-sync automatically after connect
+    if (intForSync) {
+      const syncUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/integration-sync?integration_id=${intForSync.id}&auto_sync_drives=true`;
+      // We need a user token, but we're in server context. Use service role with a custom header.
+      // Actually, integration-sync requires a user Bearer token. We'll use a different approach:
+      // Store a flag and let the frontend trigger sync. OR, create a service-role path.
+      // Better approach: call integration-sync with service role by adding support for it.
+      // For now, fire with service role key and add service-role support to integration-sync.
+      fetch(syncUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          apikey: Deno.env.get("SUPABASE_ANON_KEY")!,
+          "x-sync-user-id": userId,
+        },
+      }).catch(e => console.error("Auto-sync trigger error:", e));
+    }
+
     // Redirect back to app
     const appUrl = Deno.env.get("APP_URL") || "https://id-preview--a958943c-1b40-48c5-8678-5000e2e54b1a.lovable.app";
     return new Response(null, {

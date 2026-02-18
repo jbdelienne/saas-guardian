@@ -110,7 +110,7 @@ export function useSyncIntegration() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error('Not authenticated');
 
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/integration-sync?integration_id=${integrationId}`;
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/integration-sync?integration_id=${integrationId}&auto_sync_drives=true`;
       const response = await fetch(url, {
         method: 'POST',
         headers: {
