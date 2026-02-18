@@ -67,9 +67,14 @@ export function useWorkspaceMembers() {
         .select('user_id, display_name, avatar_url')
         .in('user_id', userIds);
 
+      // Fetch emails via security definer function
+      const { data: emails } = await supabase
+        .rpc('get_workspace_member_emails', { _workspace_id: workspace!.id });
+
       return (members || []).map((m: any) => ({
         ...m,
         profile: profiles?.find((p: any) => p.user_id === m.user_id) || null,
+        email: (emails as any[])?.find((e: any) => e.user_id === m.user_id)?.email || null,
       })) as WorkspaceMember[];
     },
     enabled: !!workspace?.id,
