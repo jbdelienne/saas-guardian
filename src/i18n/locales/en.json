@@ -178,7 +178,13 @@
     "allOperational": "All systems operational ✓",
     "noAlerts": "No alerts to show",
     "viewDetails": "View Details",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "detailTriggered": "Triggered",
+    "detailTimeAgo": "Time ago",
+    "detailType": "Type",
+    "detailSource": "Source",
+    "detailURL": "URL",
+    "detailMetadata": "Details"
   },
   "settings": {
     "title": "Settings",

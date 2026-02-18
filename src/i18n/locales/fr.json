@@ -178,7 +178,13 @@
     "allOperational": "Tous les systèmes opérationnels ✓",
     "noAlerts": "Aucune alerte à afficher",
     "viewDetails": "Voir les détails",
-    "dismiss": "Ignorer"
+    "dismiss": "Ignorer",
+    "detailTriggered": "Déclenché",
+    "detailTimeAgo": "Il y a",
+    "detailType": "Type",
+    "detailSource": "Source",
+    "detailURL": "URL",
+    "detailMetadata": "Détails"
   },
   "settings": {
     "title": "Paramètres",

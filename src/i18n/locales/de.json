@@ -178,7 +178,13 @@
     "allOperational": "Alle Systeme betriebsbereit ✓",
     "noAlerts": "Keine Alerts anzuzeigen",
     "viewDetails": "Details anzeigen",
-    "dismiss": "Verwerfen"
+    "dismiss": "Verwerfen",
+    "detailTriggered": "Ausgelöst",
+    "detailTimeAgo": "Vor",
+    "detailType": "Typ",
+    "detailSource": "Quelle",
+    "detailURL": "URL",
+    "detailMetadata": "Details"
   },
   "settings": {
     "title": "Einstellungen",
