@@ -1,9 +1,10 @@
 import AppLayout from '@/components/layout/AppLayout';
 import { useAlerts, useDismissAlert, Alert } from '@/hooks/use-supabase';
-import { AlertTriangle, AlertCircle, Info, CheckCircle, Loader2 } from 'lucide-react';
+import { AlertTriangle, AlertCircle, Info, CheckCircle, Loader2, ChevronDown, ChevronUp, ExternalLink, Clock, Globe, Hash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { formatDistanceToNow, format } from 'date-fns';
 
 const severityConfig: Record<string, { icon: typeof AlertCircle; dotClass: string; badgeBg: string; badgeText: string }> = {
   critical: { icon: AlertCircle, dotClass: 'bg-destructive', badgeBg: 'bg-destructive/10', badgeText: 'text-destructive' },
@@ -17,6 +18,7 @@ export default function Alerts() {
   const { data: alerts = [], isLoading } = useAlerts();
   const dismissAlert = useDismissAlert();
   const [filter, setFilter] = useState<FilterTab>('all');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const { t } = useTranslation();
 
   const filtered = alerts.filter((a) => {
@@ -33,6 +35,10 @@ export default function Alerts() {
     { key: 'warning', label: t('alerts.warning') },
     { key: 'dismissed', label: t('alerts.dismissed') },
   ];
+
+  const toggleExpand = (id: string) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  };
 
   return (
     <AppLayout>
@@ -73,39 +79,119 @@ export default function Alerts() {
             {filtered.map((alert) => {
               const config = severityConfig[alert.severity] ?? severityConfig.info;
               const Icon = config.icon;
+              const isExpanded = expandedId === alert.id;
+              const meta = alert.metadata as Record<string, any> | null;
+
               return (
                 <div
                   key={alert.id}
-                  className={`bg-card border border-border rounded-xl p-5 ${alert.is_dismissed ? 'opacity-50' : ''}`}
+                  className={`bg-card border border-border rounded-xl overflow-hidden transition-all ${alert.is_dismissed ? 'opacity-50' : ''}`}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className={`w-9 h-9 rounded-lg ${config.badgeBg} flex items-center justify-center flex-shrink-0`}>
-                      <Icon className={`w-5 h-5 ${config.badgeText}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <h3 className="font-semibold text-foreground text-sm">{alert.title}</h3>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${config.badgeBg} ${config.badgeText}`}>
-                          {alert.severity}
-                        </span>
+                  <div className="p-5">
+                    <div className="flex items-start gap-3">
+                      <div className={`w-9 h-9 rounded-lg ${config.badgeBg} flex items-center justify-center flex-shrink-0`}>
+                        <Icon className={`w-5 h-5 ${config.badgeText}`} />
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">{alert.description}</p>
-                      {!alert.is_dismissed && (
-                        <div className="flex gap-2 mt-3">
-                          <Button variant="outline" size="sm" className="text-xs">{t('alerts.viewDetails')}</Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-xs text-muted-foreground"
-                            onClick={() => dismissAlert.mutate(alert.id)}
-                            disabled={dismissAlert.isPending}
-                          >
-                            {t('alerts.dismiss')}
-                          </Button>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <h3 className="font-semibold text-foreground text-sm">{alert.title}</h3>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${config.badgeBg} ${config.badgeText}`}>
+                            {alert.severity}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-1">{alert.description}</p>
+                        {!alert.is_dismissed && (
+                          <div className="flex gap-2 mt-3">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs gap-1.5"
+                              onClick={() => toggleExpand(alert.id)}
+                            >
+                              {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                              {t('alerts.viewDetails')}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs text-muted-foreground"
+                              onClick={() => dismissAlert.mutate(alert.id)}
+                              disabled={dismissAlert.isPending}
+                            >
+                              {t('alerts.dismiss')}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Expanded detail panel */}
+                  {isExpanded && (
+                    <div className="border-t border-border bg-muted/30 px-5 py-4 space-y-4 animate-fade-in">
+                      {/* Metadata grid */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <DetailItem
+                          icon={<Clock className="w-3.5 h-3.5" />}
+                          label={t('alerts.detailTriggered')}
+                          value={format(new Date(alert.created_at), 'PPp')}
+                        />
+                        <DetailItem
+                          icon={<Clock className="w-3.5 h-3.5" />}
+                          label={t('alerts.detailTimeAgo')}
+                          value={formatDistanceToNow(new Date(alert.created_at), { addSuffix: true })}
+                        />
+                        <DetailItem
+                          icon={<Hash className="w-3.5 h-3.5" />}
+                          label={t('alerts.detailType')}
+                          value={alert.alert_type}
+                        />
+                        {alert.integration_type && (
+                          <DetailItem
+                            icon={<Info className="w-3.5 h-3.5" />}
+                            label={t('alerts.detailSource')}
+                            value={alert.integration_type}
+                          />
+                        )}
+                        {meta?.url && (
+                          <div className="col-span-2 sm:col-span-3">
+                            <DetailItem
+                              icon={<Globe className="w-3.5 h-3.5" />}
+                              label={t('alerts.detailURL')}
+                              value={
+                                <a
+                                  href={meta.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary hover:underline inline-flex items-center gap-1"
+                                >
+                                  {meta.url}
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              }
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Raw error / extra metadata */}
+                      {meta && Object.keys(meta).length > 0 && (
+                        <div>
+                          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
+                            {t('alerts.detailMetadata')}
+                          </p>
+                          <div className="bg-muted rounded-lg p-3 text-xs font-mono text-foreground/80 overflow-x-auto whitespace-pre-wrap break-all">
+                            {Object.entries(meta).map(([key, val]) => (
+                              <div key={key} className="flex gap-2 py-0.5">
+                                <span className="text-muted-foreground min-w-[100px]">{key}:</span>
+                                <span>{typeof val === 'object' ? JSON.stringify(val) : String(val)}</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
-                  </div>
+                  )}
                 </div>
               );
             })}
@@ -113,5 +199,17 @@ export default function Alerts() {
         )}
       </div>
     </AppLayout>
+  );
+}
+
+function DetailItem({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
+  return (
+    <div className="space-y-0.5">
+      <div className="flex items-center gap-1 text-[11px] text-muted-foreground uppercase tracking-wider font-medium">
+        {icon}
+        {label}
+      </div>
+      <p className="text-sm text-foreground">{value}</p>
+    </div>
   );
 }
