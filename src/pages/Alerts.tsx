@@ -20,6 +20,12 @@ function isActiveDowntime(alert: Alert): boolean {
   return !meta?.resolved_at;
 }
 
+function isResolvedDowntime(alert: Alert): boolean {
+  if (alert.alert_type !== 'downtime') return false;
+  const meta = alert.metadata as Record<string, any> | null;
+  return !!meta?.resolved_at;
+}
+
 function formatDuration(minutes: number): string {
   if (minutes < 60) return `${minutes}min`;
   const h = Math.floor(minutes / 60);
@@ -39,18 +45,23 @@ export default function Alerts() {
   const filtered = alerts.filter((a) => {
     if (filter === 'active_downtimes') return isActiveDowntime(a);
     if (filter === 'dismissed') return a.is_dismissed;
-    if (filter === 'all') return !a.is_dismissed;
-    return a.severity === filter && !a.is_dismissed;
+    if (filter === 'all') return !a.is_dismissed && !isActiveDowntime(a);
+    if (filter === 'critical') return a.severity === 'critical' && !isActiveDowntime(a);
+    if (filter === 'warning') return a.severity === 'warning' && !isActiveDowntime(a);
+    return false;
   });
 
   const activeCount = alerts.filter((a) => !a.is_dismissed).length;
+  const criticalCount = alerts.filter((a) => a.severity === 'critical' && !isActiveDowntime(a)).length;
+  const warningCount = alerts.filter((a) => a.severity === 'warning' && !isActiveDowntime(a)).length;
+  const dismissedCount = alerts.filter((a) => a.is_dismissed && !isResolvedDowntime(a)).length;
 
   const tabs: { key: FilterTab; label: string; count?: number }[] = [
     { key: 'active_downtimes', label: t('alerts.activeDowntimes'), count: activeDowntimes.length },
     { key: 'all', label: t('alerts.all') },
-    { key: 'critical', label: t('alerts.critical') },
-    { key: 'warning', label: t('alerts.warning') },
-    { key: 'dismissed', label: t('alerts.dismissed') },
+    { key: 'critical', label: t('alerts.critical'), count: criticalCount },
+    { key: 'warning', label: t('alerts.warning'), count: warningCount },
+    { key: 'dismissed', label: t('alerts.dismissed'), count: dismissedCount },
   ];
 
   const toggleExpand = (id: string) => {
@@ -152,6 +163,11 @@ export default function Alerts() {
                             {isOngoingDowntime && (
                               <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-destructive text-destructive-foreground animate-pulse">
                                 {formatDuration(ongoingMin)}
+                              </span>
+                            )}
+                            {isResolvedDowntime(alert) && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-success/10 text-success">
+                                {t('alerts.resolved')}
                               </span>
                             )}
                           </div>

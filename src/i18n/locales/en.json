@@ -192,7 +192,8 @@
     "noActiveDowntimes": "No active downtimes ✓",
     "allServicesUp": "All monitored services are responding normally",
     "downtimeBanner": "{{count}} service(s) currently down",
-    "downSince": "Down since {{time}}"
+    "downSince": "Down since {{time}}",
+    "resolved": "Resolved"
   },
   "settings": {
     "title": "Settings",
