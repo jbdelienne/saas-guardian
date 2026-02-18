@@ -1,6 +1,6 @@
 import AppLayout from '@/components/layout/AppLayout';
 import { useAlerts, useDismissAlert, Alert } from '@/hooks/use-supabase';
-import { AlertTriangle, AlertCircle, Info, CheckCircle, Loader2, ChevronDown, ChevronUp, ExternalLink, Clock, Globe, Hash, Timer } from 'lucide-react';
+import { AlertTriangle, AlertCircle, Info, CheckCircle, Loader2, ChevronDown, ChevronUp, ExternalLink, Clock, Globe, Hash, Timer, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -12,16 +12,32 @@ const severityConfig: Record<string, { icon: typeof AlertCircle; dotClass: strin
   info: { icon: Info, dotClass: 'bg-info', badgeBg: 'bg-info/10', badgeText: 'text-info' },
 };
 
-type FilterTab = 'all' | 'critical' | 'warning' | 'dismissed';
+type FilterTab = 'active_downtimes' | 'all' | 'critical' | 'warning' | 'dismissed';
+
+function isActiveDowntime(alert: Alert): boolean {
+  if (alert.alert_type !== 'downtime' || alert.is_dismissed) return false;
+  const meta = alert.metadata as Record<string, any> | null;
+  return !meta?.resolved_at;
+}
+
+function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes}min`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `${h}h ${m}min` : `${h}h`;
+}
 
 export default function Alerts() {
   const { data: alerts = [], isLoading } = useAlerts();
   const dismissAlert = useDismissAlert();
-  const [filter, setFilter] = useState<FilterTab>('all');
+  const [filter, setFilter] = useState<FilterTab>('active_downtimes');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const { t } = useTranslation();
 
+  const activeDowntimes = alerts.filter(isActiveDowntime);
+
   const filtered = alerts.filter((a) => {
+    if (filter === 'active_downtimes') return isActiveDowntime(a);
     if (filter === 'dismissed') return a.is_dismissed;
     if (filter === 'all') return !a.is_dismissed;
     return a.severity === filter && !a.is_dismissed;
@@ -29,7 +45,8 @@ export default function Alerts() {
 
   const activeCount = alerts.filter((a) => !a.is_dismissed).length;
 
-  const tabs: { key: FilterTab; label: string }[] = [
+  const tabs: { key: FilterTab; label: string; count?: number }[] = [
+    { key: 'active_downtimes', label: t('alerts.activeDowntimes'), count: activeDowntimes.length },
     { key: 'all', label: t('alerts.all') },
     { key: 'critical', label: t('alerts.critical') },
     { key: 'warning', label: t('alerts.warning') },
@@ -48,18 +65,30 @@ export default function Alerts() {
           <p className="text-muted-foreground text-sm">{t('alerts.activeAlerts', { count: activeCount })}</p>
         </div>
 
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-6 flex-wrap">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setFilter(tab.key)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-1.5 ${
                 filter === tab.key
-                  ? 'bg-primary text-primary-foreground'
+                  ? tab.key === 'active_downtimes'
+                    ? 'bg-destructive text-destructive-foreground'
+                    : 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground hover:text-foreground'
               }`}
             >
+              {tab.key === 'active_downtimes' && <Zap className="w-3.5 h-3.5" />}
               {tab.label}
+              {tab.count !== undefined && tab.count > 0 && (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                  filter === tab.key
+                    ? 'bg-white/20'
+                    : 'bg-destructive/10 text-destructive'
+                }`}>
+                  {tab.count}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -71,21 +100,45 @@ export default function Alerts() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-muted-foreground">
             <CheckCircle className="w-12 h-12 mx-auto mb-3 text-success" />
-            <p className="font-medium text-foreground">{t('alerts.allOperational')}</p>
-            <p className="text-sm mt-1">{t('alerts.noAlerts')}</p>
+            <p className="font-medium text-foreground">
+              {filter === 'active_downtimes' ? t('alerts.noActiveDowntimes') : t('alerts.allOperational')}
+            </p>
+            <p className="text-sm mt-1">
+              {filter === 'active_downtimes' ? t('alerts.allServicesUp') : t('alerts.noAlerts')}
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
+            {/* Active downtimes banner */}
+            {filter === 'active_downtimes' && filtered.length > 0 && (
+              <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-4 mb-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+                  <Zap className="w-4 h-4" />
+                  {t('alerts.downtimeBanner', { count: filtered.length })}
+                </div>
+              </div>
+            )}
+
             {filtered.map((alert) => {
               const config = severityConfig[alert.severity] ?? severityConfig.info;
               const Icon = config.icon;
               const isExpanded = expandedId === alert.id;
               const meta = alert.metadata as Record<string, any> | null;
+              const isOngoingDowntime = isActiveDowntime(alert);
+
+              // Calculate ongoing duration for active downtimes
+              const ongoingMin = isOngoingDowntime
+                ? Math.round((Date.now() - new Date(meta?.down_since || alert.created_at).getTime()) / 60000)
+                : 0;
 
               return (
                 <div
                   key={alert.id}
-                  className={`bg-card border border-border rounded-xl overflow-hidden transition-all ${alert.is_dismissed ? 'opacity-50' : ''}`}
+                  className={`bg-card border rounded-xl overflow-hidden transition-all ${
+                    isOngoingDowntime
+                      ? 'border-destructive/40 ring-1 ring-destructive/10'
+                      : 'border-border'
+                  } ${alert.is_dismissed ? 'opacity-50' : ''}`}
                 >
                   <div className="p-5">
                     <div className="flex items-start gap-3">
@@ -94,12 +147,24 @@ export default function Alerts() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                          <h3 className="font-semibold text-foreground text-sm">{alert.title}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-foreground text-sm">{alert.title}</h3>
+                            {isOngoingDowntime && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-destructive text-destructive-foreground animate-pulse">
+                                {formatDuration(ongoingMin)}
+                              </span>
+                            )}
+                          </div>
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${config.badgeBg} ${config.badgeText}`}>
                             {alert.severity}
                           </span>
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">{alert.description}</p>
+                        {isOngoingDowntime && (
+                          <p className="text-xs text-destructive mt-1.5">
+                            {t('alerts.downSince', { time: format(new Date(meta?.down_since || alert.created_at), 'PPp') })}
+                          </p>
+                        )}
                         {!alert.is_dismissed && (
                           <div className="flex gap-2 mt-3">
                             <Button
@@ -129,7 +194,6 @@ export default function Alerts() {
                   {/* Expanded detail panel */}
                   {isExpanded && (
                     <div className="border-t border-border bg-muted/30 px-5 py-4 space-y-4 animate-fade-in">
-                      {/* Metadata grid */}
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         <DetailItem
                           icon={<Clock className="w-3.5 h-3.5" />}
@@ -146,30 +210,21 @@ export default function Alerts() {
                           label={t('alerts.detailType')}
                           value={alert.alert_type}
                         />
-                        {/* Downtime duration */}
                         {alert.alert_type === 'downtime' && (
                           <DetailItem
                             icon={<Timer className="w-3.5 h-3.5" />}
                             label={t('alerts.detailDowntime')}
                             value={
                               meta?.resolved_at
-                                ? meta.downtime_minutes < 60
-                                  ? `${meta.downtime_minutes}min`
-                                  : `${Math.floor(meta.downtime_minutes / 60)}h ${meta.downtime_minutes % 60}min`
-                                : (() => {
-                                    const downSince = meta?.down_since ? new Date(meta.down_since) : new Date(alert.created_at);
-                                    const ongoingMin = Math.round((Date.now() - downSince.getTime()) / 60000);
-                                    return (
-                                      <span className="text-destructive font-medium">
-                                        {ongoingMin < 60 ? `${ongoingMin}min` : `${Math.floor(ongoingMin / 60)}h ${ongoingMin % 60}min`}
-                                        {' '}({t('alerts.detailOngoing')})
-                                      </span>
-                                    );
-                                  })()
+                                ? formatDuration(meta.downtime_minutes)
+                                : (
+                                    <span className="text-destructive font-medium">
+                                      {formatDuration(ongoingMin)} ({t('alerts.detailOngoing')})
+                                    </span>
+                                  )
                             }
                           />
                         )}
-                        {/* Resolved at */}
                         {meta?.resolved_at && (
                           <DetailItem
                             icon={<CheckCircle className="w-3.5 h-3.5" />}
@@ -205,7 +260,6 @@ export default function Alerts() {
                         )}
                       </div>
 
-                      {/* Raw error / extra metadata */}
                       {meta && Object.keys(meta).length > 0 && (
                         <div>
                           <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">

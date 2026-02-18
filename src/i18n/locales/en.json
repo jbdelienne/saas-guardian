@@ -187,7 +187,12 @@
     "detailMetadata": "Details",
     "detailDowntime": "Downtime",
     "detailOngoing": "ongoing",
-    "detailResolved": "Resolved"
+    "detailResolved": "Resolved",
+    "activeDowntimes": "Active Downtimes",
+    "noActiveDowntimes": "No active downtimes ✓",
+    "allServicesUp": "All monitored services are responding normally",
+    "downtimeBanner": "{{count}} service(s) currently down",
+    "downSince": "Down since {{time}}"
   },
   "settings": {
     "title": "Settings",

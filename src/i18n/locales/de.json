@@ -187,7 +187,12 @@
     "detailMetadata": "Details",
     "detailDowntime": "Ausfallzeit",
     "detailOngoing": "laufend",
-    "detailResolved": "Behoben"
+    "detailResolved": "Behoben",
+    "activeDowntimes": "Aktive Ausfälle",
+    "noActiveDowntimes": "Keine aktiven Ausfälle ✓",
+    "allServicesUp": "Alle überwachten Dienste antworten normal",
+    "downtimeBanner": "{{count}} Dienst(e) derzeit ausgefallen",
+    "downSince": "Ausgefallen seit {{time}}"
   },
   "settings": {
     "title": "Einstellungen",
