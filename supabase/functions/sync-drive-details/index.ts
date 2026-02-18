@@ -156,8 +156,9 @@ Deno.serve(async (req) => {
     }
 
     // Paginate files - minimal fields for speed
+    // useDomainAdminAccess allows counting files in drives the user isn't a member of
     const q = encodeURIComponent("trashed=false");
-    const baseUrl = `https://www.googleapis.com/drive/v3/files?q=${q}&driveId=${driveId}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&fields=nextPageToken,files(size)&pageSize=1000`;
+    const baseUrl = `https://www.googleapis.com/drive/v3/files?q=${q}&driveId=${driveId}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&useDomainAdminAccess=true&fields=nextPageToken,files(size)&pageSize=1000`;
 
     let objectCount = countSoFar;
     let totalSize = sizeSoFar;
