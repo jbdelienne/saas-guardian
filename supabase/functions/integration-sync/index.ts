@@ -495,24 +495,40 @@ Deno.serve(async (req) => {
       });
     }
 
-    const supabaseUser = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const userId = claimsData.claims.sub as string;
-
     const url = new URL(req.url);
     const integrationId = url.searchParams.get("integration_id");
+    const autoSyncDrives = url.searchParams.get("auto_sync_drives") === "true";
+
+    // Support service-role calls from oauth-callback (with x-sync-user-id header)
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const token = authHeader.replace("Bearer ", "");
+    const isServiceRole = token === serviceRoleKey;
+    let userId: string;
+
+    if (isServiceRole) {
+      // Called from oauth-callback with service role
+      const headerUserId = req.headers.get("x-sync-user-id");
+      if (!headerUserId) {
+        return new Response(JSON.stringify({ error: "x-sync-user-id required for service role calls" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      userId = headerUserId;
+    } else {
+      // Normal user call
+      const supabaseUser = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_ANON_KEY")!,
+        { global: { headers: { Authorization: authHeader } } }
+      );
+      const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
+      if (claimsError || !claimsData?.claims) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      userId = claimsData.claims.sub as string;
+    }
 
     if (!integrationId) {
       return new Response(JSON.stringify({ error: "integration_id required" }), {
@@ -533,7 +549,7 @@ Deno.serve(async (req) => {
     // Use service role to read encrypted tokens
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      serviceRoleKey
     );
 
     const { data: integration, error: intError } = await supabaseAdmin
@@ -624,6 +640,30 @@ Deno.serve(async (req) => {
 
     // Check thresholds
     await checkThresholds(supabaseAdmin, userId, integrationId, provider);
+
+    // Auto-launch sync-drive-details for ALL drives in parallel (fire-and-forget)
+    if (provider === "google" && autoSyncDrives) {
+      const { data: driveListRows } = await supabaseAdmin.from("integration_sync_data")
+        .select("metadata")
+        .eq("integration_id", integrationId)
+        .eq("user_id", userId)
+        .eq("metric_type", "shared_drive_list")
+        .limit(1);
+
+      const drives: Array<{ id: string; name: string }> = (driveListRows?.[0]?.metadata as any)?.drives || [];
+      console.log(`Auto-launching sync-drive-details for ${drives.length} drives in parallel`);
+
+      for (const drive of drives) {
+        const driveUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/sync-drive-details?integration_id=${integrationId}&drive_id=${drive.id}`;
+        fetch(driveUrl, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}`,
+            apikey: Deno.env.get("SUPABASE_ANON_KEY")!,
+          },
+        }).catch(e => console.error(`Auto-sync drive ${drive.name} error:`, e));
+      }
+    }
 
     return new Response(JSON.stringify({ success: true, provider }), {
       status: 200,
