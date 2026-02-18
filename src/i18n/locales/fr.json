@@ -197,12 +197,28 @@
   },
   "settings": {
     "title": "Paramètres",
+    "general": "Général",
     "email": "Email",
     "workspace": "Espace de travail",
     "myWorkspace": "Mon espace de travail",
     "saveChanges": "Enregistrer",
+    "saved": "Paramètres sauvegardés",
     "darkMode": "Mode sombre",
-    "darkModeDesc": "Basculer entre le thème clair et sombre"
+    "darkModeDesc": "Basculer entre le thème clair et sombre",
+    "team": {
+      "title": "Équipe",
+      "invite": "Inviter un membre",
+      "emailPlaceholder": "collegue@entreprise.com",
+      "sendInvite": "Inviter",
+      "inviteHint": "L'utilisateur doit d'abord créer un compte. L'invitation sera liée automatiquement.",
+      "inviteSent": "Invitation envoyée !",
+      "inviteError": "Erreur lors de l'envoi de l'invitation",
+      "pending": "Invitations en attente",
+      "members": "Membres de l'équipe",
+      "you": "vous",
+      "roleAdmin": "Admin",
+      "roleMember": "Membre"
+    }
   },
   "integrations": {
     "title": "Intégrations",

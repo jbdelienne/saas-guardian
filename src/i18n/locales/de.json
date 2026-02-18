@@ -197,12 +197,28 @@
   },
   "settings": {
     "title": "Einstellungen",
+    "general": "Allgemein",
     "email": "E-Mail",
     "workspace": "Arbeitsbereich",
     "myWorkspace": "Mein Arbeitsbereich",
     "saveChanges": "Speichern",
+    "saved": "Einstellungen gespeichert",
     "darkMode": "Dunkelmodus",
-    "darkModeDesc": "Zwischen hellem und dunklem Design wechseln"
+    "darkModeDesc": "Zwischen hellem und dunklem Design wechseln",
+    "team": {
+      "title": "Team",
+      "invite": "Teammitglied einladen",
+      "emailPlaceholder": "kollege@firma.com",
+      "sendInvite": "Einladen",
+      "inviteHint": "Der Benutzer muss zuerst ein Konto erstellen. Die Einladung wird automatisch verknüpft.",
+      "inviteSent": "Einladung gesendet!",
+      "inviteError": "Fehler beim Senden der Einladung",
+      "pending": "Ausstehende Einladungen",
+      "members": "Teammitglieder",
+      "you": "du",
+      "roleAdmin": "Admin",
+      "roleMember": "Mitglied"
+    }
   },
   "integrations": {
     "title": "Integrationen",

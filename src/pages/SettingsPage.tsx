@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -5,50 +6,265 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useTheme } from 'next-themes';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, Users, Settings, Mail, Trash2, Shield, Crown, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import {
+  useWorkspace,
+  useWorkspaceMembers,
+  useWorkspaceInvitations,
+  useInviteMember,
+  useCancelInvitation,
+  useUpdateMemberRole,
+  useRemoveMember,
+  useUpdateWorkspaceName,
+  useIsWorkspaceAdmin,
+} from '@/hooks/use-workspace';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from '@/hooks/use-toast';
 
 export default function SettingsPage() {
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
   const { t } = useTranslation();
+  const { data: workspace } = useWorkspace();
+  const { data: members = [], isLoading: membersLoading } = useWorkspaceMembers();
+  const { data: invitations = [] } = useWorkspaceInvitations();
+  const inviteMember = useInviteMember();
+  const cancelInvitation = useCancelInvitation();
+  const updateRole = useUpdateMemberRole();
+  const removeMember = useRemoveMember();
+  const updateName = useUpdateWorkspaceName();
+  const isAdmin = useIsWorkspaceAdmin();
+
+  const [wsName, setWsName] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member');
+
+  const handleSaveWorkspace = async () => {
+    if (!wsName.trim()) return;
+    await updateName.mutateAsync(wsName.trim());
+    toast({ title: t('settings.saved') });
+  };
+
+  const handleInvite = async () => {
+    if (!inviteEmail.trim()) return;
+    try {
+      await inviteMember.mutateAsync({ email: inviteEmail, role: inviteRole });
+      setInviteEmail('');
+      toast({ title: t('settings.team.inviteSent') });
+    } catch (e: any) {
+      toast({ title: t('settings.team.inviteError'), description: e.message, variant: 'destructive' });
+    }
+  };
 
   return (
     <AppLayout>
-      <div className="max-w-xl animate-fade-in">
+      <div className="max-w-2xl animate-fade-in">
         <h1 className="text-2xl font-bold text-foreground mb-6">{t('settings.title')}</h1>
 
-        <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-          <div className="space-y-2">
-            <Label>{t('settings.email')}</Label>
-            <Input value={user?.email ?? ''} disabled />
-          </div>
+        <Tabs defaultValue="general">
+          <TabsList className="mb-6">
+            <TabsTrigger value="general" className="gap-1.5">
+              <Settings className="w-4 h-4" />
+              {t('settings.general')}
+            </TabsTrigger>
+            <TabsTrigger value="team" className="gap-1.5">
+              <Users className="w-4 h-4" />
+              {t('settings.team.title')}
+              {members.length > 1 && (
+                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-bold ml-1">
+                  {members.length}
+                </span>
+              )}
+            </TabsTrigger>
+          </TabsList>
 
-          <div className="space-y-2">
-            <Label>{t('settings.workspace')}</Label>
-            <Input defaultValue={t('settings.myWorkspace')} />
-          </div>
+          {/* General tab */}
+          <TabsContent value="general" className="space-y-6">
+            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+              <div className="space-y-2">
+                <Label>{t('settings.email')}</Label>
+                <Input value={user?.email ?? ''} disabled />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('settings.workspace')}</Label>
+                <Input
+                  value={wsName || workspace?.name || ''}
+                  onChange={(e) => setWsName(e.target.value)}
+                  disabled={!isAdmin}
+                />
+              </div>
+              {isAdmin && (
+                <Button
+                  className="gradient-primary text-primary-foreground hover:opacity-90 transition-opacity"
+                  onClick={handleSaveWorkspace}
+                  disabled={updateName.isPending}
+                >
+                  {t('settings.saveChanges')}
+                </Button>
+              )}
+            </div>
 
-          <Button className="gradient-primary text-primary-foreground hover:opacity-90 transition-opacity">
-            {t('settings.saveChanges')}
-          </Button>
-        </div>
-
-        <div className="bg-card border border-border rounded-xl p-6 mt-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {theme === 'dark' ? <Moon className="h-5 w-5 text-muted-foreground" /> : <Sun className="h-5 w-5 text-muted-foreground" />}
-              <div>
-                <Label className="text-sm font-medium">{t('settings.darkMode')}</Label>
-                <p className="text-xs text-muted-foreground">{t('settings.darkModeDesc')}</p>
+            <div className="bg-card border border-border rounded-xl p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {theme === 'dark' ? <Moon className="h-5 w-5 text-muted-foreground" /> : <Sun className="h-5 w-5 text-muted-foreground" />}
+                  <div>
+                    <Label className="text-sm font-medium">{t('settings.darkMode')}</Label>
+                    <p className="text-xs text-muted-foreground">{t('settings.darkModeDesc')}</p>
+                  </div>
+                </div>
+                <Switch
+                  checked={theme === 'dark'}
+                  onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+                />
               </div>
             </div>
-            <Switch
-              checked={theme === 'dark'}
-              onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
-            />
-          </div>
-        </div>
+          </TabsContent>
+
+          {/* Team tab */}
+          <TabsContent value="team" className="space-y-6">
+            {/* Invite section (admin only) */}
+            {isAdmin && (
+              <div className="bg-card border border-border rounded-xl p-6">
+                <h3 className="font-semibold text-foreground text-sm mb-4">{t('settings.team.invite')}</h3>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder={t('settings.team.emailPlaceholder')}
+                    type="email"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    className="flex-1"
+                    onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
+                  />
+                  <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as 'admin' | 'member')}>
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="member">{t('settings.team.roleMember')}</SelectItem>
+                      <SelectItem value="admin">{t('settings.team.roleAdmin')}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    onClick={handleInvite}
+                    disabled={inviteMember.isPending || !inviteEmail.trim()}
+                    className="gradient-primary text-primary-foreground hover:opacity-90"
+                  >
+                    <Mail className="w-4 h-4 mr-1.5" />
+                    {t('settings.team.sendInvite')}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">{t('settings.team.inviteHint')}</p>
+              </div>
+            )}
+
+            {/* Pending invitations */}
+            {invitations.length > 0 && (
+              <div className="bg-card border border-border rounded-xl p-6">
+                <h3 className="font-semibold text-foreground text-sm mb-3">{t('settings.team.pending')}</h3>
+                <div className="space-y-2">
+                  {invitations.map((inv) => (
+                    <div key={inv.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/50">
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm text-foreground">{inv.invited_email}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-warning/10 text-warning font-medium capitalize">
+                          {inv.role}
+                        </span>
+                      </div>
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={() => cancelInvitation.mutate(inv.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Members list */}
+            <div className="bg-card border border-border rounded-xl p-6">
+              <h3 className="font-semibold text-foreground text-sm mb-3">
+                {t('settings.team.members')} ({members.length})
+              </h3>
+              {membersLoading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {members.map((member) => {
+                    const isCurrentUser = member.user_id === user?.id;
+                    const displayName = member.profile?.display_name || member.email || member.user_id.slice(0, 8);
+
+                    return (
+                      <div key={member.id} className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-medium text-primary">
+                            {displayName.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm font-medium text-foreground">{displayName}</span>
+                              {isCurrentUser && (
+                                <span className="text-[10px] text-muted-foreground">({t('settings.team.you')})</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {member.role === 'admin' ? (
+                            <div className="flex items-center gap-1 text-xs text-primary font-medium">
+                              <Crown className="w-3.5 h-3.5" />
+                              Admin
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
+                              <Shield className="w-3.5 h-3.5" />
+                              Member
+                            </div>
+                          )}
+                          {isAdmin && !isCurrentUser && (
+                            <div className="flex items-center gap-1 ml-2">
+                              <Select
+                                value={member.role}
+                                onValueChange={(v) => updateRole.mutate({ id: member.id, role: v as 'admin' | 'member' })}
+                              >
+                                <SelectTrigger className="h-7 text-xs w-[90px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="member">{t('settings.team.roleMember')}</SelectItem>
+                                  <SelectItem value="admin">{t('settings.team.roleAdmin')}</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => removeMember.mutate(member.id)}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </AppLayout>
   );
