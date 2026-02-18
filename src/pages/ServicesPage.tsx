@@ -2,6 +2,7 @@ import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useServices, useAddService, useDeleteService, useTogglePause, Service } from '@/hooks/use-supabase';
 import AddServiceModal from '@/components/dashboard/AddServiceModal';
+import ServiceDetailModal from '@/components/dashboard/ServiceDetailModal';
 import { Button } from '@/components/ui/button';
 import { Plus, Trash2, Pause, Play, ExternalLink, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -32,6 +33,7 @@ export default function ServicesPage() {
   const togglePause = useTogglePause();
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Service | null>(null);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
   const { t } = useTranslation();
 
   const statusConfig: Record<string, { label: string; dotClass: string }> = {
@@ -95,7 +97,7 @@ export default function ServicesPage() {
                 {services.map((service) => {
                   const status = statusConfig[service.status] ?? statusConfig.unknown;
                   return (
-                    <TableRow key={service.id} className="group">
+                    <TableRow key={service.id} className="group cursor-pointer" onClick={() => setSelectedService(service)}>
                       <TableCell>
                         <span className="text-lg">{service.icon}</span>
                       </TableCell>
@@ -139,7 +141,7 @@ export default function ServicesPage() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                            onClick={() => togglePause.mutate({ id: service.id, is_paused: !service.is_paused })}
+                            onClick={(e) => { e.stopPropagation(); togglePause.mutate({ id: service.id, is_paused: !service.is_paused }); }}
                           >
                             {service.is_paused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
                           </Button>
@@ -147,7 +149,7 @@ export default function ServicesPage() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={() => setDeleteTarget(service)}
+                            onClick={(e) => { e.stopPropagation(); setDeleteTarget(service); }}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -163,6 +165,13 @@ export default function ServicesPage() {
       </div>
 
       <AddServiceModal open={addModalOpen} onClose={() => setAddModalOpen(false)} onAdd={handleAddService} />
+
+      <ServiceDetailModal
+        service={selectedService}
+        open={!!selectedService}
+        onClose={() => setSelectedService(null)}
+        onDelete={(id) => { deleteService.mutateAsync(id); setSelectedService(null); }}
+      />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
         <AlertDialogContent>

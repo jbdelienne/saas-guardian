@@ -1,10 +1,9 @@
-import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Service, useChecks, useTogglePause } from '@/hooks/use-supabase';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { formatDistanceToNow, format } from 'date-fns';
-import { Trash2, Pause, Play, Loader2 } from 'lucide-react';
+import { formatDistanceToNow, format, differenceInDays } from 'date-fns';
+import { Trash2, Pause, Play, Loader2, Shield, Activity, Clock, ArrowUpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const statusDotClass: Record<string, string> = {
@@ -12,6 +11,13 @@ const statusDotClass: Record<string, string> = {
   down: 'status-dot-down',
   degraded: 'status-dot-degraded',
   unknown: 'status-dot-unknown',
+};
+
+const statusLabel: Record<string, string> = {
+  up: 'Operational',
+  down: 'Down',
+  degraded: 'Degraded',
+  unknown: 'Pending',
 };
 
 interface ServiceDetailModalProps {
@@ -36,6 +42,21 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
 
   if (!service) return null;
 
+  const sslExpiry = (service as any).ssl_expiry_date
+    ? new Date((service as any).ssl_expiry_date)
+    : null;
+  const sslDaysLeft = sslExpiry ? differenceInDays(sslExpiry, new Date()) : null;
+  const sslIssuer = (service as any).ssl_issuer as string | null;
+
+  const sslColor =
+    sslDaysLeft === null
+      ? 'text-muted-foreground'
+      : sslDaysLeft <= 7
+        ? 'text-destructive'
+        : sslDaysLeft <= 30
+          ? 'text-warning'
+          : 'text-emerald-500';
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -58,21 +79,55 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6 mt-4">
-            <div className="grid grid-cols-3 gap-4">
+            {/* Stats cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="bg-muted rounded-xl p-4 text-center">
-                <p className="text-2xl font-bold text-foreground">{service.uptime_percentage ?? 0}%</p>
-                <p className="text-xs text-muted-foreground mt-1">Uptime</p>
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <Activity className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <p className="text-xl font-bold text-foreground capitalize">{statusLabel[service.status] ?? 'Unknown'}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Status</p>
               </div>
               <div className="bg-muted rounded-xl p-4 text-center">
-                <p className="text-2xl font-bold text-foreground">{service.avg_response_time ?? 0}ms</p>
-                <p className="text-xs text-muted-foreground mt-1">Avg Response</p>
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <ArrowUpCircle className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <p className="text-xl font-bold text-foreground">{service.uptime_percentage ?? 0}%</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Uptime (12 months)</p>
               </div>
               <div className="bg-muted rounded-xl p-4 text-center">
-                <p className="text-2xl font-bold text-foreground">{service.check_interval}m</p>
-                <p className="text-xs text-muted-foreground mt-1">Interval</p>
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <p className="text-xl font-bold text-foreground">{service.avg_response_time ?? 0}ms</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Avg Response</p>
+              </div>
+              <div className="bg-muted rounded-xl p-4 text-center">
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <Shield className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <p className={`text-xl font-bold ${sslColor}`}>
+                  {sslDaysLeft !== null ? `${sslDaysLeft}d` : '—'}
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">SSL Expires in</p>
+                {sslIssuer && (
+                  <p className="text-[10px] text-muted-foreground truncate mt-0.5" title={sslIssuer}>{sslIssuer}</p>
+                )}
               </div>
             </div>
 
+            {/* Check interval info */}
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Check interval: <strong className="text-foreground">{service.check_interval}min</strong></span>
+              <span>·</span>
+              <span>Last check: <strong className="text-foreground">
+                {service.last_check
+                  ? formatDistanceToNow(new Date(service.last_check), { addSuffix: true })
+                  : 'Never'}
+              </strong></span>
+            </div>
+
+            {/* Response time chart */}
             <div>
               <h4 className="text-sm font-semibold mb-3 text-foreground">Response Time (last 24 checks)</h4>
               <div className="h-48 bg-muted/50 rounded-xl p-2">
@@ -115,7 +170,7 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
               <p className="text-sm text-muted-foreground text-center py-8">No checks recorded yet</p>
             ) : (
               <div className="space-y-1">
-                {checks.slice(0, 15).map((check) => (
+                {checks.slice(0, 20).map((check) => (
                   <div key={check.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 text-sm">
                     <div className="flex items-center gap-2">
                       <div className={check.status === 'up' ? 'status-dot-up' : 'status-dot-down'} />
