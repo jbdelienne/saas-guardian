@@ -40,7 +40,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           tvMode={tvMode}
           onToggleTvMode={() => setTvMode(true)}
         />
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 flex items-center justify-center">
           {children}
         </main>
       </div>
