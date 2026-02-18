@@ -1,6 +1,6 @@
 import AppLayout from '@/components/layout/AppLayout';
 import { useAlerts, useDismissAlert, Alert } from '@/hooks/use-supabase';
-import { AlertTriangle, AlertCircle, Info, CheckCircle, Loader2, ChevronDown, ChevronUp, ExternalLink, Clock, Globe, Hash } from 'lucide-react';
+import { AlertTriangle, AlertCircle, Info, CheckCircle, Loader2, ChevronDown, ChevronUp, ExternalLink, Clock, Globe, Hash, Timer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -146,6 +146,37 @@ export default function Alerts() {
                           label={t('alerts.detailType')}
                           value={alert.alert_type}
                         />
+                        {/* Downtime duration */}
+                        {alert.alert_type === 'downtime' && (
+                          <DetailItem
+                            icon={<Timer className="w-3.5 h-3.5" />}
+                            label={t('alerts.detailDowntime')}
+                            value={
+                              meta?.resolved_at
+                                ? meta.downtime_minutes < 60
+                                  ? `${meta.downtime_minutes}min`
+                                  : `${Math.floor(meta.downtime_minutes / 60)}h ${meta.downtime_minutes % 60}min`
+                                : (() => {
+                                    const downSince = meta?.down_since ? new Date(meta.down_since) : new Date(alert.created_at);
+                                    const ongoingMin = Math.round((Date.now() - downSince.getTime()) / 60000);
+                                    return (
+                                      <span className="text-destructive font-medium">
+                                        {ongoingMin < 60 ? `${ongoingMin}min` : `${Math.floor(ongoingMin / 60)}h ${ongoingMin % 60}min`}
+                                        {' '}({t('alerts.detailOngoing')})
+                                      </span>
+                                    );
+                                  })()
+                            }
+                          />
+                        )}
+                        {/* Resolved at */}
+                        {meta?.resolved_at && (
+                          <DetailItem
+                            icon={<CheckCircle className="w-3.5 h-3.5" />}
+                            label={t('alerts.detailResolved')}
+                            value={format(new Date(meta.resolved_at), 'PPp')}
+                          />
+                        )}
                         {alert.integration_type && (
                           <DetailItem
                             icon={<Info className="w-3.5 h-3.5" />}

@@ -169,8 +169,43 @@ Deno.serve(async (req) => {
             ? `Error: ${errorMessage}`
             : `HTTP ${statusCode} - Service is not responding`,
           integration_type: "service",
-          metadata: { service_id: service.id, url: service.url },
+          metadata: { service_id: service.id, url: service.url, down_since: now.toISOString() },
         });
+      }
+
+      // If service recovered (was down, now up), resolve the open downtime alert
+      if (status === "up" && service.status === "down") {
+        const { data: openAlerts } = await supabase
+          .from("alerts")
+          .select("id, created_at, metadata")
+          .eq("user_id", service.user_id)
+          .eq("alert_type", "downtime")
+          .eq("is_dismissed", false)
+          .order("created_at", { ascending: false })
+          .limit(10);
+
+        const matchingAlert = openAlerts?.find((a: any) => {
+          const m = a.metadata as Record<string, any> | null;
+          return m?.service_id === service.id && !m?.resolved_at;
+        });
+
+        if (matchingAlert) {
+          const meta = matchingAlert.metadata as Record<string, any>;
+          const downSince = meta?.down_since ? new Date(meta.down_since) : new Date(matchingAlert.created_at);
+          const durationMs = now.getTime() - downSince.getTime();
+          const durationMin = Math.round(durationMs / 60000);
+
+          await supabase
+            .from("alerts")
+            .update({
+              metadata: {
+                ...meta,
+                resolved_at: now.toISOString(),
+                downtime_minutes: durationMin,
+              },
+            })
+            .eq("id", matchingAlert.id);
+        }
       }
 
       results.push({ service_id: service.id, status, response_time: responseTime });

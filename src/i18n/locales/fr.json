@@ -184,7 +184,10 @@
     "detailType": "Type",
     "detailSource": "Source",
     "detailURL": "URL",
-    "detailMetadata": "Détails"
+    "detailMetadata": "Détails",
+    "detailDowntime": "Durée d'indisponibilité",
+    "detailOngoing": "en cours",
+    "detailResolved": "Résolu"
   },
   "settings": {
     "title": "Paramètres",

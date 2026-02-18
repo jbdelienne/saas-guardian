@@ -184,7 +184,10 @@
     "detailType": "Type",
     "detailSource": "Source",
     "detailURL": "URL",
-    "detailMetadata": "Details"
+    "detailMetadata": "Details",
+    "detailDowntime": "Downtime",
+    "detailOngoing": "ongoing",
+    "detailResolved": "Resolved"
   },
   "settings": {
     "title": "Settings",
