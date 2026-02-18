@@ -184,7 +184,10 @@
     "detailType": "Typ",
     "detailSource": "Quelle",
     "detailURL": "URL",
-    "detailMetadata": "Details"
+    "detailMetadata": "Details",
+    "detailDowntime": "Ausfallzeit",
+    "detailOngoing": "laufend",
+    "detailResolved": "Behoben"
   },
   "settings": {
     "title": "Einstellungen",
