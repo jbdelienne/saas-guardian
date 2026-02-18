@@ -69,7 +69,7 @@ export default function Alerts() {
   };
 
   return (
-    <AppLayout>
+    <AppLayout centered>
       <div className="max-w-3xl animate-fade-in">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-foreground mb-1">{t('alerts.title')}</h1>

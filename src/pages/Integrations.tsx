@@ -60,7 +60,7 @@ export default function Integrations() {
     integrations.find((i) => i.integration_type === type && i.is_connected);
 
   return (
-    <AppLayout>
+    <AppLayout centered>
       <div className="max-w-4xl animate-fade-in">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-foreground mb-1">{t('integrations.title')}</h1>
