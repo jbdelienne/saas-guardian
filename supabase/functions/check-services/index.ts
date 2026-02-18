@@ -1,4 +1,21 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import tls from "node:tls";
+
+function checkSSL(hostname: string, port = 443): Promise<{ daysLeft: number; expiryDate: string; issuer: string }> {
+  return new Promise((resolve, reject) => {
+    const socket = tls.connect(port, hostname, { servername: hostname }, () => {
+      const cert = socket.getPeerCertificate();
+      socket.end();
+      const expiryDate = new Date(cert.valid_to);
+      const now = new Date();
+      const daysLeft = Math.floor((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const issuer = cert.issuer?.O || cert.issuer?.CN || "Unknown";
+      resolve({ daysLeft, expiryDate: expiryDate.toISOString(), issuer });
+    });
+    socket.on("error", (err: Error) => reject(err));
+    socket.setTimeout(5000, () => { socket.destroy(); reject(new Error("Timeout")); });
+  });
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -118,16 +135,9 @@ Deno.serve(async (req) => {
       try {
         const urlObj = new URL(service.url);
         if (urlObj.protocol === "https:") {
-          const conn = await Deno.connectTls({
-            hostname: urlObj.hostname,
-            port: Number(urlObj.port) || 443,
-          });
-          const handshake = await conn.handshake();
-          if (handshake.peerCertificates && handshake.peerCertificates.length > 0) {
-            // Parse X.509 cert to get expiry - use basic ASN.1 parsing
-            // For now we store the raw cert and parse expiry from TLS info
-          }
-          conn.close();
+          const sslInfo = await checkSSL(urlObj.hostname, Number(urlObj.port) || 443);
+          sslExpiryDate = sslInfo.expiryDate;
+          sslIssuer = sslInfo.issuer;
         }
       } catch (_e) {
         // SSL check failed, leave as null
