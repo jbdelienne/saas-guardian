@@ -152,44 +152,76 @@ async function syncGoogle(accessToken: string, userId: string, integrationId: st
 
   // Fetch shared drives list and cache it (no file counting - done by sync-drive-details)
   try {
-    const drivesRes = await fetch(
-      "https://www.googleapis.com/drive/v3/drives?pageSize=100&fields=drives(id,name,createdTime),nextPageToken",
-      { headers }
-    );
-    console.log("Shared drives API status:", drivesRes.status);
-    if (drivesRes.ok) {
-      const drivesData = await drivesRes.json();
-      const drives = drivesData.drives || [];
-      console.log("Shared drives found:", drives.length);
+    // Try with useDomainAdminAccess first (lists ALL shared drives, even if user isn't a member)
+    // Falls back to member-only drives if user isn't a domain admin (403)
+    let allDrives: Array<{ id: string; name: string; createdTime?: string }> = [];
+    let useAdminAccess = true;
 
-      // Store drive count
-      metrics.push({ metric_type: "drive", metric_key: "drive_shared_drives_count", metric_value: drives.length, metric_unit: "count" });
+    const fetchAllDrives = async (adminAccess: boolean) => {
+      const drives: Array<{ id: string; name: string; createdTime?: string }> = [];
+      let pageToken: string | null = null;
+      do {
+        const params = new URLSearchParams({
+          pageSize: '100',
+          fields: 'nextPageToken,drives(id,name,createdTime)',
+        });
+        if (adminAccess) params.set('useDomainAdminAccess', 'true');
+        if (pageToken) params.set('pageToken', pageToken);
 
-      // Cache the full drive list for sync-drive-details to consume
-      await supabase.from("integration_sync_data").delete()
-        .eq("integration_id", integrationId).eq("user_id", userId).eq("metric_type", "shared_drive_list");
+        const res = await fetch(`https://www.googleapis.com/drive/v3/drives?${params}`, { headers });
 
+        if (!res.ok) {
+          if (res.status === 403 && adminAccess) {
+            console.warn('Not a domain admin, falling back to member drives only');
+            return null; // signal fallback
+          }
+          console.error(`Shared drives API error: ${res.status}`);
+          return drives;
+        }
+
+        const data = await res.json();
+        drives.push(...(data.drives || []));
+        pageToken = data.nextPageToken || null;
+      } while (pageToken);
+      return drives;
+    };
+
+    let result = await fetchAllDrives(true);
+    if (result === null) {
+      // Fallback: no admin access, list member drives only
+      result = await fetchAllDrives(false);
+      useAdminAccess = false;
+    }
+    allDrives = result || [];
+    console.log(`Shared drives found: ${allDrives.length} (adminAccess: ${useAdminAccess})`);
+
+    // Store drive count
+    metrics.push({ metric_type: "drive", metric_key: "drive_shared_drives_count", metric_value: allDrives.length, metric_unit: "count" });
+
+    // Cache the full drive list for sync-drive-details to consume
+    await supabase.from("integration_sync_data").delete()
+      .eq("integration_id", integrationId).eq("user_id", userId).eq("metric_type", "shared_drive_list");
+
+    await supabase.from("integration_sync_data").insert({
+      user_id: userId, integration_id: integrationId,
+      metric_type: "shared_drive_list", metric_key: "drive_list",
+      metric_value: allDrives.length, metric_unit: "list",
+      metadata: { drives: allDrives.map((d) => ({ id: d.id, name: d.name, createdTime: d.createdTime })) },
+      synced_at: new Date().toISOString(),
+    });
+
+    // Delete old shared_drive entries and create fresh placeholders
+    await supabase.from("integration_sync_data").delete()
+      .eq("integration_id", integrationId).eq("user_id", userId).eq("metric_type", "shared_drive");
+
+    for (let i = 0; i < allDrives.length; i++) {
       await supabase.from("integration_sync_data").insert({
         user_id: userId, integration_id: integrationId,
-        metric_type: "shared_drive_list", metric_key: "drive_list",
-        metric_value: drives.length, metric_unit: "list",
-        metadata: { drives: drives.map((d: any) => ({ id: d.id, name: d.name, createdTime: d.createdTime })) },
+        metric_type: "shared_drive", metric_key: `shared_drive_${i}`,
+        metric_value: -1, metric_unit: "objects",
+        metadata: { drive_id: allDrives[i].id, name: allDrives[i].name, created_time: allDrives[i].createdTime || null, object_limit: 400000, object_count: -1, storage_used_gb: 0 },
         synced_at: new Date().toISOString(),
       });
-
-      // Delete old shared_drive entries and create fresh placeholders
-      await supabase.from("integration_sync_data").delete()
-        .eq("integration_id", integrationId).eq("user_id", userId).eq("metric_type", "shared_drive");
-
-      for (let i = 0; i < drives.length; i++) {
-        await supabase.from("integration_sync_data").insert({
-          user_id: userId, integration_id: integrationId,
-          metric_type: "shared_drive", metric_key: `shared_drive_${i}`,
-          metric_value: -1, metric_unit: "objects",
-          metadata: { drive_id: drives[i].id, name: drives[i].name, created_time: drives[i].createdTime || null, object_limit: 400000, object_count: -1, storage_used_gb: 0 },
-          synced_at: new Date().toISOString(),
-        });
-      }
     }
   } catch (e) { console.error("Google shared drives sync error:", e); }
 }
