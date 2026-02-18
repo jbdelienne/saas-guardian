@@ -585,6 +585,7 @@ export type Database = {
         Args: { p_integration_type: string; p_user_id: string }
         Returns: undefined
       }
+      get_auth_email: { Args: never; Returns: string }
       get_user_workspace_id: { Args: { _user_id: string }; Returns: string }
       is_workspace_admin: {
         Args: { _user_id: string; _workspace_id: string }
