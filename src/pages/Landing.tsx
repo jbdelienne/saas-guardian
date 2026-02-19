@@ -29,8 +29,8 @@ export default function Landing() {
       <nav className="border-b border-border bg-card/60 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <img src={duckLogo} alt="MoniDuck" className="w-16 h-16" />
-            <span className="font-semibold text-4xl tracking-tight">MoniDuck</span>
+            <img src={duckLogo} alt="moniduck" className="w-16 h-16" />
+            <span className="font-semibold text-4xl tracking-tight">moniduck</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors">
@@ -253,8 +253,8 @@ export default function Landing() {
       <footer className="border-t border-border bg-card/40">
         <div className="max-w-6xl mx-auto px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <img src={duckLogo} alt="MoniDuck" className="w-6 h-6" />
-            <span className="text-sm text-muted-foreground">© {new Date().getFullYear()} MoniDuck</span>
+            <img src={duckLogo} alt="moniduck" className="w-6 h-6" />
+            <span className="text-sm text-muted-foreground">© {new Date().getFullYear()} moniduck</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
             <a href="#features" className="hover:text-foreground transition-colors">
