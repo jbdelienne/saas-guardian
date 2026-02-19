@@ -23,8 +23,8 @@ export default function AppSidebar({ collapsed, onToggle }: { collapsed: boolean
       }`}
     >
       <div className="items-center gap-2 p-4 border-b border-sidebar-border min-h-[60px] flex flex-col">
-        <img src={duckLogo} alt="MoniDuck" className="w-20 h-20 flex-shrink-0" />
-        {!collapsed && <span className="text-lg font-bold text-foreground">MoniDuck</span>}
+        <img src={duckLogo} alt="moniduck" className="w-20 h-20 flex-shrink-0" />
+        {!collapsed && <span className="text-lg font-bold text-foreground">moniduck</span>}
       </div>
 
       <nav className="flex-1 p-2 space-y-1">

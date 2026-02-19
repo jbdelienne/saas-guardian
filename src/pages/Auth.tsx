@@ -44,8 +44,8 @@ export default function Auth() {
       <div className="hidden lg:flex lg:w-1/3 bg-card border-r border-border flex-col justify-between p-12">
         <div>
           <div className="flex items-center gap-3">
-            <img src={duckLogo} alt="MoniDuck" className="w-10 h-10" />
-            <span className="text-lg font-semibold text-foreground tracking-tight">MoniDuck</span>
+            <img src={duckLogo} alt="moniduck" className="w-10 h-10" />
+            <span className="text-lg font-semibold text-foreground tracking-tight">moniduck</span>
           </div>
         </div>
 
@@ -66,7 +66,7 @@ export default function Auth() {
         </div>
 
         <p className="text-xs text-muted-foreground/60 font-mono">
-          © {new Date().getFullYear()} MoniDuck
+          © {new Date().getFullYear()} moniduck
         </p>
       </div>
 
@@ -76,8 +76,8 @@ export default function Auth() {
           {/* Mobile logo + language */}
           <div className="flex items-center justify-between mb-4">
             <div className="lg:hidden flex items-center gap-3">
-              <img src={duckLogo} alt="MoniDuck" className="w-10 h-10" />
-              <span className="text-lg font-semibold text-foreground tracking-tight">MoniDuck</span>
+              <img src={duckLogo} alt="moniduck" className="w-10 h-10" />
+              <span className="text-lg font-semibold text-foreground tracking-tight">moniduck</span>
             </div>
             <LanguageSwitcher variant="outline" />
           </div>
