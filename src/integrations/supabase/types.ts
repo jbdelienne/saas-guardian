@@ -314,8 +314,10 @@ export type Database = {
           integration_type: string
           is_connected: boolean
           last_sync: string | null
+          owner_id: string | null
           refresh_token_encrypted: string | null
           scopes: string[] | null
+          tags: string[] | null
           token_expires_at: string | null
           user_id: string
           workspace_id: string | null
@@ -328,8 +330,10 @@ export type Database = {
           integration_type: string
           is_connected?: boolean
           last_sync?: string | null
+          owner_id?: string | null
           refresh_token_encrypted?: string | null
           scopes?: string[] | null
+          tags?: string[] | null
           token_expires_at?: string | null
           user_id: string
           workspace_id?: string | null
@@ -342,8 +346,10 @@ export type Database = {
           integration_type?: string
           is_connected?: boolean
           last_sync?: string | null
+          owner_id?: string | null
           refresh_token_encrypted?: string | null
           scopes?: string[] | null
+          tags?: string[] | null
           token_expires_at?: string | null
           user_id?: string
           workspace_id?: string | null
@@ -437,9 +443,11 @@ export type Database = {
           is_paused: boolean
           last_check: string | null
           name: string
+          owner_id: string | null
           ssl_expiry_date: string | null
           ssl_issuer: string | null
           status: string
+          tags: string[] | null
           updated_at: string
           uptime_percentage: number | null
           url: string
@@ -456,9 +464,11 @@ export type Database = {
           is_paused?: boolean
           last_check?: string | null
           name: string
+          owner_id?: string | null
           ssl_expiry_date?: string | null
           ssl_issuer?: string | null
           status?: string
+          tags?: string[] | null
           updated_at?: string
           uptime_percentage?: number | null
           url: string
@@ -475,9 +485,11 @@ export type Database = {
           is_paused?: boolean
           last_check?: string | null
           name?: string
+          owner_id?: string | null
           ssl_expiry_date?: string | null
           ssl_issuer?: string | null
           status?: string
+          tags?: string[] | null
           updated_at?: string
           uptime_percentage?: number | null
           url?: string
