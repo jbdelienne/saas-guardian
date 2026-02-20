@@ -4,7 +4,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Service, useChecks, useTogglePause } from '@/hooks/use-supabase';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
 import { formatDistanceToNow, format, differenceInDays } from 'date-fns';
-import { Trash2, Pause, Play, Loader2, Shield, Activity, Clock, ArrowUpCircle } from 'lucide-react';
+import { Trash2, Pause, Play, Loader2, Shield, Activity, Clock, ArrowUpCircle, Globe, Zap, FileText, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UptimePeriod, useUptimeChart } from '@/hooks/use-uptime';
 
@@ -127,8 +127,8 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
               </div>
             </div>
 
-            {/* Check interval info */}
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            {/* Check info */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span>Check interval: <strong className="text-foreground">{service.check_interval}min</strong></span>
               <span>·</span>
               <span>Last check: <strong className="text-foreground">
@@ -136,6 +136,15 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
                   ? formatDistanceToNow(new Date(service.last_check), { addSuffix: true })
                   : 'Never'}
               </strong></span>
+              {(service as any).content_keyword && (
+                <>
+                  <span>·</span>
+                  <span className="flex items-center gap-1">
+                    <Search className="w-3 h-3" />
+                    Keyword: <strong className="text-foreground">{(service as any).content_keyword}</strong>
+                  </span>
+                </>
+              )}
             </div>
 
             {/* Uptime chart with period selector */}
@@ -233,18 +242,41 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
               <p className="text-sm text-muted-foreground text-center py-8">No checks recorded yet</p>
             ) : (
               <div className="space-y-1">
-                {checks.slice(0, 20).map((check) => (
-                  <div key={check.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className={check.status === 'up' ? 'status-dot-up' : 'status-dot-down'} />
-                      <span className="text-foreground capitalize">{check.status}</span>
+                {checks.slice(0, 20).map((check) => {
+                  const c = check as any;
+                  return (
+                    <div key={check.id} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/50 text-sm gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className={check.status === 'up' ? 'status-dot-up' : check.status === 'degraded' ? 'status-dot-degraded' : 'status-dot-down'} />
+                        <span className="text-foreground capitalize">{check.status}</span>
+                      </div>
+                      <span className="text-muted-foreground whitespace-nowrap">{check.response_time}ms</span>
+                      {c.ttfb != null && (
+                        <span className="text-muted-foreground whitespace-nowrap text-xs flex items-center gap-0.5" title="Time to First Byte">
+                          <Zap className="w-3 h-3" />{c.ttfb}ms
+                        </span>
+                      )}
+                      {c.response_size != null && (
+                        <span className="text-muted-foreground whitespace-nowrap text-xs flex items-center gap-0.5" title="Response size">
+                          <FileText className="w-3 h-3" />{c.response_size > 1024 ? `${(c.response_size / 1024).toFixed(1)}KB` : `${c.response_size}B`}
+                        </span>
+                      )}
+                      {c.check_region && (
+                        <span className="text-muted-foreground whitespace-nowrap text-xs flex items-center gap-0.5" title="Check region">
+                          <Globe className="w-3 h-3" />{c.check_region}
+                        </span>
+                      )}
+                      <span className="text-muted-foreground text-xs whitespace-nowrap">
+                        {formatDistanceToNow(new Date(check.checked_at), { addSuffix: true })}
+                      </span>
+                      {c.error_message && (
+                        <span className="text-destructive text-xs truncate max-w-[150px]" title={c.error_message}>
+                          {c.error_message}
+                        </span>
+                      )}
                     </div>
-                    <span className="text-muted-foreground">{check.response_time}ms</span>
-                    <span className="text-muted-foreground text-xs">
-                      {formatDistanceToNow(new Date(check.checked_at), { addSuffix: true })}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </TabsContent>

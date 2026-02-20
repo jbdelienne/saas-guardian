@@ -69,6 +69,11 @@ Deno.serve(async (req) => {
       let responseTime = 0;
       let statusCode: number | null = null;
       let errorMessage: string | null = null;
+      let ttfb: number | null = null;
+      let responseSize: number | null = null;
+
+      // Detect the region where this function is running
+      const checkRegion = Deno.env.get("DENO_REGION") || Deno.env.get("SB_REGION") || "eu-central-1";
 
       try {
         const controller = new AbortController();
@@ -80,16 +85,31 @@ Deno.serve(async (req) => {
           signal: controller.signal,
           redirect: "follow",
         });
+        const ttfbEnd = performance.now();
+        ttfb = Math.round(ttfbEnd - start);
+
+        // Read body to measure full response time and size
+        const body = await res.text();
         const end = performance.now();
         clearTimeout(timeout);
 
         responseTime = Math.round(end - start);
+        responseSize = new TextEncoder().encode(body).length;
         statusCode = res.status;
 
         if (res.status >= 200 && res.status < 500) {
           status = "up";
         } else {
           status = "down";
+        }
+
+        // Content validation: if keyword is set, check body contains it
+        if (status === "up" && service.content_keyword) {
+          const keyword = service.content_keyword.trim().toLowerCase();
+          if (keyword && !body.toLowerCase().includes(keyword)) {
+            status = "degraded";
+            errorMessage = `Content keyword "${service.content_keyword}" not found in response`;
+          }
         }
       } catch (err: unknown) {
         status = "down";
@@ -108,6 +128,9 @@ Deno.serve(async (req) => {
         response_time: responseTime,
         status_code: statusCode,
         error_message: errorMessage,
+        ttfb,
+        response_size: responseSize,
+        check_region: checkRegion,
       });
 
       // Calculate uptime from last 12 months of checks using count queries (avoids 1000-row limit)
