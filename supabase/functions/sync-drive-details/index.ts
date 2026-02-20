@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 const OBJECT_LIMIT = 500000;
-const MAX_RUNTIME_MS = 45000; // 45s, leave margin before 60s timeout
+const MAX_RUNTIME_MS = 50000; // 50s, leave margin before 60s timeout
 
 // AES-GCM decryption
 async function deriveKey(secret: string): Promise<CryptoKey> {
@@ -30,6 +30,24 @@ async function decrypt(ciphertext: string, secret: string): Promise<string> {
   return new TextDecoder().decode(decrypted);
 }
 
+async function encryptToken(plaintext: string, secret: string): Promise<string> {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(secret), "PBKDF2", false, ["deriveKey"]);
+  const key = await crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt: enc.encode("moniduck-salt"), iterations: 100000, hash: "SHA-256" },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt"]
+  );
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, enc.encode(plaintext));
+  const combined = new Uint8Array(iv.length + new Uint8Array(ciphertext).length);
+  combined.set(iv);
+  combined.set(new Uint8Array(ciphertext), iv.length);
+  return btoa(String.fromCharCode(...combined));
+}
+
 async function refreshGoogleToken(refreshToken: string): Promise<{ access_token: string; expires_in: number }> {
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -44,43 +62,40 @@ async function refreshGoogleToken(refreshToken: string): Promise<{ access_token:
   return res.json();
 }
 
-async function getAccessToken(
-  integration: any,
-  encryptionKey: string,
-  supabaseAdmin: ReturnType<typeof createClient>
-): Promise<string> {
+// deno-lint-ignore no-explicit-any
+async function getAccessToken(integration: any, encryptionKey: string, supabaseAdmin: any): Promise<string> {
   let accessToken = await decrypt(integration.access_token_encrypted, encryptionKey);
 
   if (integration.token_expires_at && new Date(integration.token_expires_at) < new Date()) {
     if (integration.refresh_token_encrypted) {
       const refreshToken = await decrypt(integration.refresh_token_encrypted, encryptionKey);
       const newTokenData = await refreshGoogleToken(refreshToken);
+      if (!newTokenData?.access_token) throw new Error("Token refresh failed");
       accessToken = newTokenData.access_token;
-
-      const enc = new TextEncoder();
-      const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(encryptionKey), "PBKDF2", false, ["deriveKey"]);
-      const key = await crypto.subtle.deriveKey(
-        { name: "PBKDF2", salt: enc.encode("moniduck-salt"), iterations: 100000, hash: "SHA-256" },
-        keyMaterial,
-        { name: "AES-GCM", length: 256 },
-        false,
-        ["encrypt"]
-      );
-      const iv = crypto.getRandomValues(new Uint8Array(12));
-      const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, enc.encode(accessToken));
-      const combined = new Uint8Array(iv.length + new Uint8Array(ciphertext).length);
-      combined.set(iv);
-      combined.set(new Uint8Array(ciphertext), iv.length);
-      const newEncrypted = btoa(String.fromCharCode(...combined));
+      const newEncrypted = await encryptToken(accessToken, encryptionKey);
+      const expiresIn = newTokenData.expires_in || 3600;
 
       await supabaseAdmin.from("integrations").update({
         access_token_encrypted: newEncrypted,
-        token_expires_at: new Date(Date.now() + newTokenData.expires_in * 1000).toISOString(),
+        token_expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
       }).eq("id", integration.id);
     }
   }
 
   return accessToken;
+}
+
+// Get storage used for a drive via About API
+async function getDriveStorageGb(driveId: string, accessToken: string): Promise<number> {
+  try {
+    // Use search to count total size - but actually the About API doesn't support per-drive.
+    // Instead, we'll skip size calculation during counting and use a separate lighter call.
+    // For shared drives, we can query with fields=storageQuota but it's only for user drives.
+    // So we return 0 and let the file counting accumulate sizes if needed.
+    return 0;
+  } catch {
+    return 0;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -110,7 +125,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get integration
     const { data: integration } = await supabaseAdmin.from("integrations")
       .select("*").eq("id", integrationId).single();
 
@@ -122,24 +136,25 @@ Deno.serve(async (req) => {
 
     let accessToken = await getAccessToken(integration, encryptionKey, supabaseAdmin);
 
-    // Find the drive name from cached drive list
+    // Find the drive name
     const { data: driveListRows } = await supabaseAdmin.from("integration_sync_data")
       .select("metadata")
       .eq("integration_id", integrationId)
       .eq("metric_type", "shared_drive_list")
       .limit(1);
 
+    // deno-lint-ignore no-explicit-any
     const drives: Array<{ id: string; name: string }> = (driveListRows?.[0]?.metadata as any)?.drives || [];
-    const driveMeta = drives.find(d => d.id === driveId);
+    const driveMeta = drives.find((d: { id: string }) => d.id === driveId);
     const driveName = driveMeta?.name || driveId;
 
     console.log(`Counting drive "${driveName}" (resume: ${resumeToken ? 'yes' : 'no'}, count so far: ${countSoFar})`);
 
-    // Update the drive entry to show "syncing" state
+    // Mark syncing state on first call
     if (countSoFar === 0 && !resumeToken) {
       await supabaseAdmin.from("integration_sync_data")
         .update({
-          metric_value: -2, // -2 = syncing in progress
+          metric_value: -2,
           metadata: {
             drive_id: driveId,
             name: driveName,
@@ -155,10 +170,10 @@ Deno.serve(async (req) => {
         .filter("metadata->>drive_id", "eq", driveId);
     }
 
-    // Paginate files - minimal fields for speed
-    // useDomainAdminAccess allows counting files in drives the user isn't a member of
+    // Paginate files - use files(id) for MAXIMUM speed (minimal data per page)
+    // trashed=false to only count non-trashed files
     const q = encodeURIComponent("trashed=false");
-    const baseUrl = `https://www.googleapis.com/drive/v3/files?q=${q}&driveId=${driveId}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&useDomainAdminAccess=true&fields=nextPageToken,files(size)&pageSize=1000`;
+    const baseUrl = `https://www.googleapis.com/drive/v3/files?q=${q}&driveId=${driveId}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&useDomainAdminAccess=true&fields=nextPageToken,files(id,size)&pageSize=1000`;
 
     let objectCount = countSoFar;
     let totalSize = sizeSoFar;
@@ -166,9 +181,9 @@ Deno.serve(async (req) => {
     const startTime = Date.now();
     let rateLimited = false;
     let timedOut = false;
+    let pagesProcessed = 0;
 
     do {
-      // Check if we're running out of time
       if (Date.now() - startTime > MAX_RUNTIME_MS) {
         timedOut = true;
         break;
@@ -181,15 +196,25 @@ Deno.serve(async (req) => {
         const status = res.status;
 
         if (status === 429) {
-          // Rate limited — save progress, sleep 10s, then self-continue
-          console.log(`Drive "${driveName}": rate limited (429) at ${objectCount} objects, sleeping 10s then self-continuing...`);
+          console.log(`Drive "${driveName}": rate limited at ${objectCount} objects`);
           rateLimited = true;
           break;
+        } else if (status === 401 || status === 403) {
+          // Token expired mid-pagination - refresh and retry
+          console.log(`Drive "${driveName}": ${status} error, refreshing token...`);
+          const { data: freshIntegration } = await supabaseAdmin.from("integrations")
+            .select("*").eq("id", integration.id).single();
+          try {
+            accessToken = await getAccessToken(freshIntegration || integration, encryptionKey, supabaseAdmin);
+            continue; // Retry the same page
+          } catch (e) {
+            console.error(`Token refresh failed for drive "${driveName}":`, e);
+            break;
+          }
         } else if (status >= 500) {
-          // Server errors — retry up to 3 times with backoff
           let retried = false;
           for (let attempt = 1; attempt <= 3; attempt++) {
-            console.log(`Drive API error ${status}, retry ${attempt}/3 after ${attempt}s...`);
+            console.log(`Drive API error ${status}, retry ${attempt}/3...`);
             await new Promise(r => setTimeout(r, attempt * 1000));
             if (Date.now() - startTime > MAX_RUNTIME_MS) { timedOut = true; break; }
             const retryRes = await fetch(fetchUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
@@ -197,23 +222,15 @@ Deno.serve(async (req) => {
               const retryData = await retryRes.json();
               const files = retryData.files || [];
               objectCount += files.length;
-              for (const f of files) totalSize += Number(f.size || 0);
+              // deno-lint-ignore no-explicit-any
+              for (const f of files) totalSize += Number((f as any).size || 0);
               pageToken = retryData.nextPageToken;
               retried = true;
               break;
             }
           }
           if (timedOut) break;
-          if (!retried) {
-            console.error(`Drive API error ${status} persists after 3 retries, will self-continue`);
-            timedOut = true;
-            break;
-          }
-        } else if (status === 401) {
-          const { data: freshIntegration } = await supabaseAdmin.from("integrations")
-            .select("*").eq("id", integration.id).single();
-          accessToken = await getAccessToken(freshIntegration || integration, encryptionKey, supabaseAdmin);
-          continue;
+          if (!retried) { timedOut = true; break; }
         } else {
           console.error(`Drive API fatal error: ${status}`);
           break;
@@ -222,16 +239,23 @@ Deno.serve(async (req) => {
         const data = await res.json();
         const files = data.files || [];
         objectCount += files.length;
-        for (const f of files) totalSize += Number(f.size || 0);
+        // deno-lint-ignore no-explicit-any
+        for (const f of files) totalSize += Number((f as any).size || 0);
         pageToken = data.nextPageToken;
+        pagesProcessed++;
+
+        // Log progress every 50 pages
+        if (pagesProcessed % 50 === 0) {
+          console.log(`Drive "${driveName}": ${objectCount} objects counted (${pagesProcessed} pages, ${Math.round((Date.now() - startTime) / 1000)}s)`);
+        }
       }
     } while (pageToken);
 
+    // If we need to continue (timeout or rate limit)
     if ((timedOut || rateLimited) && pageToken) {
       const reason = rateLimited ? "rate-limited" : "timeout";
-      console.log(`Drive "${driveName}": ${reason} after ${objectCount} objects, continuing...`);
+      console.log(`Drive "${driveName}": ${reason} after ${objectCount} objects, self-continuing...`);
 
-      // Update partial progress in DB
       const storageGb = Math.round(totalSize / (1024 ** 3) * 100) / 100;
       await supabaseAdmin.from("integration_sync_data")
         .update({
@@ -251,13 +275,13 @@ Deno.serve(async (req) => {
         .eq("metric_type", "shared_drive")
         .filter("metadata->>drive_id", "eq", driveId);
 
-      // If rate limited, sleep 10s before self-calling
+      // Wait before self-call if rate limited
       if (rateLimited) {
         console.log(`Sleeping 10s before retry...`);
         await new Promise(r => setTimeout(r, 10000));
       }
 
-      // Self-call to continue (fire and forget)
+      // Self-call to continue
       const selfUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/sync-drive-details?integration_id=${integrationId}&drive_id=${driveId}&resume_token=${encodeURIComponent(pageToken)}&count_so_far=${objectCount}&size_so_far=${totalSize}`;
       fetch(selfUrl, {
         method: "POST",
@@ -272,11 +296,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Done! Save final result
+    // Done - save final result
     const storageGb = Math.round(totalSize / (1024 ** 3) * 100) / 100;
     console.log(`Drive "${driveName}": DONE - ${objectCount} objects, ${storageGb} GB`);
 
-    // Find the existing row and get its created_time
     const { data: existingRows } = await supabaseAdmin.from("integration_sync_data")
       .select("*")
       .eq("integration_id", integrationId)
@@ -284,6 +307,7 @@ Deno.serve(async (req) => {
       .eq("metric_type", "shared_drive")
       .filter("metadata->>drive_id", "eq", driveId);
 
+    // deno-lint-ignore no-explicit-any
     const existingMeta = (existingRows?.[0]?.metadata as any) || {};
 
     await supabaseAdmin.from("integration_sync_data")
