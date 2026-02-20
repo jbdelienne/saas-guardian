@@ -122,33 +122,42 @@ export type Database = {
       }
       checks: {
         Row: {
+          check_region: string | null
           checked_at: string
           error_message: string | null
           id: string
+          response_size: number | null
           response_time: number
           service_id: string
           status: string
           status_code: number | null
+          ttfb: number | null
           user_id: string
         }
         Insert: {
+          check_region?: string | null
           checked_at?: string
           error_message?: string | null
           id?: string
+          response_size?: number | null
           response_time?: number
           service_id: string
           status: string
           status_code?: number | null
+          ttfb?: number | null
           user_id: string
         }
         Update: {
+          check_region?: string | null
           checked_at?: string
           error_message?: string | null
           id?: string
+          response_size?: number | null
           response_time?: number
           service_id?: string
           status?: string
           status_code?: number | null
+          ttfb?: number | null
           user_id?: string
         }
         Relationships: [
@@ -421,6 +430,7 @@ export type Database = {
         Row: {
           avg_response_time: number | null
           check_interval: number
+          content_keyword: string | null
           created_at: string
           icon: string
           id: string
@@ -439,6 +449,7 @@ export type Database = {
         Insert: {
           avg_response_time?: number | null
           check_interval?: number
+          content_keyword?: string | null
           created_at?: string
           icon?: string
           id?: string
@@ -457,6 +468,7 @@ export type Database = {
         Update: {
           avg_response_time?: number | null
           check_interval?: number
+          content_keyword?: string | null
           created_at?: string
           icon?: string
           id?: string

@@ -10,7 +10,7 @@ import IconPicker from './IconPicker';
 interface AddServiceModalProps {
   open: boolean;
   onClose: () => void;
-  onAdd: (service: { name: string; icon: string; url: string; check_interval: number }) => Promise<void>;
+  onAdd: (service: { name: string; icon: string; url: string; check_interval: number; content_keyword?: string }) => Promise<void>;
 }
 
 export default function AddServiceModal({ open, onClose, onAdd }: AddServiceModalProps) {
@@ -18,6 +18,7 @@ export default function AddServiceModal({ open, onClose, onAdd }: AddServiceModa
   const [icon, setIcon] = useState('');
   const [url, setUrl] = useState('');
   const [interval, setInterval] = useState('5');
+  const [contentKeyword, setContentKeyword] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -25,7 +26,7 @@ export default function AddServiceModal({ open, onClose, onAdd }: AddServiceModa
     e.preventDefault();
     setLoading(true);
     try {
-      await onAdd({ name, icon, url, check_interval: Number(interval) });
+      await onAdd({ name, icon, url, check_interval: Number(interval), content_keyword: contentKeyword || undefined });
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
@@ -33,6 +34,7 @@ export default function AddServiceModal({ open, onClose, onAdd }: AddServiceModa
         setUrl('');
         setIcon('');
         setInterval('5');
+        setContentKeyword('');
         setLoading(false);
         onClose();
       }, 1500);
@@ -81,6 +83,12 @@ export default function AddServiceModal({ open, onClose, onAdd }: AddServiceModa
                   <SelectItem value="5">Every 5 min</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="svc-keyword">Content validation keyword <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Input id="svc-keyword" value={contentKeyword} onChange={(e) => setContentKeyword(e.target.value)} placeholder="e.g. OK, healthy, alive" />
+              <p className="text-[11px] text-muted-foreground">If set, the service will be marked as degraded when this keyword is not found in the response body.</p>
             </div>
 
             <Button
