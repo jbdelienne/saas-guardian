@@ -33,6 +33,13 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
+    // Check for force parameter (recalculate uptime without waiting for interval)
+    let force = false;
+    try {
+      const body = await req.json();
+      force = body?.force === true;
+    } catch { /* no body or not JSON */ }
+
     // Get all active (non-paused) services
     const { data: services, error: svcErr } = await supabase
       .from("services")
@@ -52,7 +59,7 @@ Deno.serve(async (req) => {
 
     for (const service of services) {
       // Check if it's time to check based on interval
-      if (service.last_check) {
+      if (!force && service.last_check) {
         const lastCheck = new Date(service.last_check);
         const diffMinutes = (now.getTime() - lastCheck.getTime()) / 60000;
         if (diffMinutes < service.check_interval) continue;
