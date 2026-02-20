@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
-import { useIntegrations } from '@/hooks/use-supabase';
+import { useIntegrations, useUpdateIntegration } from '@/hooks/use-supabase';
 import { useSyncData, useAlertThresholds, useUpdateThreshold, useSyncIntegration } from '@/hooks/use-integrations';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -15,6 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useLangPrefix } from '@/hooks/use-lang-prefix';
+import OwnerTagsEditor from '@/components/dashboard/OwnerTagsEditor';
 
 const METRIC_ICONS: Record<string, typeof Users> = {
   users: Users,
@@ -87,6 +88,7 @@ export default function IntegrationDetail() {
   const { data: thresholds = [] } = useAlertThresholds(type);
   const updateThreshold = useUpdateThreshold();
   const syncIntegration = useSyncIntegration();
+  const updateIntegration = useUpdateIntegration();
   const { t } = useTranslation();
   const lp = useLangPrefix();
 
@@ -214,6 +216,24 @@ export default function IntegrationDetail() {
           </div>
         ) : (
           <>
+            {/* Owner & Tags */}
+            <div className="bg-card border border-border rounded-xl p-4 mb-6">
+              <OwnerTagsEditor
+                ownerId={(integration as any).owner_id || null}
+                tags={(integration as any).tags || []}
+                onOwnerChange={(ownerId) => {
+                  updateIntegration.mutate({ id: integration.id, owner_id: ownerId }, {
+                    onSuccess: () => toast.success('Owner updated'),
+                  });
+                }}
+                onTagsChange={(tags) => {
+                  updateIntegration.mutate({ id: integration.id, tags }, {
+                    onSuccess: () => toast.success('Tags updated'),
+                  });
+                }}
+              />
+            </div>
+
             {/* Metrics Grid */}
             <div className="space-y-6 mb-10">
               {Object.entries(grouped).map(([metricType, rows]) => {

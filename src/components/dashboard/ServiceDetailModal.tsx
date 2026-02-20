@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Service, useChecks, useTogglePause } from '@/hooks/use-supabase';
+import { Service, useChecks, useTogglePause, useUpdateService } from '@/hooks/use-supabase';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
 import { formatDistanceToNow, format, differenceInDays } from 'date-fns';
 import { Trash2, Pause, Play, Loader2, Shield, Activity, Clock, ArrowUpCircle, Globe, Zap, FileText, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UptimePeriod, useUptimeChart } from '@/hooks/use-uptime';
+import OwnerTagsEditor, { OwnerTagsDisplay } from './OwnerTagsEditor';
+import { toast } from 'sonner';
 
 const statusDotClass: Record<string, string> = {
   up: 'status-dot-up',
@@ -38,6 +40,7 @@ interface ServiceDetailModalProps {
 
 export default function ServiceDetailModal({ service, open, onClose, onDelete }: ServiceDetailModalProps) {
   const togglePause = useTogglePause();
+  const updateService = useUpdateService();
   const { data: checks = [], isLoading: checksLoading } = useChecks(service?.id, 50);
   const [chartPeriod, setChartPeriod] = useState<UptimePeriod>('7d');
   const { data: uptimeChartData = [], isLoading: chartLoading } = useUptimeChart(service?.id, chartPeriod);
@@ -77,6 +80,7 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
             <div>
               <DialogTitle className="text-lg">{service.name}</DialogTitle>
               <p className="text-sm text-muted-foreground">{service.url}</p>
+              <OwnerTagsDisplay ownerId={(service as any).owner_id} tags={(service as any).tags || []} />
             </div>
             <div className={`ml-auto ${statusDotClass[service.status] ?? 'status-dot-unknown'}`} />
           </div>
@@ -282,6 +286,24 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
           </TabsContent>
 
           <TabsContent value="settings" className="mt-4 space-y-4">
+            {/* Owner & Tags */}
+            <div className="p-4 border border-border rounded-xl">
+              <OwnerTagsEditor
+                ownerId={(service as any).owner_id || null}
+                tags={(service as any).tags || []}
+                onOwnerChange={(ownerId) => {
+                  updateService.mutate({ id: service.id, owner_id: ownerId }, {
+                    onSuccess: () => toast.success('Owner updated'),
+                  });
+                }}
+                onTagsChange={(tags) => {
+                  updateService.mutate({ id: service.id, tags }, {
+                    onSuccess: () => toast.success('Tags updated'),
+                  });
+                }}
+              />
+            </div>
+
             <div className="flex items-center justify-between p-4 border border-border rounded-xl">
               <div>
                 <p className="font-medium text-foreground text-sm">Pause monitoring</p>
