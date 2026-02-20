@@ -170,10 +170,9 @@ Deno.serve(async (req) => {
         .filter("metadata->>drive_id", "eq", driveId);
     }
 
-    // Paginate files - use files(id) for MAXIMUM speed (minimal data per page)
-    // trashed=false to only count non-trashed files
-    const q = encodeURIComponent("trashed=false");
-    const baseUrl = `https://www.googleapis.com/drive/v3/files?q=${q}&driveId=${driveId}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&useDomainAdminAccess=true&fields=nextPageToken,files(id,size)&pageSize=1000`;
+    // Paginate ALL files (including trashed) - Google's 500k limit counts everything
+    // Use files(id,size) for speed
+    const baseUrl = `https://www.googleapis.com/drive/v3/files?driveId=${driveId}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&useDomainAdminAccess=true&fields=nextPageToken,files(id,size)&pageSize=1000`;
 
     let objectCount = countSoFar;
     let totalSize = sizeSoFar;
