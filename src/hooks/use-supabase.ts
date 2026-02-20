@@ -29,7 +29,7 @@ export function useAddService() {
   const { user } = useAuth();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (svc: { name: string; icon: string; url: string; check_interval: number }) => {
+    mutationFn: async (svc: { name: string; icon: string; url: string; check_interval: number; content_keyword?: string; owner_id?: string; tags?: string[] }) => {
       // Get user's workspace_id
       const { data: profile } = await supabase
         .from('profiles')
@@ -46,6 +46,28 @@ export function useAddService() {
       return data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['services'] }),
+  });
+}
+
+export function useUpdateService() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string; owner_id?: string | null; tags?: string[]; content_keyword?: string | null }) => {
+      const { error } = await supabase.from('services').update(updates).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['services'] }),
+  });
+}
+
+export function useUpdateIntegration() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string; owner_id?: string | null; tags?: string[] }) => {
+      const { error } = await supabase.from('integrations').update(updates).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['integrations'] }),
   });
 }
 
