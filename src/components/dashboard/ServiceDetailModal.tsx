@@ -1,10 +1,12 @@
+import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Service, useChecks, useTogglePause } from '@/hooks/use-supabase';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
 import { formatDistanceToNow, format, differenceInDays } from 'date-fns';
 import { Trash2, Pause, Play, Loader2, Shield, Activity, Clock, ArrowUpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { UptimePeriod, useUptimeChart } from '@/hooks/use-uptime';
 
 const statusDotClass: Record<string, string> = {
   up: 'status-dot-up',
@@ -20,6 +22,13 @@ const statusLabel: Record<string, string> = {
   unknown: 'Pending',
 };
 
+const periodOptions: { value: UptimePeriod; label: string }[] = [
+  { value: '24h', label: '24h' },
+  { value: '7d', label: '7d' },
+  { value: '30d', label: '30d' },
+  { value: '12m', label: '12m' },
+];
+
 interface ServiceDetailModalProps {
   service: Service | null;
   open: boolean;
@@ -30,8 +39,10 @@ interface ServiceDetailModalProps {
 export default function ServiceDetailModal({ service, open, onClose, onDelete }: ServiceDetailModalProps) {
   const togglePause = useTogglePause();
   const { data: checks = [], isLoading: checksLoading } = useChecks(service?.id, 50);
+  const [chartPeriod, setChartPeriod] = useState<UptimePeriod>('7d');
+  const { data: uptimeChartData = [], isLoading: chartLoading } = useUptimeChart(service?.id, chartPeriod);
 
-  const chartData = checks
+  const responseChartData = checks
     .slice(0, 24)
     .reverse()
     .map((c) => ({
@@ -127,6 +138,58 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
               </strong></span>
             </div>
 
+            {/* Uptime chart with period selector */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold text-foreground">Uptime History</h4>
+                <div className="flex items-center gap-1 bg-muted rounded-lg p-0.5">
+                  {periodOptions.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setChartPeriod(opt.value)}
+                      className={`px-2.5 py-1 text-xs rounded-md transition-colors font-medium ${
+                        chartPeriod === opt.value
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="h-48 bg-muted/50 rounded-xl p-2">
+                {chartLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : uptimeChartData.length === 0 ? (
+                  <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+                    No data for this period
+                  </div>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={uptimeChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" unit="%" />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                        }}
+                        formatter={(value: number) => [`${value}%`, 'Uptime']}
+                      />
+                      <ReferenceLine y={99.9} stroke="hsl(var(--destructive))" strokeDasharray="3 3" label={{ value: 'SLA 99.9%', fontSize: 10, fill: 'hsl(var(--destructive))' }} />
+                      <Bar dataKey="uptime" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </div>
+            </div>
+
             {/* Response time chart */}
             <div>
               <h4 className="text-sm font-semibold mb-3 text-foreground">Response Time (last 24 checks)</h4>
@@ -135,13 +198,13 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
                   <div className="flex items-center justify-center h-full">
                     <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                   </div>
-                ) : chartData.length === 0 ? (
+                ) : responseChartData.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
                     No check data yet
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
+                    <LineChart data={responseChartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis dataKey="time" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
                       <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" unit="ms" />

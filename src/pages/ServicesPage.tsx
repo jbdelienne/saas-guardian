@@ -4,27 +4,27 @@ import { useServices, useAddService, useDeleteService, useTogglePause, Service }
 import AddServiceModal from '@/components/dashboard/AddServiceModal';
 import ServiceDetailModal from '@/components/dashboard/ServiceDetailModal';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Pause, Play, ExternalLink, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Pause, Play, ExternalLink, Loader2, ChevronDown } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useTranslation } from 'react-i18next';
+import { UptimePeriod, useUptimeForServices } from '@/hooks/use-uptime';
+
+const periodLabels: Record<UptimePeriod, string> = {
+  '24h': '24h',
+  '7d': '7 days',
+  '30d': '30 days',
+  '12m': '12 months',
+};
 
 export default function ServicesPage() {
   const { data: services = [], isLoading } = useServices();
@@ -34,7 +34,17 @@ export default function ServicesPage() {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Service | null>(null);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [uptimePeriod, setUptimePeriod] = useState<UptimePeriod>('12m');
   const { t } = useTranslation();
+
+  const serviceIds = services.map((s) => s.id);
+  const { data: computedUptimes } = useUptimeForServices(serviceIds, uptimePeriod);
+
+  const getUptime = (service: Service) => {
+    if (service.status === 'unknown') return '—';
+    if (uptimePeriod === '12m') return `${service.uptime_percentage ?? 0}%`;
+    return computedUptimes?.[service.id] !== undefined ? `${computedUptimes[service.id]}%` : '…';
+  };
 
   const statusConfig: Record<string, { label: string; dotClass: string }> = {
     up: { label: t('services.operational'), dotClass: 'status-dot-up' },
@@ -87,7 +97,27 @@ export default function ServicesPage() {
                   <TableHead>{t('services.name')}</TableHead>
                   <TableHead>{t('services.url')}</TableHead>
                   <TableHead>{t('services.status')}</TableHead>
-                  <TableHead className="text-right">{t('services.uptime')}</TableHead>
+                  <TableHead className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors font-medium text-xs">
+                          {t('services.uptime')} ({periodLabels[uptimePeriod]})
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover border-border z-50">
+                        {(Object.keys(periodLabels) as UptimePeriod[]).map((p) => (
+                          <DropdownMenuItem
+                            key={p}
+                            onClick={() => setUptimePeriod(p)}
+                            className={uptimePeriod === p ? 'bg-accent' : ''}
+                          >
+                            {periodLabels[p]}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableHead>
                   <TableHead className="text-right">{t('services.avgResponse')}</TableHead>
                   <TableHead>{t('services.lastCheck')}</TableHead>
                   <TableHead className="text-right">{t('services.actions')}</TableHead>
@@ -125,7 +155,7 @@ export default function ServicesPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm">
-                        {service.status === 'unknown' ? '—' : `${service.uptime_percentage ?? 0}%`}
+                        {getUptime(service)}
                       </TableCell>
                       <TableCell className="text-right font-mono text-sm text-muted-foreground">
                         {(service.avg_response_time ?? 0) > 0 ? `${service.avg_response_time}ms` : '—'}
