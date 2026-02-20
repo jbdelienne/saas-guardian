@@ -103,18 +103,24 @@ Deno.serve(async (req) => {
         error_message: errorMessage,
       });
 
-      // Calculate uptime from last 12 months of checks
+      // Calculate uptime from last 12 months of checks using count queries (avoids 1000-row limit)
       const twelveMonthsAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000).toISOString();
-      const { data: recentChecks } = await supabase
+      const { count: totalChecks } = await supabase
         .from("checks")
-        .select("status")
+        .select("*", { count: "exact", head: true })
         .eq("service_id", service.id)
-        .gte("checked_at", twelveMonthsAgo)
-        .order("checked_at", { ascending: false });
+        .gte("checked_at", twelveMonthsAgo);
 
-      const totalChecks = recentChecks?.length || 1;
-      const upChecks = recentChecks?.filter((c: any) => c.status === "up").length || 0;
-      const uptimePercentage = Math.round((upChecks / totalChecks) * 10000) / 100;
+      const { count: upChecks } = await supabase
+        .from("checks")
+        .select("*", { count: "exact", head: true })
+        .eq("service_id", service.id)
+        .eq("status", "up")
+        .gte("checked_at", twelveMonthsAgo);
+
+      const total = totalChecks || 1;
+      const up = upChecks || 0;
+      const uptimePercentage = Math.round((up / total) * 10000) / 100;
 
       // Calculate avg response time from last 20 checks (only up ones)
       const { data: rtChecks } = await supabase
