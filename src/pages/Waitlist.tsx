@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import duckLogo from "@/assets/moniduck-logo.png";
+import dashboardPreview from "@/assets/dashboard-preview.png";
 
 /* ── Data ─────────────────────────────────────────── */
 
@@ -259,59 +260,58 @@ export default function Waitlist() {
       </nav>
 
       {/* ─── Hero ────────────────────────────────── */}
-      <section className="max-w-5xl mx-auto px-6 pt-20 pb-16 md:pt-28 md:pb-24 text-center">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-xs text-primary font-medium mb-8">
-          <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-          Early Access — Limited Spots
-        </div>
-
-        <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight leading-[1.08] mb-6">
-          Stop juggling dashboards.
-          <br />
-          <span className="text-primary">Start monitoring.</span>
-        </h1>
-
-        <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-10 max-w-2xl mx-auto">
-          Uptime, SaaS licences, SSL certificates, cloud costs — moniduck watches everything from one screen. Join 200+ ops teams on the waitlist.
-        </p>
-
-        {/* Social proof pills */}
-        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground mb-10">
-          <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-success" />Free during beta</span>
-          <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-success" />2-minute setup</span>
-          <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-success" />No credit card</span>
-        </div>
-
-        {/* Form card */}
-        <div id="waitlist-form" className="max-w-md mx-auto scroll-mt-24">
-          {submitted ? <SuccessCard /> : (
-            <div className="rounded-2xl border border-border bg-card p-6 md:p-8 shadow-lg text-left">
-              <div className="flex items-center gap-2 mb-5">
-                <Sparkles className="w-4 h-4 text-primary" />
-                <span className="text-sm font-medium text-foreground">Get early access</span>
-              </div>
-              <WaitlistForm onSuccess={handleSuccess} />
+      <section className="max-w-6xl mx-auto px-6 pt-16 pb-16 md:pt-24 md:pb-24">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          {/* Left — Copy + Form */}
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-xs text-primary font-medium mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              Early Access — Limited Spots
             </div>
-          )}
-        </div>
-      </section>
 
-      {/* ─── Terminal Preview ────────────────────── */}
-      <section className="max-w-4xl mx-auto px-6 pb-20">
-        <div className="rounded-xl border border-border bg-card overflow-hidden shadow-lg">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-            <div className="w-3 h-3 rounded-full bg-destructive/60" />
-            <div className="w-3 h-3 rounded-full bg-warning/60" />
-            <div className="w-3 h-3 rounded-full bg-success/60" />
-            <span className="ml-3 text-xs font-mono text-muted-foreground">dashboard — moniduck</span>
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.08] mb-5">
+              Stop juggling dashboards.
+              <br />
+              <span className="text-primary">Start monitoring.</span>
+            </h1>
+
+            <p className="text-lg text-muted-foreground leading-relaxed mb-8 max-w-lg">
+              Uptime, SaaS licences, SSL certificates, cloud costs — moniduck watches everything from one screen. Join 200+ ops teams on the waitlist.
+            </p>
+
+            {/* Social proof pills */}
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground mb-8">
+              <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-success" />Free during beta</span>
+              <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-success" />2-minute setup</span>
+              <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-success" />No credit card</span>
+            </div>
+
+            {/* Form */}
+            <div id="waitlist-form" className="max-w-md scroll-mt-24">
+              {submitted ? <SuccessCard /> : (
+                <div className="rounded-2xl border border-border bg-card p-6 shadow-lg">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-medium text-foreground">Get early access</span>
+                  </div>
+                  <WaitlistForm onSuccess={handleSuccess} />
+                </div>
+              )}
+            </div>
           </div>
-          <div className="p-6 md:p-8 font-mono text-sm text-muted-foreground space-y-2">
-            <p><span className="text-success">✓</span> api.production <span className="opacity-50">— 42ms, up 99.98%</span></p>
-            <p><span className="text-success">✓</span> auth.production <span className="opacity-50">— 38ms, up 100%</span></p>
-            <p><span className="text-warning">⚠</span> cdn.staging <span className="opacity-50">— 520ms, degraded</span></p>
-            <p><span className="text-success">✓</span> google-workspace <span className="opacity-50">— 142 users synced</span></p>
-            <p><span className="text-success">✓</span> stripe-webhooks <span className="opacity-50">— all healthy</span></p>
-            <p className="text-primary">→ 4/5 services healthy · 1 alert pending</p>
+
+          {/* Right — Product screenshot */}
+          <div className="hidden lg:block relative">
+            <div className="rounded-xl border border-border bg-card overflow-hidden shadow-2xl">
+              <img
+                src={dashboardPreview}
+                alt="moniduck dashboard — services monitoring view"
+                className="w-full h-auto"
+                loading="eager"
+              />
+            </div>
+            {/* Decorative glow */}
+            <div className="absolute -inset-4 bg-primary/5 rounded-2xl -z-10 blur-2xl" />
           </div>
         </div>
       </section>
