@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowRight, Check, Activity, Plug, Bell, BarChart3, Shield, Zap } from "lucide-react";
+import { ArrowRight, Check, Activity, Globe, CreditCard, ShieldCheck, Tv, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,12 +7,12 @@ import { toast } from "sonner";
 import duckLogo from "@/assets/moniduck-logo.png";
 
 const features = [
-  { icon: Activity, title: "Uptime Monitoring", desc: "Track availability of all your services in real-time." },
-  { icon: Plug, title: "SaaS Integrations", desc: "Connect Google Workspace, Microsoft 365, Slack & more." },
-  { icon: Bell, title: "Smart Alerts", desc: "Get notified before issues impact your team." },
-  { icon: BarChart3, title: "Custom Dashboards", desc: "Build the views that matter to your ops." },
-  { icon: Shield, title: "SSL & Security", desc: "Monitor certificates and security posture." },
-  { icon: Zap, title: "Lightning Fast", desc: "Sub-second checks from multiple regions." },
+  { icon: Activity, title: "Real-time endpoint monitoring", desc: "Know before your users do." },
+  { icon: Search, title: "AWS auto-discovery", desc: "Connect once. We find everything in 2 minutes." },
+  { icon: Globe, title: "Google Workspace & Microsoft 365", desc: "Unused licences, full storage, missing 2FA. We catch it all." },
+  { icon: CreditCard, title: "Stripe monitoring", desc: "Webhooks down, disputes pending, payout failed. Instant alerts." },
+  { icon: ShieldCheck, title: "SSL certificate alerts", desc: "Never wake up to a broken padlock again." },
+  { icon: Tv, title: "TV Mode", desc: "One click. Full screen. Your infra on the wall." },
 ];
 
 export default function Waitlist() {
