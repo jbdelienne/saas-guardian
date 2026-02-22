@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { ArrowRight, Check, Activity, Globe, CreditCard, ShieldCheck, Tv, Search } from "lucide-react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { ArrowRight, Check, Activity, Globe, CreditCard, ShieldCheck, Tv, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,11 +15,101 @@ const features = [
   { icon: Tv, title: "TV Mode", desc: "One click. Full screen. Your infra on the wall." },
 ];
 
+/* ── Confetti ─────────────────────────────────────── */
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  color: string;
+  size: number;
+  rotation: number;
+  rotationSpeed: number;
+  life: number;
+}
+
+const CONFETTI_COLORS = [
+  "hsl(161, 93%, 30%)",  // primary
+  "hsl(38, 92%, 50%)",   // warning / gold
+  "hsl(217, 91%, 60%)",  // info / blue
+  "hsl(160, 84%, 39%)",  // success
+  "hsl(280, 70%, 55%)",  // purple
+  "hsl(350, 80%, 55%)",  // pink
+];
+
+function useConfetti() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const particles = useRef<Particle[]>([]);
+  const raf = useRef<number>();
+
+  const fire = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+
+    // spawn particles from center-top
+    const cx = canvas.width / 2;
+    for (let i = 0; i < 120; i++) {
+      particles.current.push({
+        x: cx + (Math.random() - 0.5) * 200,
+        y: canvas.height * 0.35,
+        vx: (Math.random() - 0.5) * 14,
+        vy: -Math.random() * 16 - 4,
+        color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+        size: Math.random() * 6 + 3,
+        rotation: Math.random() * 360,
+        rotationSpeed: (Math.random() - 0.5) * 12,
+        life: 1,
+      });
+    }
+
+    const animate = () => {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      particles.current = particles.current.filter((p) => p.life > 0);
+
+      for (const p of particles.current) {
+        p.x += p.vx;
+        p.vy += 0.35; // gravity
+        p.y += p.vy;
+        p.rotation += p.rotationSpeed;
+        p.life -= 0.012;
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate((p.rotation * Math.PI) / 180);
+        ctx.globalAlpha = Math.max(0, p.life);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+        ctx.restore();
+      }
+
+      if (particles.current.length > 0) {
+        raf.current = requestAnimationFrame(animate);
+      }
+    };
+
+    if (raf.current) cancelAnimationFrame(raf.current);
+    animate();
+  }, []);
+
+  useEffect(() => () => { if (raf.current) cancelAnimationFrame(raf.current); }, []);
+
+  return { canvasRef, fire };
+}
+
+/* ── Component ────────────────────────────────────── */
+
 export default function Waitlist() {
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const { canvasRef, fire } = useConfetti();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,20 +126,21 @@ export default function Waitlist() {
         if (error.code === "23505") {
           toast.info("You're already on the waitlist!");
           setSubmitted(true);
+          fire();
         } else {
           throw error;
         }
       } else {
-        // Trigger confirmation email
         try {
           await supabase.functions.invoke("waitlist-welcome", {
             body: { email: email.trim().toLowerCase(), company: company.trim() || null },
           });
         } catch {
-          // Email is best-effort, don't block the flow
+          // Email is best-effort
         }
-        toast.success("You're on the list! Check your inbox.");
+        toast.success("You're on the list! 🎉");
         setSubmitted(true);
+        fire();
       }
     } catch (err: any) {
       toast.error("Something went wrong. Please try again.");
@@ -60,7 +151,14 @@ export default function Waitlist() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground relative">
+      {/* Confetti canvas */}
+      <canvas
+        ref={canvasRef}
+        className="fixed inset-0 z-[100] pointer-events-none"
+        style={{ width: "100%", height: "100%" }}
+      />
+
       {/* Nav */}
       <nav className="border-b border-border bg-card/60 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -76,7 +174,7 @@ export default function Waitlist() {
 
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-6 pt-24 pb-20 md:pt-32 md:pb-28">
-        <div className="max-w-3xl">
+        <div className="max-w-3xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-card text-xs text-muted-foreground mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />
             Early Access — Limited Spots
@@ -86,50 +184,63 @@ export default function Waitlist() {
             <br />
             <span className="text-primary">one dashboard.</span>
           </h1>
-          <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-10 max-w-2xl">
+          <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-12 max-w-2xl mx-auto">
             moniduck centralizes uptime monitoring, SaaS integrations, and security checks into a single pane of glass. Join the waitlist to get early access.
           </p>
 
-          {/* Waitlist Form */}
-          {submitted ? (
-            <div className="flex items-center gap-3 p-5 rounded-xl border border-success/30 bg-success/5 max-w-lg">
-              <div className="w-10 h-10 rounded-full bg-success/15 flex items-center justify-center shrink-0">
-                <Check className="w-5 h-5 text-success" />
-              </div>
-              <div>
-                <p className="font-semibold">You're on the list!</p>
+          {/* Waitlist Form — centered card */}
+          <div className="max-w-md mx-auto">
+            {submitted ? (
+              <div className="rounded-2xl border border-success/30 bg-success/5 p-8 animate-scale-in">
+                <div className="w-14 h-14 rounded-full bg-success/15 flex items-center justify-center mx-auto mb-4">
+                  <Check className="w-7 h-7 text-success" />
+                </div>
+                <p className="text-xl font-semibold mb-1">You're on the list!</p>
                 <p className="text-sm text-muted-foreground">We'll reach out when your spot is ready.</p>
               </div>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3 max-w-lg">
-              <div className="flex-1 space-y-2">
+            ) : (
+              <form
+                onSubmit={handleSubmit}
+                className="rounded-2xl border border-border bg-card p-6 md:p-8 shadow-lg space-y-4 text-left"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium text-foreground">Get early access</span>
+                </div>
                 <Input
                   type="email"
                   placeholder="you@company.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="h-12"
+                  className="h-12 text-base"
                 />
                 <Input
                   type="text"
                   placeholder="Company (optional)"
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
-                  className="h-12"
+                  className="h-12 text-base"
                 />
-              </div>
-              <Button type="submit" size="lg" className="h-12 px-8 shrink-0" disabled={loading}>
-                {loading ? "Joining..." : "Join Waitlist"}
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </form>
-          )}
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="w-full h-12 text-base"
+                  disabled={loading}
+                >
+                  {loading ? "Joining..." : "Join the Waitlist"}
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+                <p className="text-[11px] text-muted-foreground text-center pt-1">
+                  No spam, ever. We'll only email you when it's ready.
+                </p>
+              </form>
+            )}
+          </div>
         </div>
 
         {/* Terminal preview */}
-        <div className="mt-16 md:mt-20 rounded-xl border border-border bg-card overflow-hidden shadow-lg">
+        <div className="mt-16 md:mt-20 rounded-xl border border-border bg-card overflow-hidden shadow-lg max-w-4xl mx-auto">
           <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card">
             <div className="w-3 h-3 rounded-full bg-destructive/60" />
             <div className="w-3 h-3 rounded-full bg-warning/60" />
