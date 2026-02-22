@@ -300,17 +300,6 @@ export default function Waitlist() {
               Everything shows up on one dashboard. Automatically.
             </p>
 
-            {/* Feature pills */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {features.map((f) => (
-                <div key={f.text} className="rounded-xl border border-border bg-card p-4 hover:border-primary/30 transition-colors group">
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mb-2.5 group-hover:bg-primary/15 transition-colors">
-                    <f.icon className="w-4 h-4 text-primary" />
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-snug">{f.text}</p>
-                </div>
-              ))}
-            </div>
           </div>
 
           {/* Right — Form */}
@@ -324,6 +313,28 @@ export default function Waitlist() {
                 <WaitlistForm onSuccess={handleSuccess} onEmailCapture={setCapturedEmail} />
               </div>
             )}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Features Grid ───────────────────────── */}
+      <section className="border-t border-border">
+        <div className="max-w-6xl mx-auto px-6 py-20 md:py-28">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
+              Everything in <span className="text-primary">one place</span>
+            </h2>
+            <p className="text-muted-foreground text-lg">No more tab-switching. No more surprises.</p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {features.map((f) => (
+              <div key={f.text} className="rounded-xl border border-border bg-card p-5 hover:border-primary/30 hover:shadow-md transition-all duration-200 group">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/15 transition-colors">
+                  <f.icon className="w-5 h-5 text-primary" />
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">{f.text}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
