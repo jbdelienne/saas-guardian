@@ -280,7 +280,7 @@ export default function Waitlist() {
 
       {/* ─── Hero ────────────────────────────────── */}
       <section className="max-w-6xl mx-auto px-6 pt-16 pb-16 md:pt-24 md:pb-24">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-start">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* Left — Copy */}
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-xs text-primary font-medium mb-6">
@@ -300,19 +300,21 @@ export default function Waitlist() {
               Everything shows up on one dashboard. Automatically.
             </p>
 
-            {/* Bullet points */}
-            <ul className="space-y-3 mb-8">
+            {/* Feature pills */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {features.map((f) => (
-                <li key={f.text} className="flex items-start gap-3 text-sm text-muted-foreground">
-                  <f.icon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                  <span>{f.text}</span>
-                </li>
+                <div key={f.text} className="rounded-xl border border-border bg-card p-4 hover:border-primary/30 transition-colors group">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mb-2.5 group-hover:bg-primary/15 transition-colors">
+                    <f.icon className="w-4 h-4 text-primary" />
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-snug">{f.text}</p>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
 
           {/* Right — Form */}
-          <div id="waitlist-form" className="scroll-mt-24 lg:pt-12">
+          <div id="waitlist-form" className="scroll-mt-24">
             {submitted ? <SuccessCard email={capturedEmail} /> : (
               <div className="rounded-2xl border border-border bg-card p-6 shadow-lg">
                 <div className="flex items-center gap-2 mb-4">
