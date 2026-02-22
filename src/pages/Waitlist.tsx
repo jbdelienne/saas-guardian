@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import duckLogo from "@/assets/moniduck-logo.png";
-import dashboardPreview from "@/assets/dashboard-preview.png";
 
 /* ── Data ─────────────────────────────────────────── */
 
@@ -300,19 +299,7 @@ export default function Waitlist() {
             </div>
           </div>
 
-          {/* Right — Product screenshot */}
-          <div className="hidden lg:block relative">
-            <div className="rounded-xl border border-border bg-card overflow-hidden shadow-2xl">
-              <img
-                src={dashboardPreview}
-                alt="moniduck dashboard — services monitoring view"
-                className="w-full h-auto"
-                loading="eager"
-              />
-            </div>
-            {/* Decorative glow */}
-            <div className="absolute -inset-4 bg-primary/5 rounded-2xl -z-10 blur-2xl" />
-          </div>
+          {/* Right — Product screenshot removed */}
         </div>
       </section>
 
