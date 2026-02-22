@@ -206,7 +206,7 @@ function WaitlistForm({
         )}
       </Button>
       <p className="text-xs text-muted-foreground text-center">
-        🦆 Join 200+ tech teams already waiting
+      👓 Join tech teams that want to have vision over their entire stack.
       </p>
     </form>
   );
