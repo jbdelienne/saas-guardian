@@ -13,7 +13,7 @@ import duckLogo from "@/assets/moniduck-logo.png";
 
 const features = [
   { icon: Activity, title: "Real-time endpoint monitoring", desc: "Know before your users do." },
-  { icon: Search, title: "AWS auto-discovery", desc: "Connect once. We find everything in 2 minutes." },
+  { icon: Search, title: "AWS auto-discovery", desc: "Connect once. Monitor forever." },
   { icon: Globe, title: "Google Workspace & Microsoft 365", desc: "Unused licences, full storage, missing 2FA. We catch it all." },
   { icon: CreditCard, title: "Stripe monitoring", desc: "Webhooks down, disputes pending, payout failed. Instant alerts." },
   { icon: ShieldCheck, title: "SSL certificate alerts", desc: "Never wake up to a broken padlock again." },
