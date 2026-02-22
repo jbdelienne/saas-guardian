@@ -259,30 +259,32 @@ export default function Waitlist() {
       </nav>
 
       {/* ─── Hero ────────────────────────────────── */}
-      <section className="max-w-3xl mx-auto px-6 pt-16 pb-16 md:pt-24 md:pb-24 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-xs text-primary font-medium mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-            Early Access — Limited Spots
+      <section className="max-w-6xl mx-auto px-6 pt-16 pb-16 md:pt-24 md:pb-24">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-xs text-primary font-medium mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              Early Access — Limited Spots
+            </div>
+
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.08] mb-5">
+              Stop juggling dashboards.
+              <br />
+              <span className="text-primary">Start monitoring.</span>
+            </h1>
+
+            <p className="text-lg text-muted-foreground leading-relaxed mb-8 max-w-lg">
+              Uptime, SaaS licences, SSL certificates, cloud costs — moniduck watches everything from one screen. Join 200+ ops teams on the waitlist.
+            </p>
+
+            {/* Social proof pills */}
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground mb-10">
+              <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-success" />Free during beta</span>
+              <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-success" />2-minute setup</span>
+              <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-success" />No credit card</span>
+            </div>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.08] mb-5">
-            Stop juggling dashboards.
-            <br />
-            <span className="text-primary">Start monitoring.</span>
-          </h1>
-
-          <p className="text-lg text-muted-foreground leading-relaxed mb-8 max-w-xl mx-auto">
-            Uptime, SaaS licences, SSL certificates, cloud costs — moniduck watches everything from one screen. Join 200+ ops teams on the waitlist.
-          </p>
-
-          {/* Social proof pills */}
-          <div className="flex flex-wrap justify-center items-center gap-x-5 gap-y-2 text-sm text-muted-foreground mb-10">
-            <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-success" />Free during beta</span>
-            <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-success" />2-minute setup</span>
-            <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-success" />No credit card</span>
-          </div>
-
-          {/* Form */}
+          {/* Form — centered */}
           <div id="waitlist-form" className="max-w-md mx-auto scroll-mt-24">
             {submitted ? <SuccessCard /> : (
               <div className="rounded-2xl border border-border bg-card p-6 shadow-lg text-left">
