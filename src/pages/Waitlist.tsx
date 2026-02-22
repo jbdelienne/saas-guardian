@@ -259,71 +259,41 @@ export default function Waitlist() {
       </nav>
 
       {/* ─── Hero ────────────────────────────────── */}
-      <section className="max-w-6xl mx-auto px-6 pt-16 pb-16 md:pt-24 md:pb-24">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-          {/* Left — Copy + Form */}
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-xs text-primary font-medium mb-6">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-              Early Access — Limited Spots
-            </div>
-
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.08] mb-5">
-              Stop juggling dashboards.
-              <br />
-              <span className="text-primary">Start monitoring.</span>
-            </h1>
-
-            <p className="text-lg text-muted-foreground leading-relaxed mb-8 max-w-lg">
-              Uptime, SaaS licences, SSL certificates, cloud costs — moniduck watches everything from one screen. Join 200+ ops teams on the waitlist.
-            </p>
-
-            {/* Social proof pills */}
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground mb-8">
-              <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-success" />Free during beta</span>
-              <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-success" />2-minute setup</span>
-              <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-success" />No credit card</span>
-            </div>
-
-            {/* Form */}
-            <div id="waitlist-form" className="max-w-md scroll-mt-24">
-              {submitted ? <SuccessCard /> : (
-                <div className="rounded-2xl border border-border bg-card p-6 shadow-lg">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Sparkles className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-medium text-foreground">Get early access</span>
-                  </div>
-                  <WaitlistForm onSuccess={handleSuccess} />
-                </div>
-              )}
-            </div>
+      <section className="max-w-3xl mx-auto px-6 pt-16 pb-16 md:pt-24 md:pb-24 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-xs text-primary font-medium mb-6">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            Early Access — Limited Spots
           </div>
 
-          {/* Right — Product screenshot removed */}
-        </div>
-      </section>
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.08] mb-5">
+            Stop juggling dashboards.
+            <br />
+            <span className="text-primary">Start monitoring.</span>
+          </h1>
 
-      {/* ─── How It Works ────────────────────────── */}
-      <section className="border-t border-border bg-card/30">
-        <div className="max-w-5xl mx-auto px-6 py-20 md:py-28">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-              How It <span className="text-primary">Works</span>
-            </h2>
-            <p className="text-muted-foreground text-lg">From zero to full visibility in 3 steps</p>
+          <p className="text-lg text-muted-foreground leading-relaxed mb-8 max-w-xl mx-auto">
+            Uptime, SaaS licences, SSL certificates, cloud costs — moniduck watches everything from one screen. Join 200+ ops teams on the waitlist.
+          </p>
+
+          {/* Social proof pills */}
+          <div className="flex flex-wrap justify-center items-center gap-x-5 gap-y-2 text-sm text-muted-foreground mb-10">
+            <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-success" />Free during beta</span>
+            <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-success" />2-minute setup</span>
+            <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-success" />No credit card</span>
           </div>
-          <div className="grid md:grid-cols-3 gap-8">
-            {steps.map((s) => (
-              <div key={s.num} className="relative">
-                <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold mb-4">
-                  {s.num}
+
+          {/* Form */}
+          <div id="waitlist-form" className="max-w-md mx-auto scroll-mt-24">
+            {submitted ? <SuccessCard /> : (
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-lg text-left">
+                <div className="flex items-center gap-2 mb-4">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium text-foreground">Get early access</span>
                 </div>
-                <h3 className="font-semibold text-lg mb-2">{s.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{s.desc}</p>
+                <WaitlistForm onSuccess={handleSuccess} />
               </div>
-            ))}
+            )}
           </div>
-        </div>
       </section>
 
       {/* ─── Features Grid ───────────────────────── */}
