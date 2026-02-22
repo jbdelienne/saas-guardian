@@ -17,6 +17,7 @@ import IntegrationDetail from "@/pages/IntegrationDetail";
 import Alerts from "@/pages/Alerts";
 import SettingsPage from "@/pages/SettingsPage";
 import NotFound from "@/pages/NotFound";
+import Waitlist from "@/pages/Waitlist";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +54,7 @@ const LangRoutes = () => (
   <LanguageWrapper>
     <Routes>
       <Route index element={<Landing />} />
+      <Route path="waitlist" element={<Waitlist />} />
       <Route path="auth" element={<Auth />} />
       <Route path="dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="services" element={<ProtectedRoute><ServicesPage /></ProtectedRoute>} />

@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.integration-sync]
 verify_jwt = false
+
+[functions.waitlist-welcome]
+verify_jwt = false
