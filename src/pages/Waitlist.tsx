@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import {
-  ArrowRight, Check, Activity, Globe, CreditCard, ShieldCheck, Tv, Search,
-  Sparkles, ChevronDown, Zap, Clock, BarChart3, MonitorSmartphone,
+  ArrowRight, Check, ChevronDown, Copy, Linkedin,
+  Sparkles, Zap, Cloud, Rocket, Plug, CreditCard, Tv,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,25 +12,12 @@ import duckLogo from "@/assets/moniduck-logo.png";
 /* ── Data ─────────────────────────────────────────── */
 
 const features = [
-  { icon: Activity, title: "Real-time endpoint monitoring", desc: "Know before your users do." },
-  { icon: Search, title: "AWS auto-discovery", desc: "Connect once. Monitor forever." },
-  { icon: Globe, title: "Google Workspace & Microsoft 365", desc: "Unused licences, full storage, missing 2FA. We catch it all." },
-  { icon: CreditCard, title: "Stripe monitoring", desc: "Webhooks down, disputes pending, payout failed. Instant alerts." },
-  { icon: ShieldCheck, title: "SSL certificate alerts", desc: "Never wake up to a broken padlock again." },
-  { icon: Tv, title: "TV Mode", desc: "One click. Full screen. Your infra on the wall." },
-];
-
-const steps = [
-  { num: 1, title: "Connect your stack", desc: "Link AWS, Google, Stripe, or any HTTP endpoint. Takes 2 minutes." },
-  { num: 2, title: "We monitor everything", desc: "Uptime, certificates, quotas, licences, billing — checked every minute." },
-  { num: 3, title: "Get alerted instantly", desc: "Email, Slack or webhook. Before your users or your boss notices." },
-];
-
-const benefits = [
-  { icon: Clock, title: "Save 4+ hours/week", desc: "Stop switching between 6 different dashboards every morning." },
-  { icon: Zap, title: "Sub-minute detection", desc: "Our checks run every 60 seconds from multiple regions worldwide." },
-  { icon: BarChart3, title: "Actionable insights", desc: "Not just uptime. Storage trends, licence waste, security gaps." },
-  { icon: MonitorSmartphone, title: "Works everywhere", desc: "Desktop, mobile, TV mode for your office wall. One tool." },
+  { icon: Zap, text: "Add any URL — we monitor uptime, response time, and SSL" },
+  { icon: Cloud, text: "Connect AWS, GCP or Azure — we auto-discover your entire infrastructure" },
+  { icon: Rocket, text: "Connect Vercel, Railway or Render — deployments, errors, quotas" },
+  { icon: Plug, text: "Connect Google Workspace or Microsoft 365 — licences, storage, security gaps" },
+  { icon: CreditCard, text: "Connect Stripe — webhooks, disputes, payouts. Silently broken, instantly caught." },
+  { icon: Tv, text: "TV Mode — one click, full screen, your entire stack on the wall" },
 ];
 
 const faqs = [
@@ -115,9 +102,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
         <span className="font-medium text-foreground pr-4">{q}</span>
         <ChevronDown className={`w-5 h-5 text-muted-foreground shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
-      <div
-        className={`overflow-hidden transition-all duration-300 ${open ? "max-h-40 pb-5" : "max-h-0"}`}
-      >
+      <div className={`overflow-hidden transition-all duration-300 ${open ? "max-h-40 pb-5" : "max-h-0"}`}>
         <p className="text-sm text-muted-foreground leading-relaxed">{a}</p>
       </div>
     </div>
@@ -127,9 +112,11 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 /* ── Waitlist Form ────────────────────────────────── */
 function WaitlistForm({
   onSuccess,
+  onEmailCapture,
   variant = "default",
 }: {
   onSuccess: () => void;
+  onEmailCapture?: (email: string) => void;
   variant?: "default" | "compact";
 }) {
   const [email, setEmail] = useState("");
@@ -140,6 +127,7 @@ function WaitlistForm({
     e.preventDefault();
     if (!email.trim()) return;
     setLoading(true);
+    onEmailCapture?.(email.trim().toLowerCase());
     try {
       const { error } = await supabase.from("waitlist_signups").insert({
         email: email.trim().toLowerCase(),
@@ -147,7 +135,6 @@ function WaitlistForm({
       });
       if (error) {
         if (error.code === "23505") {
-          toast.info("You're already on the waitlist!");
           onSuccess();
         } else throw error;
       } else {
@@ -156,7 +143,6 @@ function WaitlistForm({
             body: { email: email.trim().toLowerCase(), company: company.trim() || null },
           });
         } catch { /* best-effort */ }
-        toast.success("You're on the list! 🎉");
         onSuccess();
       }
     } catch (err: any) {
@@ -179,8 +165,14 @@ function WaitlistForm({
           className="h-12 text-base flex-1"
         />
         <Button type="submit" size="lg" className="h-12 px-8 shrink-0" disabled={loading}>
-          {loading ? "Joining..." : "Join Waitlist"}
-          <ArrowRight className="w-4 h-4 ml-2" />
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+              Joining...
+            </span>
+          ) : (
+            <>Join the waitlist <ArrowRight className="w-4 h-4 ml-1" /></>
+          )}
         </Button>
       </form>
     );
@@ -204,25 +196,52 @@ function WaitlistForm({
         className="h-12 text-base"
       />
       <Button type="submit" size="lg" className="w-full h-12 text-base" disabled={loading}>
-        {loading ? "Joining..." : "Join the Waitlist"}
-        <ArrowRight className="w-4 h-4 ml-2" />
+        {loading ? (
+          <span className="flex items-center gap-2">
+            <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+            Joining...
+          </span>
+        ) : (
+          <>Join the waitlist <ArrowRight className="w-4 h-4 ml-1" /></>
+        )}
       </Button>
-      <p className="text-[11px] text-muted-foreground text-center">
-        No spam, ever. We'll only email you when it's ready.
+      <p className="text-xs text-muted-foreground text-center">
+        🦆 Join 200+ tech teams already waiting
       </p>
     </form>
   );
 }
 
 /* ── Success state ────────────────────────────────── */
-function SuccessCard() {
+function SuccessCard({ email }: { email: string }) {
+  const pageUrl = typeof window !== "undefined" ? window.location.href : "";
+
+  const shareOnLinkedIn = () => {
+    const text = encodeURIComponent("Just joined the @moniduck waitlist — monitoring for modern tech stacks. Check it out 👇");
+    const url = encodeURIComponent(pageUrl);
+    window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}&summary=${text}`, "_blank");
+  };
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(pageUrl);
+    toast.success("Link copied!");
+  };
+
   return (
-    <div className="rounded-2xl border border-success/30 bg-success/5 p-8 animate-scale-in text-center">
-      <div className="w-14 h-14 rounded-full bg-success/15 flex items-center justify-center mx-auto mb-4">
-        <Check className="w-7 h-7 text-success" />
+    <div className="rounded-2xl border border-primary/20 bg-card p-8 animate-scale-in text-center">
+      <div className="text-5xl mb-4 animate-bounce">🦆</div>
+      <p className="text-xl font-semibold mb-2">You're on the list!</p>
+      <p className="text-sm text-muted-foreground mb-6">
+        Confirmation sent to <span className="font-medium text-foreground">{email}</span>
+      </p>
+      <div className="flex items-center justify-center gap-3">
+        <Button variant="outline" size="sm" onClick={shareOnLinkedIn} className="gap-2">
+          <Linkedin className="w-4 h-4" /> Share on LinkedIn
+        </Button>
+        <Button variant="outline" size="sm" onClick={copyLink} className="gap-2">
+          <Copy className="w-4 h-4" /> Copy link
+        </Button>
       </div>
-      <p className="text-xl font-semibold mb-1">You're on the list!</p>
-      <p className="text-sm text-muted-foreground">We'll reach out when your spot is ready.</p>
     </div>
   );
 }
@@ -231,6 +250,7 @@ function SuccessCard() {
 
 export default function Waitlist() {
   const [submitted, setSubmitted] = useState(false);
+  const [capturedEmail, setCapturedEmail] = useState("");
   const { canvasRef, fire } = useConfetti();
 
   const handleSuccess = () => {
@@ -260,91 +280,58 @@ export default function Waitlist() {
 
       {/* ─── Hero ────────────────────────────────── */}
       <section className="max-w-6xl mx-auto px-6 pt-16 pb-16 md:pt-24 md:pb-24">
-          <div className="max-w-2xl">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-start">
+          {/* Left — Copy */}
+          <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-xs text-primary font-medium mb-6">
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
               Early Access — Limited Spots
             </div>
 
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.08] mb-5">
-              Stop juggling dashboards.
+              Monitoring for
               <br />
-              <span className="text-primary">Start monitoring.</span>
+              <span className="text-primary">modern tech stacks.</span>
             </h1>
 
-            <p className="text-lg text-muted-foreground leading-relaxed mb-8 max-w-lg">
-              Uptime, SaaS licences, SSL certificates, cloud costs — moniduck watches everything from one screen. Join 200+ ops teams on the waitlist.
+            <p className="text-lg text-muted-foreground leading-relaxed mb-10 max-w-lg">
+              Connect your cloud providers, SaaS tools, and services.
+              <br className="hidden sm:block" />
+              Everything shows up on one dashboard. Automatically.
             </p>
 
-            {/* Social proof pills */}
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground mb-10">
-              <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-success" />Free during beta</span>
-              <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-success" />2-minute setup</span>
-              <span className="flex items-center gap-1.5"><Check className="w-4 h-4 text-success" />No credit card</span>
-            </div>
+            {/* Bullet points */}
+            <ul className="space-y-3 mb-8">
+              {features.map((f) => (
+                <li key={f.text} className="flex items-start gap-3 text-sm text-muted-foreground">
+                  <f.icon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                  <span>{f.text}</span>
+                </li>
+              ))}
+            </ul>
           </div>
 
-          {/* Form — centered */}
-          <div id="waitlist-form" className="max-w-md mx-auto scroll-mt-24">
-            {submitted ? <SuccessCard /> : (
-              <div className="rounded-2xl border border-border bg-card p-6 shadow-lg text-left">
+          {/* Right — Form */}
+          <div id="waitlist-form" className="scroll-mt-24 lg:pt-12">
+            {submitted ? <SuccessCard email={capturedEmail} /> : (
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-lg">
                 <div className="flex items-center gap-2 mb-4">
                   <Sparkles className="w-4 h-4 text-primary" />
                   <span className="text-sm font-medium text-foreground">Get early access</span>
                 </div>
-                <WaitlistForm onSuccess={handleSuccess} />
+                <WaitlistForm onSuccess={handleSuccess} onEmailCapture={setCapturedEmail} />
               </div>
             )}
-          </div>
-      </section>
-
-      {/* ─── Features Grid ───────────────────────── */}
-      <section className="border-t border-border">
-        <div className="max-w-6xl mx-auto px-6 py-20 md:py-28">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-              Everything in <span className="text-primary">one place</span>
-            </h2>
-            <p className="text-muted-foreground text-lg">No more tab-switching. No more surprises.</p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((f) => (
-              <div
-                key={f.title}
-                className="rounded-xl border border-border bg-card p-6 hover:border-primary/30 hover:shadow-md transition-all duration-200 group"
-              >
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/15 transition-colors">
-                  <f.icon className="w-5 h-5 text-primary" />
-                </div>
-                <h3 className="font-semibold text-base mb-1.5">{f.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
-              </div>
-            ))}
           </div>
         </div>
       </section>
 
-      {/* ─── Why moniduck (benefits) ─────────────── */}
+      {/* ─── Tagline ─────────────────────────────── */}
       <section className="border-t border-border bg-card/30">
-        <div className="max-w-5xl mx-auto px-6 py-20 md:py-28">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-              Why teams choose <span className="text-primary">moniduck</span>
-            </h2>
-          </div>
-          <div className="grid sm:grid-cols-2 gap-8">
-            {benefits.map((b) => (
-              <div key={b.title} className="flex gap-4">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                  <b.icon className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-base mb-1">{b.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{b.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="max-w-4xl mx-auto px-6 py-16 md:py-20 text-center">
+          <p className="text-2xl md:text-3xl font-bold tracking-tight">
+            One platform. Your entire stack. <span className="text-primary">No agents.</span>
+          </p>
         </div>
       </section>
 
@@ -365,22 +352,15 @@ export default function Waitlist() {
       {/* ─── Final CTA ───────────────────────────── */}
       <section className="border-t border-border bg-card/40">
         <div className="max-w-3xl mx-auto px-6 py-20 md:py-28 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-            Ready to simplify your ops?
+          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-3">
+            Early access. <span className="text-primary">Free to start.</span>
           </h2>
           <p className="text-muted-foreground text-lg mb-10 max-w-xl mx-auto">
-            Join the waitlist and be among the first to try moniduck. Free during beta, no credit card required.
+            Join the waitlist and be among the first to try moniduck. No credit card required.
           </p>
-          {submitted ? <SuccessCard /> : (
-            <WaitlistForm onSuccess={handleSuccess} variant="compact" />
+          {submitted ? <SuccessCard email={capturedEmail} /> : (
+            <WaitlistForm onSuccess={handleSuccess} onEmailCapture={setCapturedEmail} variant="compact" />
           )}
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-muted-foreground mt-6">
-            <span>Free during beta</span>
-            <span>·</span>
-            <span>No credit card</span>
-            <span>·</span>
-            <span>Cancel anytime</span>
-          </div>
         </div>
       </section>
 
