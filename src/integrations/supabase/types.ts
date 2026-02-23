@@ -120,6 +120,53 @@ export type Database = {
           },
         ]
       }
+      aws_credentials: {
+        Row: {
+          access_key_id: string
+          created_at: string
+          id: string
+          last_sync_at: string | null
+          region: string
+          secret_access_key: string
+          sync_status: string
+          updated_at: string
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          access_key_id: string
+          created_at?: string
+          id?: string
+          last_sync_at?: string | null
+          region?: string
+          secret_access_key: string
+          sync_status?: string
+          updated_at?: string
+          user_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          access_key_id?: string
+          created_at?: string
+          id?: string
+          last_sync_at?: string | null
+          region?: string
+          secret_access_key?: string
+          sync_status?: string
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aws_credentials_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       checks: {
         Row: {
           check_region: string | null

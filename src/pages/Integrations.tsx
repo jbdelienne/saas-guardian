@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, ExternalLink, Loader2, RefreshCw, ChevronRight } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import AwsConnectModal from '@/components/integrations/AwsConnectModal';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useLangPrefix } from '@/hooks/use-lang-prefix';
@@ -77,6 +78,7 @@ export default function Integrations() {
   const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const lp = useLangPrefix();
+  const [awsModalOpen, setAwsModalOpen] = useState(false);
 
   useEffect(() => {
     const connected = searchParams.get('connected');
@@ -113,7 +115,32 @@ export default function Integrations() {
                   {category.types.map((type) => {
                     const integration = getIntegration(type);
                     const connected = !!integration;
-                    const isComingSoon = ['aws', 'gcp', 'azure'].includes(type);
+                    const isComingSoon = ['gcp', 'azure'].includes(type);
+                    const isAws = type === 'aws';
+
+                    if (isAws) {
+                      return (
+                        <div
+                          key={type}
+                          className="bg-card border border-border rounded-xl p-6 flex flex-col"
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <img src={integrationLogos[type]} alt={type} className="w-10 h-10 object-contain" />
+                          </div>
+                          <h3 className="font-semibold text-foreground mb-1">{t(`integrations.${type}.name`, { defaultValue: 'Amazon Web Services' }) as string}</h3>
+                          <p className="text-xs text-muted-foreground mb-3">{t(`integrations.${type}.description`, { defaultValue: 'Auto-discover and monitor your AWS infrastructure.' }) as string}</p>
+                          <div className="flex flex-wrap gap-1 mb-4">
+                            {integrationMetricTags[type].map((m) => (
+                              <Badge key={m} variant="outline" className="text-[10px] font-normal">{m}</Badge>
+                            ))}
+                          </div>
+                          <Button variant="outline" size="sm" className="mt-auto gap-2" onClick={() => setAwsModalOpen(true)}>
+                            <ExternalLink className="w-4 h-4" />
+                            Connect AWS
+                          </Button>
+                        </div>
+                      );
+                    }
 
                     if (isComingSoon) {
                       return (
@@ -235,6 +262,7 @@ export default function Integrations() {
           </div>
         )}
       </div>
+      <AwsConnectModal open={awsModalOpen} onClose={() => setAwsModalOpen(false)} />
     </AppLayout>
   );
 }
