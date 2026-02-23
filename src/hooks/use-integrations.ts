@@ -134,3 +134,52 @@ export function useSyncIntegration() {
     },
   });
 }
+
+export function useSyncAwsCredentials() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (credentialId: string) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/aws-sync?credential_id=${credentialId}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'AWS sync failed');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['sync-data'] });
+      qc.invalidateQueries({ queryKey: ['integrations'] });
+      qc.invalidateQueries({ queryKey: ['all-sync-data'] });
+      qc.invalidateQueries({ queryKey: ['aws-credentials'] });
+    },
+  });
+}
+
+export function useAwsCredentials() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['aws-credentials', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('aws_credentials')
+        .select('*')
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+}
