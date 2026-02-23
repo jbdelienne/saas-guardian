@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Service, useChecks, useTogglePause, useUpdateService } from '@/hooks/use-supabase';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
-import { formatDistanceToNow, format, differenceInDays } from 'date-fns';
+import { formatDistanceToNow, format, differenceInDays, subDays, subMonths, isAfter } from 'date-fns';
 import { Trash2, Pause, Play, Loader2, Shield, Activity, Clock, ArrowUpCircle, Globe, Zap, FileText, Search, Download, TrendingUp, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UptimePeriod, useUptimeChart } from '@/hooks/use-uptime';
@@ -60,6 +60,7 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
   const updateService = useUpdateService();
   const { data: checks = [], isLoading: checksLoading } = useChecks(service?.id, 50);
   const [chartPeriod, setChartPeriod] = useState<UptimePeriod>('7d');
+  const [reportPeriod, setReportPeriod] = useState<'24h' | '7d' | '30d' | 'all'>('7d');
   const { data: uptimeChartData = [], isLoading: chartLoading } = useUptimeChart(service?.id, chartPeriod);
 
   const responseChartData = checks
@@ -88,46 +89,36 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
           ? 'text-warning'
           : 'text-emerald-500';
 
+  const getFilteredChecks = () => {
+    if (reportPeriod === 'all') return checks;
+    const now = new Date();
+    const cutoff = reportPeriod === '24h' ? subDays(now, 1) : reportPeriod === '7d' ? subDays(now, 7) : subDays(now, 30);
+    return checks.filter((c) => isAfter(new Date(c.checked_at), cutoff));
+  };
+
+  const reportPeriodLabel: Record<string, string> = { '24h': 'Last 24 hours', '7d': 'Last 7 days', '30d': 'Last 30 days', 'all': 'All time' };
+
   const handleDownloadCSV = () => {
-    if (checks.length === 0) {
-      toast.error('No data to export');
-      return;
-    }
+    const filtered = getFilteredChecks();
+    if (filtered.length === 0) { toast.error('No data for this period'); return; }
     const headers = ['Timestamp', 'Status', 'Response Time (ms)', 'TTFB (ms)', 'Status Code', 'Region', 'Error'];
-    const rows = checks.map((c: any) => [
-      c.checked_at,
-      c.status,
-      c.response_time,
-      c.ttfb ?? '',
-      c.status_code ?? '',
-      c.check_region ?? '',
-      c.error_message ?? '',
-    ]);
+    const rows = filtered.map((c: any) => [c.checked_at, c.status, c.response_time, c.ttfb ?? '', c.status_code ?? '', c.check_region ?? '', c.error_message ?? '']);
     const csv = [headers.join(','), ...rows.map((r: any[]) => r.map((v: any) => `"${v}"`).join(','))].join('\n');
-    downloadFile(csv, `${service.name.replace(/\s+/g, '_')}_report.csv`, 'text/csv');
-    toast.success('CSV report downloaded');
+    downloadFile(csv, `${service.name.replace(/\s+/g, '_')}_${reportPeriod}_report.csv`, 'text/csv');
+    toast.success(`CSV report downloaded (${reportPeriodLabel[reportPeriod]})`);
   };
 
   const handleDownloadJSON = () => {
-    if (checks.length === 0) {
-      toast.error('No data to export');
-      return;
-    }
+    const filtered = getFilteredChecks();
+    if (filtered.length === 0) { toast.error('No data for this period'); return; }
     const report = {
       service: { name: service.name, url: service.url, status: service.status, uptime: service.uptime_percentage, avg_response_time: service.avg_response_time },
+      period: reportPeriodLabel[reportPeriod],
       exported_at: new Date().toISOString(),
-      checks: checks.map((c: any) => ({
-        timestamp: c.checked_at,
-        status: c.status,
-        response_time_ms: c.response_time,
-        ttfb_ms: c.ttfb,
-        status_code: c.status_code,
-        region: c.check_region,
-        error: c.error_message,
-      })),
+      checks: filtered.map((c: any) => ({ timestamp: c.checked_at, status: c.status, response_time_ms: c.response_time, ttfb_ms: c.ttfb, status_code: c.status_code, region: c.check_region, error: c.error_message })),
     };
-    downloadFile(JSON.stringify(report, null, 2), `${service.name.replace(/\s+/g, '_')}_report.json`, 'application/json');
-    toast.success('JSON report downloaded');
+    downloadFile(JSON.stringify(report, null, 2), `${service.name.replace(/\s+/g, '_')}_${reportPeriod}_report.json`, 'application/json');
+    toast.success(`JSON report downloaded (${reportPeriodLabel[reportPeriod]})`);
   };
 
   return (
@@ -372,9 +363,32 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
             </TabsContent>
 
             {/* Reports tab */}
-            <TabsContent value="reports" className="mt-0 space-y-4">
-              <div className="text-sm text-muted-foreground mb-2">
-                Download monitoring reports for <strong className="text-foreground">{service.name}</strong>. Reports include all check history available.
+            <TabsContent value="reports" className="mt-0 space-y-5">
+              <div className="text-sm text-muted-foreground">
+                Download monitoring reports for <strong className="text-foreground">{service.name}</strong>.
+              </div>
+
+              {/* Period selector */}
+              <div className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground font-medium">Period:</span>
+                <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
+                  {(['24h', '7d', '30d', 'all'] as const).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setReportPeriod(p)}
+                      className={`px-3 py-1.5 text-xs rounded-md transition-colors font-medium ${
+                        reportPeriod === p
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {p === 'all' ? 'All' : p}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-xs text-muted-foreground ml-auto">
+                  {getFilteredChecks().length} check{getFilteredChecks().length !== 1 ? 's' : ''}
+                </span>
               </div>
 
               <div className="grid sm:grid-cols-2 gap-3">
@@ -429,11 +443,6 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
                 </div>
               </div>
 
-              {checks.length > 0 && (
-                <p className="text-xs text-muted-foreground text-center">
-                  {checks.length} check{checks.length > 1 ? 's' : ''} available for export
-                </p>
-              )}
             </TabsContent>
 
             <TabsContent value="settings" className="mt-0 space-y-4">
