@@ -439,13 +439,92 @@ Deno.serve(async (req) => {
       ...health,
     ];
 
-    // Delete old data and insert new
+    // ---- Upsert compute resources into services table ----
+    const computeServices: Array<{ name: string; url: string; icon: string; status: string; tags: string[] }> = [];
+
+    // EC2 instances
+    const ec2Detail = ec2.find(m => m.metric_key === "ec2_instances_detail");
+    if (ec2Detail?.metadata?.instances) {
+      for (const inst of ec2Detail.metadata.instances as Array<{ id: string; type: string; state: string }>) {
+        const st = inst.state === "running" ? "up" : inst.state === "stopped" ? "down" : "unknown";
+        computeServices.push({
+          name: `EC2 ${inst.id}`,
+          url: `https://${cred.region}.console.aws.amazon.com/ec2/home?region=${cred.region}#InstanceDetails:instanceId=${inst.id}`,
+          icon: "🖥️",
+          status: st,
+          tags: ["aws", "ec2", inst.type],
+        });
+      }
+    }
+
+    // Lambda functions
+    const lambdaDetail = lambda.find(m => m.metric_key === "lambda_total_functions");
+    if (lambdaDetail?.metadata?.functions) {
+      for (const fn of lambdaDetail.metadata.functions as Array<{ name: string; runtime: string; memory: number }>) {
+        computeServices.push({
+          name: `Lambda ${fn.name}`,
+          url: `https://${cred.region}.console.aws.amazon.com/lambda/home?region=${cred.region}#/functions/${fn.name}`,
+          icon: "⚡",
+          status: "up",
+          tags: ["aws", "lambda", fn.runtime || "unknown"],
+        });
+      }
+    }
+
+    // RDS instances
+    const rdsDetail = rds.find(m => m.metric_key === "rds_total_instances");
+    if (rdsDetail?.metadata?.instances) {
+      for (const db of rdsDetail.metadata.instances as Array<{ id: string; engine: string; status: string }>) {
+        const st = db.status === "available" ? "up" : db.status === "stopped" ? "down" : "degraded";
+        computeServices.push({
+          name: `RDS ${db.id}`,
+          url: `https://${cred.region}.console.aws.amazon.com/rds/home?region=${cred.region}#database:id=${db.id}`,
+          icon: "🗄️",
+          status: st,
+          tags: ["aws", "rds", db.engine],
+        });
+      }
+    }
+
+    // Upsert each compute service (match by name + user)
+    for (const svc of computeServices) {
+      const { data: existing } = await supabaseAdmin
+        .from("services")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("name", svc.name)
+        .maybeSingle();
+
+      if (existing) {
+        await supabaseAdmin.from("services").update({
+          status: svc.status,
+          url: svc.url,
+          icon: svc.icon,
+          tags: svc.tags,
+          last_check: new Date().toISOString(),
+        }).eq("id", existing.id);
+      } else {
+        await supabaseAdmin.from("services").insert({
+          user_id: userId,
+          workspace_id: cred.workspace_id,
+          name: svc.name,
+          url: svc.url,
+          icon: svc.icon,
+          status: svc.status,
+          tags: svc.tags,
+          is_paused: true, // don't HTTP-ping AWS console URLs
+          check_interval: 0,
+          last_check: new Date().toISOString(),
+        });
+      }
+    }
+
+    // Delete old sync data and insert new
     await supabaseAdmin
       .from("integration_sync_data")
       .delete()
       .eq("integration_id", integrationId)
       .eq("user_id", userId);
-
     if (allMetrics.length > 0) {
       const rows = allMetrics.map((m) => ({
         user_id: userId,
