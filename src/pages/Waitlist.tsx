@@ -1,8 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import {
   ArrowRight, Check, ChevronDown, Copy, Linkedin,
-  Sparkles, Zap, Cloud, Rocket, Plug, CreditCard, Tv,
-  Globe, Shield, Clock, Monitor, Server, Layers,
+  Sparkles, Eye, TrendingDown, ShieldCheck, FileCheck,
+  Globe, Cloud, Plug, Shield, Clock, Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,38 +10,28 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import duckLogo from "@/assets/moniduck-logo.png";
 
-/* ── Data ─────────────────────────────────────────── */
+/* ── Solutions data ───────────────────────────────── */
 
-const pillars = [
+const solutions = [
   {
-    title: "HTTP Monitoring",
-    subtitle: "Add any URL. We do the rest.",
-    icon: Globe,
-    items: [
-      { icon: Zap, label: "Uptime & response time" },
-      { icon: Shield, label: "SSL certificate tracking" },
-      { icon: Clock, label: "Checks every 1–5 min" },
-    ],
+    icon: Eye,
+    title: "Full-Stack Visibility",
+    desc: "Real-time view of endpoints, cloud resources, and SaaS tools — from one dashboard.",
   },
   {
-    title: "Cloud & PaaS",
-    subtitle: "Connect once. See every service.",
-    icon: Cloud,
-    items: [
-      { icon: Server, label: "AWS, GCP, Azure auto-discovery" },
-      { icon: Rocket, label: "Vercel, Railway, Render" },
-      { icon: Layers, label: "Deployments, errors, quotas" },
-    ],
+    icon: TrendingDown,
+    title: "Cost Intelligence",
+    desc: "Surface billing anomalies, unused resources, and SaaS license waste automatically.",
   },
   {
-    title: "SaaS Integrations",
-    subtitle: "Your tools. Their blind spots. Covered.",
-    icon: Plug,
-    items: [
-      { icon: Monitor, label: "Google Workspace & Microsoft 365" },
-      { icon: CreditCard, label: "Stripe webhooks & payouts" },
-      { icon: Tv, label: "TV Mode — your stack on the wall" },
-    ],
+    icon: ShieldCheck,
+    title: "Security Posture",
+    desc: "Monitor SSL, MFA adoption, suspended accounts, and public exposure across your stack.",
+  },
+  {
+    icon: FileCheck,
+    title: "Operational Compliance",
+    desc: "Generate SLA reports, export audit trails, and prove uptime for contractual obligations.",
   },
 ];
 
@@ -54,7 +44,8 @@ const differentiators = [
 const faqs = [
   { q: "Is moniduck free during the beta?", a: "Yes. Early access users get the full product free during our beta period. No credit card required." },
   { q: "What makes moniduck different from Datadog?", a: "Datadog is infrastructure-level (CPU, RAM, logs). moniduck monitors your stack at the service level — URLs, cloud services, SaaS tools — without installing agents or writing config." },
-  { q: "How does alerting work?", a: "You define thresholds (e.g. storage > 85%) and we notify you via email, Slack webhook, or both. Downtime alerts are instant." },
+  { q: "What can moniduck monitor?", a: "Any HTTP endpoint, cloud providers (AWS, GCP, Azure), PaaS platforms (Vercel, Railway), and SaaS tools (Google Workspace, Microsoft 365, Stripe, GitHub)." },
+  { q: "How does alerting work?", a: "You define thresholds (e.g. storage > 85%, uptime < 99.9%) and we notify you via email, Slack webhook, or both. Downtime alerts are instant." },
   { q: "Can my whole team use it?", a: "Absolutely. moniduck supports workspaces with role-based access. Invite your ops team in seconds." },
   { q: "What happens after the beta?", a: "Early adopters will be grandfathered into a generous plan. We'll always have a free tier." },
 ];
@@ -320,14 +311,14 @@ export default function Waitlist() {
             </div>
 
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-[1.08] mb-5">
-              Monitoring for
+              One platform for
               <br />
-              <span className="text-primary">modern tech stacks.</span>
+              <span className="text-primary">full-stack visibility.</span>
             </h1>
 
             <p className="text-lg text-muted-foreground leading-relaxed mb-8 max-w-lg">
-              Connect your cloud providers, SaaS tools, and services.
-              Everything shows up on one dashboard. Automatically.
+              Monitor your endpoints, cloud providers, and SaaS tools. 
+              Surface costs, security gaps, and compliance risks — automatically.
             </p>
 
             {/* Differentiators */}
@@ -358,36 +349,58 @@ export default function Waitlist() {
         </div>
       </section>
 
-      {/* ─── 3 Pillars ───────────────────────────── */}
+      {/* ─── Solutions ───────────────────────────── */}
       <section className="border-t border-border">
         <div className="max-w-6xl mx-auto px-6 py-20 md:py-28">
           <div className="text-center mb-16">
+            <p className="text-sm font-medium text-primary mb-3 tracking-wide uppercase">Solutions</p>
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-              Three modes. <span className="text-primary">One dashboard.</span>
+              Four problems. <span className="text-primary">One platform.</span>
             </h2>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Whether it's a URL, a cloud provider, or a SaaS tool — moniduck monitors it. No agents, no config files.
+              moniduck doesn't just ping URLs. It solves real operational challenges for DevOps and Platform teams.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6">
-            {pillars.map((pillar) => (
+          <div className="grid md:grid-cols-2 gap-6">
+            {solutions.map((sol) => (
               <div
-                key={pillar.title}
+                key={sol.title}
                 className="rounded-xl border border-border bg-card p-6 hover:border-primary/30 hover:shadow-lg transition-all duration-300 group"
               >
                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-5 group-hover:bg-primary/15 transition-colors">
-                  <pillar.icon className="w-6 h-6 text-primary" />
+                  <sol.icon className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="text-lg font-semibold mb-1">{pillar.title}</h3>
-                <p className="text-sm text-muted-foreground mb-5">{pillar.subtitle}</p>
-                <div className="space-y-3">
-                  {pillar.items.map((item) => (
-                    <div key={item.label} className="flex items-center gap-3 text-sm">
-                      <item.icon className="w-4 h-4 text-primary/70 shrink-0" />
-                      <span className="text-muted-foreground">{item.label}</span>
-                    </div>
-                  ))}
+                <h3 className="text-lg font-semibold mb-2">{sol.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{sol.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Products ────────────────────────────── */}
+      <section className="border-t border-border bg-card/30">
+        <div className="max-w-6xl mx-auto px-6 py-16 md:py-20">
+          <div className="text-center mb-12">
+            <p className="text-sm font-medium text-primary mb-3 tracking-wide uppercase">Products</p>
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-3">
+              Three engines powering your monitoring.
+            </h2>
+          </div>
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              { icon: Globe, title: "HTTP Monitoring", desc: "Uptime, response time, SSL & content checks for any URL." },
+              { icon: Cloud, title: "Cloud Discovery", desc: "Auto-discover EC2, Lambda, RDS, S3 across AWS, GCP & Azure." },
+              { icon: Plug, title: "SaaS Integrations", desc: "Google Workspace, Microsoft 365, Stripe — one OAuth, live data." },
+            ].map((p) => (
+              <div key={p.title} className="flex items-start gap-4 p-4 rounded-lg border border-border bg-card">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <p.icon className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-sm mb-1">{p.title}</h4>
+                  <p className="text-xs text-muted-foreground leading-relaxed">{p.desc}</p>
                 </div>
               </div>
             ))}
@@ -395,15 +408,14 @@ export default function Waitlist() {
         </div>
       </section>
 
-      {/* ─── Differentiator Banner ────────────────── */}
-      <section className="border-t border-border bg-card/30">
+      {/* ─── Built for ───────────────────────────── */}
+      <section className="border-t border-border">
         <div className="max-w-4xl mx-auto px-6 py-16 md:py-20 text-center">
           <p className="text-2xl md:text-3xl font-bold tracking-tight mb-3">
-            One platform. Your entire stack. <span className="text-primary">No agents.</span>
+            Built for scale-ups. <span className="text-primary">Not enterprises with 200 tools.</span>
           </p>
           <p className="text-muted-foreground max-w-xl mx-auto">
-            Built for DevOps and Platform teams at scale-ups who don't want another Datadog.
-            Setup takes 2 minutes per integration.
+            If your team is 30–200 people and you're tired of Datadog bills and tool sprawl, moniduck is for you.
           </p>
         </div>
       </section>
