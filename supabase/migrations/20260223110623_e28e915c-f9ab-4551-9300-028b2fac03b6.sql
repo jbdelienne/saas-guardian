@@ -1,0 +1,2 @@
+ALTER TABLE public.integrations DROP CONSTRAINT integrations_integration_type_check;
+ALTER TABLE public.integrations ADD CONSTRAINT integrations_integration_type_check CHECK (integration_type = ANY (ARRAY['google', 'microsoft', 'slack', 'aws', 'gcp', 'azure']));
