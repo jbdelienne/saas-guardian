@@ -377,7 +377,7 @@ Deno.serve(async (req) => {
 
     if (!integration) {
       // Get workspace_id from the credential
-      const { data: inserted } = await supabaseAdmin
+      const { data: inserted, error: insertErr } = await supabaseAdmin
         .from("integrations")
         .insert({
           user_id: userId,
@@ -388,6 +388,9 @@ Deno.serve(async (req) => {
         })
         .select("id")
         .single();
+      if (insertErr) {
+        console.error("Failed to insert integration:", JSON.stringify(insertErr));
+      }
       integration = inserted;
     } else {
       await supabaseAdmin
