@@ -10,13 +10,37 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useLangPrefix } from '@/hooks/use-lang-prefix';
 
-const integrationTypes = ['google', 'microsoft', 'slack'] as const;
-const integrationIcons: Record<string, string> = { google: '🔵', microsoft: '🟦', slack: '💬' };
+const integrationCategories = [
+  {
+    key: 'collaboration',
+    label: 'Collaboration Suites',
+    description: 'Monitor licenses, storage & security across your productivity tools.',
+    types: ['google', 'microsoft'] as const,
+  },
+  {
+    key: 'cloud',
+    label: 'Cloud Providers',
+    description: 'Auto-discover and monitor your cloud infrastructure.',
+    types: ['aws', 'gcp', 'azure'] as const,
+  },
+] as const;
+
+const integrationIcons: Record<string, string> = {
+  google: '🔵',
+  microsoft: '🟦',
+  aws: '🟠',
+  gcp: '🔴',
+  azure: '🔷',
+};
 const integrationMetricTags: Record<string, string[]> = {
   google: ['Storage', 'Licenses', 'Users', 'Security'],
   microsoft: ['Licenses', 'Storage', 'MFA', 'Users'],
-  slack: ['Channels', 'Users', 'Activity'],
+  aws: ['EC2', 'S3', 'Lambda', 'Costs'],
+  gcp: ['Compute', 'Storage', 'Functions', 'Costs'],
+  azure: ['VMs', 'Storage', 'Functions', 'Costs'],
 };
+
+const allIntegrationTypes = integrationCategories.flatMap((c) => c.types);
 
 function MetricPreview({ integrationId }: { integrationId: string }) {
   const { data: syncData = [] } = useSyncData(integrationId);
@@ -72,119 +96,138 @@ export default function Integrations() {
             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {integrationTypes.map((type) => {
-              const integration = getIntegration(type);
-              const connected = !!integration;
+          <div className="space-y-10">
+            {integrationCategories.map((category) => (
+              <div key={category.key}>
+                <div className="mb-4">
+                  <h2 className="text-lg font-semibold text-foreground">{category.label}</h2>
+                  <p className="text-xs text-muted-foreground">{category.description}</p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {category.types.map((type) => {
+                    const integration = getIntegration(type);
+                    const connected = !!integration;
+                    const isComingSoon = ['aws', 'gcp', 'azure'].includes(type);
 
-              return (
-                <div
-                  key={type}
-                  className={`bg-card border border-border rounded-xl p-6 flex flex-col transition-all duration-200 ${
-                    connected ? 'cursor-pointer hover:shadow-lg hover:border-primary/20 hover:-translate-y-0.5' : ''
-                  }`}
-                  onClick={() => connected && navigate(`${lp}/integrations/${type}`)}
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <span className="text-4xl">{integrationIcons[type]}</span>
-                    {connected && (
-                      <div className="flex items-center gap-1 text-success text-xs font-medium">
-                        <CheckCircle className="w-3.5 h-3.5" />
-                        {t('integrations.connected')}
-                      </div>
-                    )}
-                  </div>
+                    if (isComingSoon) {
+                      return (
+                        <div
+                          key={type}
+                          className="bg-card border border-border rounded-xl p-6 flex flex-col opacity-60"
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <span className="text-4xl">{integrationIcons[type]}</span>
+                            <Badge variant="outline" className="text-[10px]">Coming soon</Badge>
+                          </div>
+                          <h3 className="font-semibold text-foreground mb-1">{t(`integrations.${type}.name`, { defaultValue: type.toUpperCase() }) as string}</h3>
+                          <p className="text-xs text-muted-foreground mb-3">{t(`integrations.${type}.description`, { defaultValue: 'Auto-discover and monitor services.' }) as string}</p>
+                          <div className="flex flex-wrap gap-1 mb-4">
+                            {integrationMetricTags[type].map((m) => (
+                              <Badge key={m} variant="outline" className="text-[10px] font-normal">{m}</Badge>
+                            ))}
+                          </div>
+                          <Button variant="outline" size="sm" disabled className="mt-auto">{t('integrations.soon')}</Button>
+                        </div>
+                      );
+                    }
 
-                  <h3 className="font-semibold text-foreground mb-1">{t(`integrations.${type}.name`)}</h3>
-                  <p className="text-xs text-muted-foreground mb-3">{t(`integrations.${type}.description`)}</p>
+                    return (
+                      <div
+                        key={type}
+                        className={`bg-card border border-border rounded-xl p-6 flex flex-col transition-all duration-200 ${
+                          connected ? 'cursor-pointer hover:shadow-lg hover:border-primary/20 hover:-translate-y-0.5' : ''
+                        }`}
+                        onClick={() => connected && navigate(`${lp}/integrations/${type}`)}
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <span className="text-4xl">{integrationIcons[type]}</span>
+                          {connected && (
+                            <div className="flex items-center gap-1 text-success text-xs font-medium">
+                              <CheckCircle className="w-3.5 h-3.5" />
+                              {t('integrations.connected')}
+                            </div>
+                          )}
+                        </div>
 
-                  <div className="flex flex-wrap gap-1 mb-4">
-                    {integrationMetricTags[type].map((m) => (
-                      <Badge key={m} variant="outline" className="text-[10px] font-normal">
-                        {m}
-                      </Badge>
-                    ))}
-                  </div>
+                        <h3 className="font-semibold text-foreground mb-1">{t(`integrations.${type}.name`)}</h3>
+                        <p className="text-xs text-muted-foreground mb-3">{t(`integrations.${type}.description`)}</p>
 
-                  {connected ? (
-                    <div className="mt-auto space-y-3">
-                      <MetricPreview integrationId={integration.id} />
-                      <div className="flex items-center justify-between gap-1">
-                        <div className="flex gap-1">
+                        <div className="flex flex-wrap gap-1 mb-4">
+                          {integrationMetricTags[type].map((m) => (
+                            <Badge key={m} variant="outline" className="text-[10px] font-normal">{m}</Badge>
+                          ))}
+                        </div>
+
+                        {connected ? (
+                          <div className="mt-auto space-y-3">
+                            <MetricPreview integrationId={integration.id} />
+                            <div className="flex items-center justify-between gap-1">
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1 text-xs"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    syncIntegration.mutate(integration.id, {
+                                      onSuccess: () => toast.success(t('integrationDetail.syncComplete')),
+                                      onError: (err) => toast.error(err.message),
+                                    });
+                                  }}
+                                  disabled={syncIntegration.isPending}
+                                >
+                                  {syncIntegration.isPending ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <RefreshCw className="w-3 h-3" />
+                                  )}
+                                  {t('integrations.sync')}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1 text-xs text-muted-foreground"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    startOAuth.mutate(type);
+                                  }}
+                                  disabled={startOAuth.isPending}
+                                >
+                                  {startOAuth.isPending ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <ExternalLink className="w-3 h-3" />
+                                  )}
+                                  {t('integrations.reconnect')}
+                                </Button>
+                              </div>
+                              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                            </div>
+                          </div>
+                        ) : (
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            className="gap-1 text-xs"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              syncIntegration.mutate(integration.id, {
-                                onSuccess: () => toast.success(t('integrationDetail.syncComplete')),
-                                onError: (err) => toast.error(err.message),
-                              });
-                            }}
-                            disabled={syncIntegration.isPending}
-                          >
-                            {syncIntegration.isPending ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
-                            ) : (
-                              <RefreshCw className="w-3 h-3" />
-                            )}
-                            {t('integrations.sync')}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="gap-1 text-xs text-muted-foreground"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              startOAuth.mutate(type);
-                            }}
+                            onClick={() => startOAuth.mutate(type)}
+                            className="gap-2 mt-auto"
                             disabled={startOAuth.isPending}
                           >
                             {startOAuth.isPending ? (
-                              <Loader2 className="w-3 h-3 animate-spin" />
+                              <Loader2 className="w-4 h-4 animate-spin" />
                             ) : (
-                              <ExternalLink className="w-3 h-3" />
+                              <ExternalLink className="w-4 h-4" />
                             )}
-                            {t('integrations.reconnect')}
+                            {t('integrations.connectOAuth')}
                           </Button>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                        )}
                       </div>
-                    </div>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => startOAuth.mutate(type)}
-                      className="gap-2 mt-auto"
-                      disabled={startOAuth.isPending}
-                    >
-                      {startOAuth.isPending ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <ExternalLink className="w-4 h-4" />
-                      )}
-                      {t('integrations.connectOAuth')}
-                    </Button>
-                  )}
+                    );
+                  })}
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         )}
-
-        {/* Coming soon */}
-        <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {['Jira', 'Notion', 'Okta'].map((name) => (
-            <div key={name} className="bg-card border border-border rounded-xl p-6 flex flex-col items-center text-center opacity-60">
-              <span className="text-4xl mb-4">🔜</span>
-              <h3 className="font-semibold text-foreground mb-1">{name}</h3>
-              <p className="text-xs text-muted-foreground mb-6">{t('integrations.comingSoon')}</p>
-              <Button variant="outline" size="sm" disabled>{t('integrations.soon')}</Button>
-            </div>
-          ))}
-        </div>
       </div>
     </AppLayout>
   );
