@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import {
   ArrowRight, Check, ChevronDown, Copy, Linkedin,
   Sparkles, Zap, Cloud, Rocket, Plug, CreditCard, Tv,
+  Globe, Shield, Clock, Monitor, Server, Layers,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,18 +12,48 @@ import duckLogo from "@/assets/moniduck-logo.png";
 
 /* ── Data ─────────────────────────────────────────── */
 
-const features = [
-  { icon: Zap, text: "Add any URL — we monitor uptime, response time, and SSL" },
-  { icon: Cloud, text: "Connect AWS, GCP or Azure — we auto-discover your entire infrastructure" },
-  { icon: Rocket, text: "Connect Vercel, Railway or Render — deployments, errors, quotas" },
-  { icon: Plug, text: "Connect Google Workspace or Microsoft 365 — licences, storage, security gaps" },
-  { icon: CreditCard, text: "Connect Stripe — webhooks, disputes, payouts. Silently broken, instantly caught." },
-  { icon: Tv, text: "TV Mode — one click, full screen, your entire stack on the wall" },
+const pillars = [
+  {
+    title: "HTTP Monitoring",
+    subtitle: "Add any URL. We do the rest.",
+    icon: Globe,
+    items: [
+      { icon: Zap, label: "Uptime & response time" },
+      { icon: Shield, label: "SSL certificate tracking" },
+      { icon: Clock, label: "Checks every 1–5 min" },
+    ],
+  },
+  {
+    title: "Cloud & PaaS",
+    subtitle: "Connect once. See every service.",
+    icon: Cloud,
+    items: [
+      { icon: Server, label: "AWS, GCP, Azure auto-discovery" },
+      { icon: Rocket, label: "Vercel, Railway, Render" },
+      { icon: Layers, label: "Deployments, errors, quotas" },
+    ],
+  },
+  {
+    title: "SaaS Integrations",
+    subtitle: "Your tools. Their blind spots. Covered.",
+    icon: Plug,
+    items: [
+      { icon: Monitor, label: "Google Workspace & Microsoft 365" },
+      { icon: CreditCard, label: "Stripe webhooks & payouts" },
+      { icon: Tv, label: "TV Mode — your stack on the wall" },
+    ],
+  },
+];
+
+const differentiators = [
+  { text: "No agents to install", icon: Shield },
+  { text: "No YAML to configure", icon: Layers },
+  { text: "2-minute setup per integration", icon: Clock },
 ];
 
 const faqs = [
   { q: "Is moniduck free during the beta?", a: "Yes. Early access users get the full product free during our beta period. No credit card required." },
-  { q: "What services can I monitor?", a: "Any HTTP/HTTPS endpoint, plus native integrations for Google Workspace, Microsoft 365, Slack, AWS, and Stripe." },
+  { q: "What makes moniduck different from Datadog?", a: "Datadog is infrastructure-level (CPU, RAM, logs). moniduck monitors your stack at the service level — URLs, cloud services, SaaS tools — without installing agents or writing config." },
   { q: "How does alerting work?", a: "You define thresholds (e.g. storage > 85%) and we notify you via email, Slack webhook, or both. Downtime alerts are instant." },
   { q: "Can my whole team use it?", a: "Absolutely. moniduck supports workspaces with role-based access. Invite your ops team in seconds." },
   { q: "What happens after the beta?", a: "Early adopters will be grandfathered into a generous plan. We'll always have a free tier." },
@@ -206,7 +237,7 @@ function WaitlistForm({
         )}
       </Button>
       <p className="text-xs text-muted-foreground text-center">
-      👓 Join tech teams that want to have vision over their entire stack.
+        Free during beta · No credit card required
       </p>
     </form>
   );
@@ -294,12 +325,22 @@ export default function Waitlist() {
               <span className="text-primary">modern tech stacks.</span>
             </h1>
 
-            <p className="text-lg text-muted-foreground leading-relaxed mb-10 max-w-lg">
+            <p className="text-lg text-muted-foreground leading-relaxed mb-8 max-w-lg">
               Connect your cloud providers, SaaS tools, and services.
-              <br className="hidden sm:block" />
               Everything shows up on one dashboard. Automatically.
             </p>
 
+            {/* Differentiators */}
+            <div className="flex flex-wrap gap-4">
+              {differentiators.map((d) => (
+                <div key={d.text} className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+                    <d.icon className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                  <span>{d.text}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Right — Form */}
@@ -317,33 +358,52 @@ export default function Waitlist() {
         </div>
       </section>
 
-      {/* ─── Features Grid ───────────────────────── */}
+      {/* ─── 3 Pillars ───────────────────────────── */}
       <section className="border-t border-border">
         <div className="max-w-6xl mx-auto px-6 py-20 md:py-28">
-          <div className="text-center mb-14">
+          <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
-              Everything in <span className="text-primary">one place</span>
+              Three modes. <span className="text-primary">One dashboard.</span>
             </h2>
-            <p className="text-muted-foreground text-lg">No more tab-switching. No more surprises.</p>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Whether it's a URL, a cloud provider, or a SaaS tool — moniduck monitors it. No agents, no config files.
+            </p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {features.map((f) => (
-              <div key={f.text} className="rounded-xl border border-border bg-card p-5 hover:border-primary/30 hover:shadow-md transition-all duration-200 group">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/15 transition-colors">
-                  <f.icon className="w-5 h-5 text-primary" />
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {pillars.map((pillar) => (
+              <div
+                key={pillar.title}
+                className="rounded-xl border border-border bg-card p-6 hover:border-primary/30 hover:shadow-lg transition-all duration-300 group"
+              >
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-5 group-hover:bg-primary/15 transition-colors">
+                  <pillar.icon className="w-6 h-6 text-primary" />
                 </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">{f.text}</p>
+                <h3 className="text-lg font-semibold mb-1">{pillar.title}</h3>
+                <p className="text-sm text-muted-foreground mb-5">{pillar.subtitle}</p>
+                <div className="space-y-3">
+                  {pillar.items.map((item) => (
+                    <div key={item.label} className="flex items-center gap-3 text-sm">
+                      <item.icon className="w-4 h-4 text-primary/70 shrink-0" />
+                      <span className="text-muted-foreground">{item.label}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ─── Tagline ─────────────────────────────── */}
+      {/* ─── Differentiator Banner ────────────────── */}
       <section className="border-t border-border bg-card/30">
         <div className="max-w-4xl mx-auto px-6 py-16 md:py-20 text-center">
-          <p className="text-2xl md:text-3xl font-bold tracking-tight">
+          <p className="text-2xl md:text-3xl font-bold tracking-tight mb-3">
             One platform. Your entire stack. <span className="text-primary">No agents.</span>
+          </p>
+          <p className="text-muted-foreground max-w-xl mx-auto">
+            Built for DevOps and Platform teams at scale-ups who don't want another Datadog.
+            Setup takes 2 minutes per integration.
           </p>
         </div>
       </section>

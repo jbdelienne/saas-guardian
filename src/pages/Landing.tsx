@@ -1,5 +1,8 @@
 import { Link } from "react-router-dom";
-import { Activity, Bell, BarChart3, Plug, Shield, Zap, Check, X, ArrowRight, Sparkles } from "lucide-react";
+import {
+  Activity, Bell, BarChart3, Plug, Shield, Zap, Check, X, ArrowRight, Sparkles,
+  Globe, Cloud, Server, Rocket, Layers, Monitor, CreditCard, Tv, Clock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "react-i18next";
 import { useLangPrefix } from "@/hooks/use-lang-prefix";
@@ -7,13 +10,39 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import duckLogo from "@/assets/moniduck-logo.png";
 
-const featureKeys = [
-  { key: "uptime", icon: Activity },
-  { key: "integrations", icon: Plug },
-  { key: "alerts", icon: Bell },
-  { key: "dashboards", icon: BarChart3 },
-  { key: "security", icon: Shield },
-  { key: "fast", icon: Zap },
+/* ── 3 Pillars ─────────────────────────────────────── */
+
+const pillars = [
+  {
+    title: "HTTP Monitoring",
+    subtitle: "Add any URL. We do the rest.",
+    icon: Globe,
+    items: [
+      { icon: Zap, label: "Uptime & response time" },
+      { icon: Shield, label: "SSL certificate tracking" },
+      { icon: Clock, label: "Checks every 1–5 min" },
+    ],
+  },
+  {
+    title: "Cloud & PaaS",
+    subtitle: "Connect once. See every service.",
+    icon: Cloud,
+    items: [
+      { icon: Server, label: "AWS, GCP, Azure auto-discovery" },
+      { icon: Rocket, label: "Vercel, Railway, Render" },
+      { icon: Layers, label: "Deployments, errors, quotas" },
+    ],
+  },
+  {
+    title: "SaaS Integrations",
+    subtitle: "Your tools. Their blind spots. Covered.",
+    icon: Plug,
+    items: [
+      { icon: Monitor, label: "Google Workspace & Microsoft 365" },
+      { icon: CreditCard, label: "Stripe webhooks & payouts" },
+      { icon: Tv, label: "TV Mode — your stack on the wall" },
+    ],
+  },
 ];
 
 const planKeys = ["free", "startup", "scaleup", "enterprise"] as const;
@@ -33,8 +62,8 @@ export default function Landing() {
             <span className="font-semibold text-4xl tracking-tight">moniduck</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
-            <a href="#features" className="hover:text-foreground transition-colors">
-              {t("nav.features")}
+            <a href="#how-it-works" className="hover:text-foreground transition-colors">
+              How it works
             </a>
             <a href="#pricing" className="hover:text-foreground transition-colors">
               {t("nav.pricing")}
@@ -60,13 +89,31 @@ export default function Landing() {
             {t("landing.badge")}
           </div>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-[1.1] mb-6">
-            {t("landing.heroTitle")}
+            Monitoring for
             <br />
-            <span className="text-primary">{t("landing.heroHighlight")}</span>
+            <span className="text-primary">modern tech stacks.</span>
           </h1>
-          <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-10 max-w-2xl">
-            {t("landing.heroSubtitle")}
+          <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-8 max-w-2xl">
+            Connect your cloud providers, SaaS tools, and services.
+            Everything shows up on one dashboard. Automatically.
           </p>
+
+          {/* Differentiators */}
+          <div className="flex flex-wrap gap-5 mb-10">
+            {[
+              { icon: Shield, text: "No agents" },
+              { icon: Layers, text: "No YAML" },
+              { icon: Clock, text: "2-min setup" },
+            ].map((d) => (
+              <div key={d.text} className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+                  <d.icon className="w-3.5 h-3.5 text-primary" />
+                </div>
+                <span>{d.text}</span>
+              </div>
+            ))}
+          </div>
+
           <div className="flex flex-col sm:flex-row gap-3">
             <Button size="lg" className="text-base px-8" asChild>
               <Link to={`${lp}/auth`}>
@@ -75,7 +122,7 @@ export default function Landing() {
               </Link>
             </Button>
             <Button size="lg" variant="outline" className="text-base px-8" asChild>
-              <a href="#features">{t("landing.seeHow")}</a>
+              <a href="#how-it-works">{t("landing.seeHow")}</a>
             </Button>
           </div>
         </div>
@@ -89,46 +136,47 @@ export default function Landing() {
             <span className="ml-3 text-xs font-mono text-muted-foreground">dashboard — moniduck</span>
           </div>
           <div className="p-6 md:p-8 font-mono text-sm text-muted-foreground space-y-2">
-            <p>
-              <span className="text-success">✓</span> api.production{" "}
-              <span className="text-muted-foreground/60">— {t("landing.terminal.line1status")}</span>
-            </p>
-            <p>
-              <span className="text-success">✓</span> auth.production{" "}
-              <span className="text-muted-foreground/60">— {t("landing.terminal.line2status")}</span>
-            </p>
-            <p>
-              <span className="text-warning">⚠</span> cdn.staging{" "}
-              <span className="text-muted-foreground/60">— {t("landing.terminal.line3status")}</span>
-            </p>
-            <p>
-              <span className="text-success">✓</span> google-workspace{" "}
-              <span className="text-muted-foreground/60">— {t("landing.terminal.line4status")}</span>
-            </p>
-            <p>
-              <span className="text-success">✓</span> slack-workspace{" "}
-              <span className="text-muted-foreground/60">— {t("landing.terminal.line5status")}</span>
-            </p>
+            <p><span className="text-success">✓</span> api.production <span className="text-muted-foreground/60">— {t("landing.terminal.line1status")}</span></p>
+            <p><span className="text-success">✓</span> auth.production <span className="text-muted-foreground/60">— {t("landing.terminal.line2status")}</span></p>
+            <p><span className="text-warning">⚠</span> cdn.staging <span className="text-muted-foreground/60">— {t("landing.terminal.line3status")}</span></p>
+            <p><span className="text-success">✓</span> google-workspace <span className="text-muted-foreground/60">— {t("landing.terminal.line4status")}</span></p>
+            <p><span className="text-success">✓</span> stripe <span className="text-muted-foreground/60">— webhooks healthy · 0 disputes</span></p>
             <p className="text-primary">→ {t("landing.terminal.summary")}</p>
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section id="features" className="border-t border-border bg-card/40">
+      {/* 3 Pillars */}
+      <section id="how-it-works" className="border-t border-border bg-card/40">
         <div className="max-w-6xl mx-auto px-6 py-20 md:py-28">
-          <div className="max-w-2xl mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">{t("landing.featuresTitle")}</h2>
-            <p className="text-muted-foreground text-lg">{t("landing.featuresSubtitle")}</p>
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
+              Three modes. <span className="text-primary">One dashboard.</span>
+            </h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+              Whether it's a URL, a cloud provider, or a SaaS tool — moniduck monitors it.
+            </p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {featureKeys.map((f) => (
-              <div key={f.key} className="group">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/15 transition-colors">
-                  <f.icon className="w-5 h-5 text-primary" />
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {pillars.map((pillar) => (
+              <div
+                key={pillar.title}
+                className="rounded-xl border border-border bg-card p-6 hover:border-primary/30 hover:shadow-lg transition-all duration-300 group"
+              >
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-5 group-hover:bg-primary/15 transition-colors">
+                  <pillar.icon className="w-6 h-6 text-primary" />
                 </div>
-                <h3 className="font-semibold text-base mb-2">{t(`features.${f.key}.title`)}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{t(`features.${f.key}.description`)}</p>
+                <h3 className="text-lg font-semibold mb-1">{pillar.title}</h3>
+                <p className="text-sm text-muted-foreground mb-5">{pillar.subtitle}</p>
+                <div className="space-y-3">
+                  {pillar.items.map((item) => (
+                    <div key={item.label} className="flex items-center gap-3 text-sm">
+                      <item.icon className="w-4 h-4 text-primary/70 shrink-0" />
+                      <span className="text-muted-foreground">{item.label}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
@@ -163,8 +211,6 @@ export default function Landing() {
                       {badge}
                     </span>
                   )}
-
-                  {/* Header */}
                   <h3 className="font-semibold text-lg mt-1">{t(`pricing.${planKey}.name`)}</h3>
                   <div className="mt-3 mb-1">
                     <span className="text-4xl font-bold">
@@ -174,7 +220,6 @@ export default function Landing() {
                   </div>
                   <p className="text-sm text-muted-foreground mb-5">{t(`pricing.${planKey}.priceLabel`)}</p>
 
-                  {/* Highlights */}
                   {Array.isArray(highlights) && highlights.length > 0 && (
                     <div className="mb-4 space-y-1.5">
                       {highlights.map((h) => (
@@ -186,12 +231,10 @@ export default function Landing() {
                     </div>
                   )}
 
-                  {/* Sections */}
                   <div className="flex-1 space-y-4">
                     {sectionKeys.map((section) => {
                       const items = t(`pricing.${planKey}.${section}.items`, { returnObjects: true, defaultValue: [] }) as string[];
                       const sectionTitle = t(`pricing.${planKey}.${section}.title`, { defaultValue: section.toUpperCase() });
-
                       return (
                         <div key={section}>
                           <p className="text-[10px] font-semibold text-muted-foreground tracking-wider mb-1.5">{sectionTitle}</p>
@@ -215,12 +258,7 @@ export default function Landing() {
                     })}
                   </div>
 
-                  {/* CTA */}
-                  <Button
-                    variant={isPopular ? "default" : "outline"}
-                    className="w-full mt-6"
-                    asChild
-                  >
+                  <Button variant={isPopular ? "default" : "outline"} className="w-full mt-6" asChild>
                     <Link to={planKey === "enterprise" ? "#" : `${lp}/auth`}>
                       {t(`pricing.${planKey}.cta`)}
                     </Link>
@@ -257,8 +295,8 @@ export default function Landing() {
             <span className="text-sm text-muted-foreground">© {new Date().getFullYear()} moniduck</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-muted-foreground">
-            <a href="#features" className="hover:text-foreground transition-colors">
-              {t("nav.features")}
+            <a href="#how-it-works" className="hover:text-foreground transition-colors">
+              How it works
             </a>
             <a href="#pricing" className="hover:text-foreground transition-colors">
               {t("nav.pricing")}
