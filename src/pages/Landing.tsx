@@ -24,22 +24,22 @@ const pillars = [
     ],
   },
   {
-    title: "Cloud Providers",
+    title: "Cloud & PaaS",
     subtitle: "Connect once. See every service.",
     icon: Cloud,
     items: [
       { icon: Server, label: "AWS, GCP, Azure auto-discovery" },
+      { icon: Rocket, label: "Vercel, Railway, Render" },
       { icon: Layers, label: "Deployments, errors, quotas" },
-      { icon: Rocket, label: "More providers coming soon" },
     ],
   },
   {
-    title: "Collaboration Suites",
+    title: "SaaS Integrations",
     subtitle: "Your tools. Their blind spots. Covered.",
-    icon: Monitor,
+    icon: Plug,
     items: [
-      { icon: Plug, label: "Google Workspace" },
-      { icon: Plug, label: "Microsoft 365" },
+      { icon: Monitor, label: "Google Workspace & Microsoft 365" },
+      { icon: CreditCard, label: "Stripe webhooks & payouts" },
       { icon: Tv, label: "TV Mode — your stack on the wall" },
     ],
   },
