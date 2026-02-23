@@ -10,6 +10,12 @@ import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { useLangPrefix } from '@/hooks/use-lang-prefix';
 
+import googleLogo from '@/assets/logos/google.png';
+import microsoftLogo from '@/assets/logos/microsoft.svg';
+import awsLogo from '@/assets/logos/aws.svg';
+import gcpLogo from '@/assets/logos/gcp.svg';
+import azureLogo from '@/assets/logos/azure.svg';
+
 const integrationCategories = [
   {
     key: 'collaboration',
@@ -25,12 +31,12 @@ const integrationCategories = [
   },
 ] as const;
 
-const integrationIcons: Record<string, string> = {
-  google: '🔵',
-  microsoft: '🟦',
-  aws: '🟠',
-  gcp: '🔴',
-  azure: '🔷',
+const integrationLogos: Record<string, string> = {
+  google: googleLogo,
+  microsoft: microsoftLogo,
+  aws: awsLogo,
+  gcp: gcpLogo,
+  azure: azureLogo,
 };
 const integrationMetricTags: Record<string, string[]> = {
   google: ['Storage', 'Licenses', 'Users', 'Security'],
@@ -116,7 +122,7 @@ export default function Integrations() {
                           className="bg-card border border-border rounded-xl p-6 flex flex-col opacity-60"
                         >
                           <div className="flex items-start justify-between mb-3">
-                            <span className="text-4xl">{integrationIcons[type]}</span>
+                            <img src={integrationLogos[type]} alt={type} className="w-10 h-10 object-contain" />
                             <Badge variant="outline" className="text-[10px]">Coming soon</Badge>
                           </div>
                           <h3 className="font-semibold text-foreground mb-1">{t(`integrations.${type}.name`, { defaultValue: type.toUpperCase() }) as string}</h3>
@@ -140,7 +146,7 @@ export default function Integrations() {
                         onClick={() => connected && navigate(`${lp}/integrations/${type}`)}
                       >
                         <div className="flex items-start justify-between mb-3">
-                          <span className="text-4xl">{integrationIcons[type]}</span>
+                          <img src={integrationLogos[type]} alt={type} className="w-10 h-10 object-contain" />
                           {connected && (
                             <div className="flex items-center gap-1 text-success text-xs font-medium">
                               <CheckCircle className="w-3.5 h-3.5" />
