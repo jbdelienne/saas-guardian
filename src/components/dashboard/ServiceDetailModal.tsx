@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Service, useChecks, useTogglePause, useUpdateService } from '@/hooks/use-supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
-import { formatDistanceToNow, format, differenceInDays, subDays, subMonths, isAfter } from 'date-fns';
+import { formatDistanceToNow, format, differenceInDays, subDays } from 'date-fns';
 import { Trash2, Pause, Play, Loader2, Shield, Activity, Clock, ArrowUpCircle, Globe, Zap, FileText, Search, Download, TrendingUp, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UptimePeriod, useUptimeChart } from '@/hooks/use-uptime';
@@ -61,6 +62,7 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
   const { data: checks = [], isLoading: checksLoading } = useChecks(service?.id, 50);
   const [chartPeriod, setChartPeriod] = useState<UptimePeriod>('7d');
   const [reportPeriod, setReportPeriod] = useState<'24h' | '7d' | '30d' | 'all'>('7d');
+  const [reportLoading, setReportLoading] = useState(false);
   const { data: uptimeChartData = [], isLoading: chartLoading } = useUptimeChart(service?.id, chartPeriod);
 
   const responseChartData = checks
@@ -71,6 +73,36 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
       responseTime: c.response_time,
       status: c.status,
     }));
+
+  const reportPeriodLabel: Record<string, string> = { '24h': 'Last 24 hours', '7d': 'Last 7 days', '30d': 'Last 30 days', 'all': 'All time (up to 12 months)' };
+
+  const fetchReportChecks = useCallback(async () => {
+    if (!service) return [];
+    let query = supabase
+      .from('checks')
+      .select('*')
+      .eq('service_id', service.id)
+      .order('checked_at', { ascending: false });
+
+    if (reportPeriod !== 'all') {
+      const days = reportPeriod === '24h' ? 1 : reportPeriod === '7d' ? 7 : 30;
+      const cutoff = subDays(new Date(), days).toISOString();
+      query = query.gte('checked_at', cutoff);
+    }
+
+    const allChecks: any[] = [];
+    let from = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+    while (hasMore) {
+      const { data, error } = await query.range(from, from + pageSize - 1);
+      if (error) throw error;
+      allChecks.push(...(data || []));
+      hasMore = (data?.length ?? 0) === pageSize;
+      from += pageSize;
+    }
+    return allChecks;
+  }, [service, reportPeriod]);
 
   if (!service) return null;
 
@@ -89,36 +121,42 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
           ? 'text-warning'
           : 'text-emerald-500';
 
-  const getFilteredChecks = () => {
-    if (reportPeriod === 'all') return checks;
-    const now = new Date();
-    const cutoff = reportPeriod === '24h' ? subDays(now, 1) : reportPeriod === '7d' ? subDays(now, 7) : subDays(now, 30);
-    return checks.filter((c) => isAfter(new Date(c.checked_at), cutoff));
+  const handleDownloadCSV = async () => {
+    setReportLoading(true);
+    try {
+      const filtered = await fetchReportChecks();
+      if (filtered.length === 0) { toast.error('No data for this period'); return; }
+      const headers = ['Timestamp', 'Status', 'Response Time (ms)', 'TTFB (ms)', 'Status Code', 'Region', 'Error'];
+      const rows = filtered.map((c: any) => [c.checked_at, c.status, c.response_time, c.ttfb ?? '', c.status_code ?? '', c.check_region ?? '', c.error_message ?? '']);
+      const csv = [headers.join(','), ...rows.map((r: any[]) => r.map((v: any) => `"${v}"`).join(','))].join('\n');
+      downloadFile(csv, `${service.name.replace(/\s+/g, '_')}_${reportPeriod}_report.csv`, 'text/csv');
+      toast.success(`CSV report downloaded — ${filtered.length} checks (${reportPeriodLabel[reportPeriod]})`);
+    } catch (e) {
+      toast.error('Failed to generate report');
+    } finally {
+      setReportLoading(false);
+    }
   };
 
-  const reportPeriodLabel: Record<string, string> = { '24h': 'Last 24 hours', '7d': 'Last 7 days', '30d': 'Last 30 days', 'all': 'All time' };
-
-  const handleDownloadCSV = () => {
-    const filtered = getFilteredChecks();
-    if (filtered.length === 0) { toast.error('No data for this period'); return; }
-    const headers = ['Timestamp', 'Status', 'Response Time (ms)', 'TTFB (ms)', 'Status Code', 'Region', 'Error'];
-    const rows = filtered.map((c: any) => [c.checked_at, c.status, c.response_time, c.ttfb ?? '', c.status_code ?? '', c.check_region ?? '', c.error_message ?? '']);
-    const csv = [headers.join(','), ...rows.map((r: any[]) => r.map((v: any) => `"${v}"`).join(','))].join('\n');
-    downloadFile(csv, `${service.name.replace(/\s+/g, '_')}_${reportPeriod}_report.csv`, 'text/csv');
-    toast.success(`CSV report downloaded (${reportPeriodLabel[reportPeriod]})`);
-  };
-
-  const handleDownloadJSON = () => {
-    const filtered = getFilteredChecks();
-    if (filtered.length === 0) { toast.error('No data for this period'); return; }
-    const report = {
-      service: { name: service.name, url: service.url, status: service.status, uptime: service.uptime_percentage, avg_response_time: service.avg_response_time },
-      period: reportPeriodLabel[reportPeriod],
-      exported_at: new Date().toISOString(),
-      checks: filtered.map((c: any) => ({ timestamp: c.checked_at, status: c.status, response_time_ms: c.response_time, ttfb_ms: c.ttfb, status_code: c.status_code, region: c.check_region, error: c.error_message })),
-    };
-    downloadFile(JSON.stringify(report, null, 2), `${service.name.replace(/\s+/g, '_')}_${reportPeriod}_report.json`, 'application/json');
-    toast.success(`JSON report downloaded (${reportPeriodLabel[reportPeriod]})`);
+  const handleDownloadJSON = async () => {
+    setReportLoading(true);
+    try {
+      const filtered = await fetchReportChecks();
+      if (filtered.length === 0) { toast.error('No data for this period'); return; }
+      const report = {
+        service: { name: service.name, url: service.url, status: service.status, uptime: service.uptime_percentage, avg_response_time: service.avg_response_time },
+        period: reportPeriodLabel[reportPeriod],
+        exported_at: new Date().toISOString(),
+        total_checks: filtered.length,
+        checks: filtered.map((c: any) => ({ timestamp: c.checked_at, status: c.status, response_time_ms: c.response_time, ttfb_ms: c.ttfb, status_code: c.status_code, region: c.check_region, error: c.error_message })),
+      };
+      downloadFile(JSON.stringify(report, null, 2), `${service.name.replace(/\s+/g, '_')}_${reportPeriod}_report.json`, 'application/json');
+      toast.success(`JSON report downloaded — ${filtered.length} checks (${reportPeriodLabel[reportPeriod]})`);
+    } catch (e) {
+      toast.error('Failed to generate report');
+    } finally {
+      setReportLoading(false);
+    }
   };
 
   return (
@@ -386,9 +424,7 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
                     </button>
                   ))}
                 </div>
-                <span className="text-xs text-muted-foreground ml-auto">
-                  {getFilteredChecks().length} check{getFilteredChecks().length !== 1 ? 's' : ''}
-                </span>
+                {reportLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground ml-auto" />}
               </div>
 
               <div className="grid sm:grid-cols-2 gap-3">
@@ -410,10 +446,10 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
                     size="sm"
                     className="gap-2 mt-auto w-full"
                     onClick={handleDownloadCSV}
-                    disabled={checksLoading || checks.length === 0}
+                    disabled={reportLoading}
                   >
-                    <Download className="w-4 h-4" />
-                    Download CSV
+                    {reportLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    {reportLoading ? 'Generating...' : 'Download CSV'}
                   </Button>
                 </div>
 
@@ -435,10 +471,10 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
                     size="sm"
                     className="gap-2 mt-auto w-full"
                     onClick={handleDownloadJSON}
-                    disabled={checksLoading || checks.length === 0}
+                    disabled={reportLoading}
                   >
-                    <Download className="w-4 h-4" />
-                    Download JSON
+                    {reportLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    {reportLoading ? 'Generating...' : 'Download JSON'}
                   </Button>
                 </div>
               </div>
