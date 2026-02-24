@@ -125,6 +125,7 @@
     "services": "Services",
     "integrations": "Integrations",
     "alerts": "Alerts",
+    "reports": "Reports",
     "settings": "Settings",
     "collapse": "Collapse"
   },
@@ -250,5 +251,35 @@
     "title": "404",
     "message": "Oops! Page not found",
     "backHome": "Return to Home"
+  },
+  "reports": {
+    "title": "Reports",
+    "subtitle": "Weekly monitoring summary for your workspace",
+    "last7days": "Last 7 days",
+    "last30days": "Last 30 days",
+    "exportPdf": "Export PDF",
+    "exporting": "Exporting…",
+    "reportTitle": "Monitoring Report — {{period}}",
+    "generatedAt": "Generated at",
+    "globalUptime": "Global Uptime",
+    "avgResponse": "Avg Response",
+    "incidents": "Incidents",
+    "alertsTriggered": "Alerts Triggered",
+    "uptimeByService": "Uptime by Service",
+    "noServices": "No services monitored yet.",
+    "service": "Service",
+    "status": "Status",
+    "uptime": "Uptime",
+    "avgResponseMs": "Avg Response",
+    "checks": "Checks",
+    "incidentsCol": "Incidents",
+    "incidentDetails": "Incident Details",
+    "alertsSummary": "Alerts Summary",
+    "noAlerts": "No alerts during this period ✓",
+    "critical": "Critical",
+    "warning": "Warning",
+    "info": "Info",
+    "moreAlerts": "more alerts",
+    "noData": "N/A"
   }
 }

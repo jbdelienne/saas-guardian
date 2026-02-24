@@ -125,6 +125,7 @@
     "services": "Services",
     "integrations": "Intégrations",
     "alerts": "Alertes",
+    "reports": "Rapports",
     "settings": "Paramètres",
     "collapse": "Réduire"
   },
@@ -250,5 +251,35 @@
     "title": "404",
     "message": "Oups ! Page non trouvée",
     "backHome": "Retour à l'accueil"
+  },
+  "reports": {
+    "title": "Rapports",
+    "subtitle": "Synthèse hebdomadaire du monitoring de votre workspace",
+    "last7days": "7 derniers jours",
+    "last30days": "30 derniers jours",
+    "exportPdf": "Exporter PDF",
+    "exporting": "Export en cours…",
+    "reportTitle": "Rapport de monitoring — {{period}}",
+    "generatedAt": "Généré le",
+    "globalUptime": "Uptime global",
+    "avgResponse": "Temps de réponse moy.",
+    "incidents": "Incidents",
+    "alertsTriggered": "Alertes déclenchées",
+    "uptimeByService": "Uptime par service",
+    "noServices": "Aucun service monitoré.",
+    "service": "Service",
+    "status": "Statut",
+    "uptime": "Uptime",
+    "avgResponseMs": "Temps moyen",
+    "checks": "Checks",
+    "incidentsCol": "Incidents",
+    "incidentDetails": "Détail des incidents",
+    "alertsSummary": "Résumé des alertes",
+    "noAlerts": "Aucune alerte sur cette période ✓",
+    "critical": "Critique",
+    "warning": "Avertissement",
+    "info": "Info",
+    "moreAlerts": "alertes supplémentaires",
+    "noData": "N/A"
   }
 }

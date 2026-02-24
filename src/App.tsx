@@ -18,6 +18,7 @@ import Alerts from "@/pages/Alerts";
 import SettingsPage from "@/pages/SettingsPage";
 import NotFound from "@/pages/NotFound";
 import Waitlist from "@/pages/Waitlist";
+import ReportsPage from "@/pages/ReportsPage";
 
 const queryClient = new QueryClient();
 
@@ -61,6 +62,7 @@ const LangRoutes = () => (
       <Route path="integrations" element={<ProtectedRoute><Integrations /></ProtectedRoute>} />
       <Route path="integrations/:type" element={<ProtectedRoute><IntegrationDetail /></ProtectedRoute>} />
       <Route path="alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
+      <Route path="reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
       <Route path="settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       <Route path="*" element={<NotFound />} />
     </Routes>
