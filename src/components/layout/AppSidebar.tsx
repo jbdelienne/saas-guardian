@@ -1,4 +1,4 @@
-import { LayoutDashboard, Server, Plug, Bell, Settings } from "lucide-react";
+import { LayoutDashboard, Server, Plug, Bell, Settings, FileText } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useTranslation } from "react-i18next";
 import { useLangPrefix } from "@/hooks/use-lang-prefix";
@@ -13,6 +13,7 @@ export default function AppSidebar({ collapsed, onToggle }: { collapsed: boolean
     { title: t("sidebar.services"), url: `${lp}/services`, icon: Server },
     { title: t("sidebar.integrations"), url: `${lp}/integrations`, icon: Plug },
     { title: t("sidebar.alerts"), url: `${lp}/alerts`, icon: Bell },
+    { title: t("sidebar.reports"), url: `${lp}/reports`, icon: FileText },
     { title: t("sidebar.settings"), url: `${lp}/settings`, icon: Settings },
   ];
 
