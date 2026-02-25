@@ -46,9 +46,16 @@ export function useCreateDashboard() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: { name: string; template: string }) => {
+      // Get user's workspace_id for RLS
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('workspace_id')
+        .eq('user_id', user!.id)
+        .single();
+
       const { data, error } = await supabase
         .from('dashboards')
-        .insert({ ...input, user_id: user!.id })
+        .insert({ ...input, user_id: user!.id, workspace_id: profile?.workspace_id })
         .select()
         .single();
       if (error) throw error;
