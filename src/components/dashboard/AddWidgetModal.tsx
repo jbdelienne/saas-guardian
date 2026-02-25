@@ -240,8 +240,8 @@ export default function AddWidgetModal({ open, onOpenChange, onAdd, isLoading }:
                 <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Server className="w-3.5 h-3.5" /> Services
                 </p>
-                <ScrollArea className="max-h-40">
-                  <div className="space-y-1 pr-2">
+                <ScrollArea className="h-40 rounded-lg border border-border">
+                  <div className="space-y-0.5 p-1.5">
                     {services.length === 0 ? (
                       <p className="text-xs text-muted-foreground py-2 px-3">No services yet. Add one first.</p>
                     ) : services.map((s) => (
@@ -249,19 +249,16 @@ export default function AddWidgetModal({ open, onOpenChange, onAdd, isLoading }:
                         key={s.id}
                         onClick={() => setSource({ type: 'service', serviceId: s.id })}
                         className={cn(
-                          "flex items-center gap-2.5 w-full p-3 rounded-lg border text-left text-sm transition-all hover:border-primary/40",
+                          "flex items-center gap-2 w-full px-2.5 py-2 rounded-md text-left text-xs transition-all hover:bg-primary/5",
                           source?.serviceId === s.id
-                            ? "border-primary bg-primary/5"
-                            : "border-border bg-card"
+                            ? "bg-primary/10 text-foreground"
+                            : "text-muted-foreground"
                         )}
                       >
-                        <span className="text-base">{s.icon}</span>
-                        <div className="min-w-0 flex-1">
-                          <span className="font-medium text-foreground truncate block">{s.name}</span>
-                          <span className="text-xs text-muted-foreground truncate block">{s.url}</span>
-                        </div>
+                        <span className="text-sm shrink-0">{s.icon}</span>
+                        <span className="font-medium text-foreground truncate flex-1">{s.name}</span>
                         <div className={cn(
-                          "w-2 h-2 rounded-full shrink-0",
+                          "w-1.5 h-1.5 rounded-full shrink-0",
                           s.status === 'up' ? 'bg-success' : s.status === 'down' ? 'bg-destructive' : 'bg-warning'
                         )} />
                       </button>
