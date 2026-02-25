@@ -272,8 +272,8 @@ function DashboardDetailView({
           className="layout"
           layouts={{ lg: layouts }}
           breakpoints={{ lg: 1200, md: 900, sm: 600, xs: 0 }}
-          cols={{ lg: 4, md: 3, sm: 2, xs: 1 }}
-          rowHeight={160}
+          cols={{ lg: 12, md: 8, sm: 4, xs: 2 }}
+          rowHeight={80}
           onLayoutChange={handleLayoutChange}
           onDragStop={handleDragOrResizeStop}
           onResizeStop={handleDragOrResizeStop}
