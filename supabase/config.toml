@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.waitlist-welcome]
 verify_jwt = false
+
+[functions.aws-status-poll]
+verify_jwt = false
