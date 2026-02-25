@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight, Check, X, Sparkles,
@@ -78,9 +79,15 @@ const statusDotMap: Record<string, string> = {
 const planKeys = ["free", "startup", "scaleup", "enterprise"] as const;
 const sectionKeys = ["services", "integrations", "dashboards", "alerting", "team", "support"] as const;
 
+const annualPrices: Record<string, number> = {
+  startup: 79,
+  scaleup: 159,
+};
+
 export default function Landing() {
   const { t } = useTranslation();
   const lp = useLangPrefix();
+  const [isAnnual, setIsAnnual] = useState(false);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -230,16 +237,39 @@ export default function Landing() {
       {/* Pricing */}
       <section id="pricing" className="border-t border-border bg-card/40">
         <div className="max-w-7xl mx-auto px-6 py-20 md:py-28">
-          <div className="text-center max-w-2xl mx-auto mb-16">
+          <div className="text-center max-w-2xl mx-auto mb-10">
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">{t("landing.pricingTitle")}</h2>
             <p className="text-muted-foreground text-lg">{t("landing.pricingSubtitle")}</p>
           </div>
+
+          {/* Billing toggle */}
+          <div className="flex items-center justify-center gap-3 mb-16">
+            <span className={`text-sm font-medium ${!isAnnual ? "text-foreground" : "text-muted-foreground"}`}>
+              {t("pricing.monthly", { defaultValue: "Monthly" })}
+            </span>
+            <button
+              onClick={() => setIsAnnual(!isAnnual)}
+              className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${isAnnual ? "bg-primary" : "bg-muted"}`}
+            >
+              <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${isAnnual ? "translate-x-6" : "translate-x-1"}`} />
+            </button>
+            <span className={`text-sm font-medium ${isAnnual ? "text-foreground" : "text-muted-foreground"}`}>
+              {t("pricing.annual", { defaultValue: "Annual" })}
+            </span>
+            <span className="ml-1 px-2.5 py-0.5 rounded-full bg-success/15 text-success text-xs font-semibold">
+              -20%
+            </span>
+          </div>
+
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto">
             {planKeys.map((planKey) => {
               const isPopular = planKey === "startup";
               const highlights = t(`pricing.${planKey}.highlights`, { returnObjects: true, defaultValue: [] }) as string[];
               const excluded = t(`pricing.${planKey}.integrations.excluded`, { returnObjects: true, defaultValue: [] }) as string[];
               const badge = t(`pricing.${planKey}.badge`, { defaultValue: "" });
+              const monthlyPrice = t(`pricing.${planKey}.price`);
+              const hasAnnual = planKey in annualPrices;
+              const displayPrice = isAnnual && hasAnnual ? annualPrices[planKey] : monthlyPrice;
 
               return (
                 <div
@@ -256,13 +286,22 @@ export default function Landing() {
                     </span>
                   )}
                   <h3 className="font-semibold text-lg mt-1">{t(`pricing.${planKey}.name`)}</h3>
-                  <div className="mt-3 mb-1">
+                  <div className="mt-3 mb-1 flex items-baseline gap-2">
                     <span className="text-4xl font-bold">
-                      {t(`pricing.${planKey}.price`)}
+                      {displayPrice}
                       {planKey !== "enterprise" && "€"}
                     </span>
+                    {isAnnual && hasAnnual && (
+                      <span className="text-base text-muted-foreground line-through">
+                        {monthlyPrice}€
+                      </span>
+                    )}
                   </div>
-                  <p className="text-sm text-muted-foreground mb-5">{t(`pricing.${planKey}.priceLabel`)}</p>
+                  <p className="text-sm text-muted-foreground mb-5">
+                    {isAnnual && hasAnnual
+                      ? t("pricing.perMonthBilledAnnually", { defaultValue: "/mo, billed annually" })
+                      : t(`pricing.${planKey}.priceLabel`)}
+                  </p>
 
                   {Array.isArray(highlights) && highlights.length > 0 && (
                     <div className="mb-4 space-y-1.5">
