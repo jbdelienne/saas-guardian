@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { useServices, useIntegrations } from '@/hooks/use-supabase';
-import { useLatestSyncMetrics } from '@/hooks/use-all-sync-data';
 import {
   Dialog,
   DialogContent,
@@ -9,22 +8,29 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import {
-  Activity,
-  BarChart3,
   Cloud,
-  Hash,
   Loader2,
-  List,
-  MonitorCheck,
-  Shield,
-  Server,
   ChevronLeft,
   LayoutGrid,
   LineChart,
   BadgeCheck,
+  Hash,
+  List,
+  AlertTriangle,
+  Server,
+  Activity,
+  BarChart3,
+  Shield,
+  MonitorCheck,
   DollarSign,
+  TrendingUp,
+  HardDrive,
+  Users,
+  FileWarning,
+  Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export interface NewWidgetDef {
   widget_type: string;
@@ -34,72 +40,101 @@ export interface NewWidgetDef {
   height: number;
 }
 
-/* ─── Step definitions ─── */
+/* ─── Types ─── */
 
-type Source = 'services' | 'aws' | 'google';
-type Metric = 'uptime' | 'response_time' | 'ssl_expiry' | 'cost' | 'storage' | 'status';
-type Viz = 'big_number' | 'status_badge' | 'line_chart' | 'list';
+type SourceType = 'service' | 'aws' | 'google';
 
-const SOURCES: { id: Source; label: string; icon: typeof Server }[] = [
-  { id: 'services', label: 'My Services', icon: Server },
-  { id: 'aws', label: 'AWS', icon: Cloud },
-  { id: 'google', label: 'Google Workspace', icon: LayoutGrid },
-];
-
-const METRICS_BY_SOURCE: Record<Source, { id: Metric; label: string; icon: typeof Activity }[]> = {
-  services: [
-    { id: 'uptime', label: 'Uptime', icon: Activity },
-    { id: 'response_time', label: 'Response time', icon: BarChart3 },
-    { id: 'ssl_expiry', label: 'SSL expiry', icon: Shield },
-    { id: 'status', label: 'Status overview', icon: MonitorCheck },
-  ],
-  aws: [
-    { id: 'cost', label: 'Cost', icon: DollarSign },
-    { id: 'status', label: 'Service status', icon: MonitorCheck },
-  ],
-  google: [
-    { id: 'storage', label: 'Drive storage', icon: Hash },
-    { id: 'status', label: 'Status overview', icon: MonitorCheck },
-  ],
-};
-
-const VIZ_OPTIONS: { id: Viz; label: string; icon: typeof Hash }[] = [
-  { id: 'big_number', label: 'Big number', icon: Hash },
-  { id: 'status_badge', label: 'Status badge', icon: BadgeCheck },
-  { id: 'line_chart', label: 'Line chart', icon: LineChart },
-  { id: 'list', label: 'List', icon: List },
-];
-
-/* Maps source+metric+viz → actual widget_type for WidgetRenderer */
-function resolveWidgetType(source: Source, metric: Metric, viz: Viz): string {
-  if (metric === 'uptime' && viz === 'line_chart') return 'uptime_chart';
-  if (metric === 'response_time' && viz === 'line_chart') return 'response_time_chart';
-  if (metric === 'status' && viz === 'list') return 'service_table';
-  if (metric === 'status' && viz === 'status_badge') return 'status_card';
-  if (metric === 'storage') return 'drive_storage_gauge';
-  if (metric === 'cost') return 'integration_metric';
-  // Fallback sensible defaults
-  if (viz === 'big_number') return 'status_card';
-  if (viz === 'status_badge') return 'status_card';
-  if (viz === 'list') return 'alert_list';
-  return 'status_card';
+interface SourceSelection {
+  type: SourceType;
+  serviceId?: string; // set when type === 'service'
 }
 
-function resolveTitle(source: Source, metric: Metric, viz: Viz): string {
-  const metricLabel = METRICS_BY_SOURCE[source]?.find(m => m.id === metric)?.label ?? metric;
-  const vizLabel = VIZ_OPTIONS.find(v => v.id === viz)?.label ?? viz;
-  return `${metricLabel} — ${vizLabel}`;
+interface MetricDef {
+  id: string;
+  label: string;
+  icon: typeof Activity;
+  metricKey: string;
 }
 
-function resolveSize(viz: Viz): { width: number; height: number } {
+type VizType = 'big_number' | 'status_badge' | 'status_list' | 'line_chart' | 'alert_count';
+
+interface VizDef {
+  id: VizType;
+  label: string;
+  icon: typeof Hash;
+  description: string;
+}
+
+/* ─── Data ─── */
+
+const SERVICE_METRICS: MetricDef[] = [
+  { id: 'uptime', label: 'Uptime %', icon: Activity, metricKey: 'service_uptime' },
+  { id: 'response_time', label: 'Response time (ms)', icon: BarChart3, metricKey: 'service_response_time' },
+  { id: 'ssl_expiry', label: 'SSL expiry (days)', icon: Shield, metricKey: 'service_ssl_expiry' },
+  { id: 'status', label: 'Current status', icon: MonitorCheck, metricKey: 'service_status' },
+];
+
+const AWS_METRICS: MetricDef[] = [
+  { id: 'monthly_cost', label: 'Monthly cost', icon: DollarSign, metricKey: 'aws_monthly_cost' },
+  { id: 'cost_trend', label: 'Cost trend vs last month', icon: TrendingUp, metricKey: 'aws_cost_trend' },
+  { id: 'resources', label: 'Resources count', icon: Layers, metricKey: 'aws_resources_count' },
+  { id: 'alerts', label: 'Active alerts', icon: AlertTriangle, metricKey: 'aws_active_alerts' },
+];
+
+const GOOGLE_METRICS: MetricDef[] = [
+  { id: 'storage', label: 'Drive storage %', icon: HardDrive, metricKey: 'google_drive_storage' },
+  { id: 'licences', label: 'Unused licences', icon: Users, metricKey: 'google_unused_licences' },
+  { id: 'public_files', label: 'Publicly shared files', icon: FileWarning, metricKey: 'google_public_files' },
+];
+
+const ALL_VIZ: VizDef[] = [
+  { id: 'big_number', label: 'Big Number', icon: Hash, description: 'Large value + label + optional trend' },
+  { id: 'status_badge', label: 'Status Badge', icon: BadgeCheck, description: '🟢 Up / 🔴 Down / 🟡 Degraded' },
+  { id: 'status_list', label: 'Status List', icon: List, description: 'Multiple services, one per line' },
+  { id: 'line_chart', label: 'Line Chart', icon: LineChart, description: 'Time series (24h or 7d)' },
+  { id: 'alert_count', label: 'Alert Count', icon: AlertTriangle, description: 'Active alerts by severity' },
+];
+
+function getAvailableViz(source: SourceSelection, metricId: string): VizType[] {
+  if (source.type === 'service') {
+    if (metricId === 'status') return ['status_badge', 'status_list', 'big_number'];
+    if (metricId === 'uptime' || metricId === 'response_time') return ['big_number', 'line_chart'];
+    if (metricId === 'ssl_expiry') return ['big_number'];
+  }
+  if (source.type === 'aws') {
+    if (metricId === 'alerts') return ['alert_count', 'big_number'];
+    return ['big_number'];
+  }
+  if (source.type === 'google') {
+    return ['big_number'];
+  }
+  return ['big_number'];
+}
+
+function resolveWidgetType(source: SourceSelection, metricId: string, viz: VizType): string {
+  if (viz === 'big_number') return 'big_number';
+  if (viz === 'status_badge') return 'status_badge';
+  if (viz === 'status_list') return 'status_list';
+  if (viz === 'alert_count') return 'alert_count';
+  if (viz === 'line_chart') {
+    if (metricId === 'uptime') return 'uptime_chart';
+    if (metricId === 'response_time') return 'response_time_chart';
+  }
+  return 'big_number';
+}
+
+function resolveDefaultSize(viz: VizType): { width: number; height: number } {
   switch (viz) {
-    case 'line_chart': return { width: 2, height: 2 };
-    case 'list': return { width: 2, height: 2 };
-    case 'big_number': return { width: 1, height: 1 };
-    case 'status_badge': return { width: 1, height: 1 };
-    default: return { width: 1, height: 1 };
+    case 'big_number': return { width: 3, height: 2 };
+    case 'status_badge': return { width: 3, height: 2 };
+    case 'status_list': return { width: 4, height: 3 };
+    case 'line_chart': return { width: 6, height: 3 };
+    case 'alert_count': return { width: 3, height: 3 };
+    default: return { width: 3, height: 2 };
   }
 }
+
+/* ─── Component ─── */
 
 interface Props {
   open: boolean;
@@ -110,55 +145,64 @@ interface Props {
 
 export default function AddWidgetModal({ open, onOpenChange, onAdd, isLoading }: Props) {
   const { data: services = [] } = useServices();
-  const [source, setSource] = useState<Source | null>(null);
-  const [metric, setMetric] = useState<Metric | null>(null);
-  const [viz, setViz] = useState<Viz | null>(null);
-  const [serviceId, setServiceId] = useState('');
+  const { data: integrations = [] } = useIntegrations();
 
-  const step = !source ? 1 : !metric ? 2 : 3;
-  const availableMetrics = source ? METRICS_BY_SOURCE[source] : [];
+  const [source, setSource] = useState<SourceSelection | null>(null);
+  const [metricId, setMetricId] = useState<string | null>(null);
+  const [viz, setViz] = useState<VizType | null>(null);
 
-  const needsService = source === 'services' && metric && ['uptime', 'response_time', 'ssl_expiry', 'status'].includes(metric);
+  const step = !source ? 1 : !metricId ? 2 : 3;
 
-  const reset = () => {
-    setSource(null);
-    setMetric(null);
-    setViz(null);
-    setServiceId('');
-  };
+  const hasAws = integrations.some(i => i.integration_type === 'aws' && i.is_connected);
+  const hasGoogle = integrations.some(i => i.integration_type === 'google' && i.is_connected);
+
+  const metrics: MetricDef[] = useMemo(() => {
+    if (!source) return [];
+    if (source.type === 'service') return SERVICE_METRICS;
+    if (source.type === 'aws') return AWS_METRICS;
+    if (source.type === 'google') return GOOGLE_METRICS;
+    return [];
+  }, [source]);
+
+  const availableViz = useMemo(() => {
+    if (!source || !metricId) return [];
+    const ids = getAvailableViz(source, metricId);
+    return ALL_VIZ.filter(v => ids.includes(v.id));
+  }, [source, metricId]);
+
+  const selectedMetric = metrics.find(m => m.id === metricId);
+
+  const reset = () => { setSource(null); setMetricId(null); setViz(null); };
 
   const goBack = () => {
-    if (step === 3) { setViz(null); setMetric(null); }
-    else if (step === 2) { setMetric(null); setSource(null); }
+    if (step === 3) { setViz(null); setMetricId(null); }
+    else if (step === 2) { setMetricId(null); setSource(null); }
   };
 
   const handleAdd = () => {
-    if (!source || !metric || !viz) return;
-    const config: Record<string, unknown> = {};
-    if (needsService && serviceId) config.service_id = serviceId;
-    if (source === 'google') config.metric_key = 'drive_quota_used_gb';
-    const size = resolveSize(viz);
+    if (!source || !metricId || !viz || !selectedMetric) return;
+    const config: Record<string, unknown> = { metric_key: selectedMetric.metricKey };
+    if (source.type === 'service' && source.serviceId) config.service_id = source.serviceId;
+    if (source.type === 'aws') config.source = 'aws';
+    if (source.type === 'google') config.source = 'google';
+
+    const size = resolveDefaultSize(viz);
     onAdd({
-      widget_type: resolveWidgetType(source, metric, viz),
-      title: resolveTitle(source, metric, viz),
+      widget_type: resolveWidgetType(source, metricId, viz),
+      title: selectedMetric.label,
       config,
       ...size,
     });
     reset();
   };
 
-  const canAdd = source && metric && viz && (!needsService || serviceId);
+  const canAdd = source && metricId && viz;
 
-  // Preview data
-  const previewLabel = useMemo(() => {
-    if (!source || !metric) return null;
-    const metricDef = METRICS_BY_SOURCE[source]?.find(m => m.id === metric);
-    return metricDef?.label ?? '';
-  }, [source, metric]);
+  const stepLabels = ['Source', 'Metric', 'Visualization'];
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {step > 1 && (
@@ -170,10 +214,10 @@ export default function AddWidgetModal({ open, onOpenChange, onAdd, isLoading }:
           </DialogTitle>
         </DialogHeader>
 
-        {/* Progress indicator */}
-        <div className="flex items-center gap-2 mb-2">
+        {/* Progress */}
+        <div className="flex items-center gap-1.5 mb-1">
           {[1, 2, 3].map((s) => (
-            <div key={s} className="flex items-center gap-2 flex-1">
+            <div key={s} className="flex items-center gap-1.5 flex-1">
               <div className={cn(
                 "h-1.5 rounded-full flex-1 transition-all duration-300",
                 s <= step ? "bg-primary" : "bg-muted"
@@ -181,28 +225,92 @@ export default function AddWidgetModal({ open, onOpenChange, onAdd, isLoading }:
             </div>
           ))}
         </div>
+        <p className="text-[11px] text-muted-foreground mb-2">
+          Step {step}/3 — {stepLabels[step - 1]}
+        </p>
 
-        <div className="space-y-4">
+        <div className="flex-1 overflow-hidden">
           {/* STEP 1: Source */}
           {step === 1 && (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">What do you want to monitor?</p>
-              <div className="grid grid-cols-3 gap-3">
-                {SOURCES.map((s) => (
+            <div className="space-y-4">
+              <p className="text-sm font-medium text-foreground">What do you want to display?</p>
+
+              {/* Services */}
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Server className="w-3.5 h-3.5" /> Services
+                </p>
+                <ScrollArea className="max-h-40">
+                  <div className="space-y-1 pr-2">
+                    {services.length === 0 ? (
+                      <p className="text-xs text-muted-foreground py-2 px-3">No services yet. Add one first.</p>
+                    ) : services.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => setSource({ type: 'service', serviceId: s.id })}
+                        className={cn(
+                          "flex items-center gap-2.5 w-full p-3 rounded-lg border text-left text-sm transition-all hover:border-primary/40",
+                          source?.serviceId === s.id
+                            ? "border-primary bg-primary/5"
+                            : "border-border bg-card"
+                        )}
+                      >
+                        <span className="text-base">{s.icon}</span>
+                        <div className="min-w-0 flex-1">
+                          <span className="font-medium text-foreground truncate block">{s.name}</span>
+                          <span className="text-xs text-muted-foreground truncate block">{s.url}</span>
+                        </div>
+                        <div className={cn(
+                          "w-2 h-2 rounded-full shrink-0",
+                          s.status === 'up' ? 'bg-success' : s.status === 'down' ? 'bg-destructive' : 'bg-warning'
+                        )} />
+                      </button>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+
+              {/* Integrations */}
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <LayoutGrid className="w-3.5 h-3.5" /> Integrations
+                </p>
+                <div className="grid grid-cols-2 gap-2">
                   <button
-                    key={s.id}
-                    onClick={() => setSource(s.id)}
+                    onClick={() => hasAws ? setSource({ type: 'aws' }) : undefined}
+                    disabled={!hasAws}
                     className={cn(
-                      "flex flex-col items-center gap-2 p-4 rounded-xl border text-sm transition-all hover:border-primary/50",
-                      source === s.id
+                      "flex items-center gap-3 p-4 rounded-xl border text-sm transition-all",
+                      !hasAws ? "opacity-40 cursor-not-allowed border-border bg-card" :
+                      source?.type === 'aws'
                         ? "border-primary bg-primary/5 text-foreground"
-                        : "border-border bg-card text-muted-foreground"
+                        : "border-border bg-card text-muted-foreground hover:border-primary/40"
                     )}
                   >
-                    <s.icon className="w-6 h-6" />
-                    <span className="font-medium text-xs">{s.label}</span>
+                    <Cloud className="w-5 h-5 shrink-0" />
+                    <div className="text-left">
+                      <span className="font-medium block">AWS</span>
+                      {!hasAws && <span className="text-[10px] text-muted-foreground">Not connected</span>}
+                    </div>
                   </button>
-                ))}
+                  <button
+                    onClick={() => hasGoogle ? setSource({ type: 'google' }) : undefined}
+                    disabled={!hasGoogle}
+                    className={cn(
+                      "flex items-center gap-3 p-4 rounded-xl border text-sm transition-all",
+                      !hasGoogle ? "opacity-40 cursor-not-allowed border-border bg-card" :
+                      source?.type === 'google'
+                        ? "border-primary bg-primary/5 text-foreground"
+                        : "border-border bg-card text-muted-foreground hover:border-primary/40"
+                    )}
+                  >
+                    <LayoutGrid className="w-5 h-5 shrink-0" />
+                    <div className="text-left">
+                      <span className="font-medium block">Google Workspace</span>
+                      {!hasGoogle && <span className="text-[10px] text-muted-foreground">Not connected</span>}
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -210,87 +318,61 @@ export default function AddWidgetModal({ open, onOpenChange, onAdd, isLoading }:
           {/* STEP 2: Metric */}
           {step === 2 && (
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">What do you want to see?</p>
-              <div className="grid grid-cols-2 gap-3">
-                {availableMetrics.map((m) => (
+              <p className="text-sm font-medium text-foreground">What metric do you want to see?</p>
+              <div className="grid grid-cols-2 gap-2">
+                {metrics.map((m) => (
                   <button
                     key={m.id}
-                    onClick={() => setMetric(m.id)}
+                    onClick={() => setMetricId(m.id)}
                     className={cn(
-                      "flex items-center gap-3 p-4 rounded-xl border text-sm transition-all hover:border-primary/50",
-                      metric === m.id
+                      "flex items-center gap-3 p-4 rounded-xl border text-sm transition-all hover:border-primary/40",
+                      metricId === m.id
                         ? "border-primary bg-primary/5 text-foreground"
                         : "border-border bg-card text-muted-foreground"
                     )}
                   >
                     <m.icon className="w-5 h-5 shrink-0" />
-                    <span className="font-medium">{m.label}</span>
+                    <span className="font-medium text-left">{m.label}</span>
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* STEP 3: Viz + Service + Preview */}
+          {/* STEP 3: Visualization */}
           {step === 3 && (
             <div className="space-y-4">
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">How do you want to display it?</p>
-                <div className="grid grid-cols-2 gap-3">
-                  {VIZ_OPTIONS.map((v) => (
-                    <button
-                      key={v.id}
-                      onClick={() => setViz(v.id)}
-                      className={cn(
-                        "flex items-center gap-3 p-4 rounded-xl border text-sm transition-all hover:border-primary/50",
-                        viz === v.id
-                          ? "border-primary bg-primary/5 text-foreground"
-                          : "border-border bg-card text-muted-foreground"
-                      )}
-                    >
-                      <v.icon className="w-5 h-5 shrink-0" />
-                      <span className="font-medium">{v.label}</span>
-                    </button>
-                  ))}
-                </div>
+              <p className="text-sm font-medium text-foreground">How do you want to display it?</p>
+              <div className="space-y-2">
+                {availableViz.map((v) => (
+                  <button
+                    key={v.id}
+                    onClick={() => setViz(v.id)}
+                    className={cn(
+                      "flex items-center gap-3 w-full p-4 rounded-xl border text-sm transition-all hover:border-primary/40 text-left",
+                      viz === v.id
+                        ? "border-primary bg-primary/5 text-foreground"
+                        : "border-border bg-card text-muted-foreground"
+                    )}
+                  >
+                    <v.icon className="w-5 h-5 shrink-0" />
+                    <div>
+                      <span className="font-medium block text-foreground">{v.label}</span>
+                      <span className="text-xs text-muted-foreground">{v.description}</span>
+                    </div>
+                  </button>
+                ))}
               </div>
 
-              {/* Service selector if needed */}
-              {needsService && (
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Which service?</p>
-                  <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto">
-                    {services.map((s) => (
-                      <button
-                        key={s.id}
-                        onClick={() => setServiceId(s.id)}
-                        className={cn(
-                          "flex items-center gap-2 p-3 rounded-lg border text-sm text-left transition-all",
-                          serviceId === s.id
-                            ? "border-primary bg-primary/5 text-foreground"
-                            : "border-border bg-card text-muted-foreground hover:border-primary/30"
-                        )}
-                      >
-                        <span>{s.icon}</span>
-                        <span className="font-medium truncate">{s.name}</span>
-                      </button>
-                    ))}
-                    {services.length === 0 && (
-                      <p className="text-xs text-muted-foreground p-2">No services found. Add one first.</p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Live preview */}
+              {/* Preview */}
               {viz && (
                 <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-2">
                   <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Preview</p>
                   <WidgetPreview
                     source={source!}
-                    metric={metric!}
+                    metricId={metricId!}
                     viz={viz}
-                    serviceName={needsService ? services.find(s => s.id === serviceId)?.name : undefined}
+                    serviceName={source?.type === 'service' ? services.find(s => s.id === source.serviceId)?.name : undefined}
                   />
                 </div>
               )}
@@ -311,26 +393,31 @@ export default function AddWidgetModal({ open, onOpenChange, onAdd, isLoading }:
   );
 }
 
-/* ─── Preview component ─── */
+/* ─── Preview ─── */
 
-function WidgetPreview({ source, metric, viz, serviceName }: {
-  source: Source;
-  metric: Metric;
-  viz: Viz;
+function WidgetPreview({ source, metricId, viz, serviceName }: {
+  source: SourceSelection;
+  metricId: string;
+  viz: VizType;
   serviceName?: string;
 }) {
-  const label = serviceName ?? (source === 'aws' ? 'AWS' : source === 'google' ? 'Google Workspace' : 'Service');
+  const label = serviceName ?? (source.type === 'aws' ? 'AWS' : source.type === 'google' ? 'Google Workspace' : 'Service');
 
   if (viz === 'big_number') {
-    const mockValues: Record<Metric, { value: string; unit: string }> = {
+    const mockValues: Record<string, { value: string; unit: string }> = {
       uptime: { value: '99.98', unit: '%' },
       response_time: { value: '142', unit: 'ms' },
       ssl_expiry: { value: '47', unit: 'days' },
-      cost: { value: '$1,234', unit: '/mo' },
-      storage: { value: '72', unit: 'GB' },
+      monthly_cost: { value: '$2,340', unit: '/mo' },
+      cost_trend: { value: '$2,340', unit: '/mo' },
+      resources: { value: '23', unit: '' },
+      alerts: { value: '7', unit: '' },
+      storage: { value: '72', unit: '%' },
+      licences: { value: '12', unit: '' },
+      public_files: { value: '34', unit: '' },
       status: { value: '4/5', unit: 'up' },
     };
-    const mock = mockValues[metric] ?? { value: '—', unit: '' };
+    const mock = mockValues[metricId] ?? { value: '—', unit: '' };
     return (
       <div className="text-center py-3">
         <p className="text-3xl font-bold text-foreground tracking-tight">{mock.value}<span className="text-lg text-muted-foreground ml-1">{mock.unit}</span></p>
@@ -349,8 +436,23 @@ function WidgetPreview({ source, metric, viz, serviceName }: {
     );
   }
 
+  if (viz === 'status_list') {
+    return (
+      <div className="space-y-1.5 py-1">
+        {['api.example.com', 'cdn.example.com', 'db.example.com'].map((name, i) => (
+          <div key={i} className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <span>{i < 2 ? '🟢' : '🟡'}</span>
+              <span>{name}</span>
+            </div>
+            <span className="font-mono">{[142, 89, 234][i]}ms</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   if (viz === 'line_chart') {
-    // Fake SVG sparkline
     return (
       <div className="py-2">
         <p className="text-xs text-muted-foreground mb-2">{label}</p>
@@ -377,21 +479,17 @@ function WidgetPreview({ source, metric, viz, serviceName }: {
     );
   }
 
-  if (viz === 'list') {
-    const items = metric === 'status'
-      ? ['api.example.com — Up', 'cdn.example.com — Up', 'db.example.com — Degraded']
-      : ['Alert: High response time', 'Alert: SSL expires in 7 days', 'Alert: Service down'];
+  if (viz === 'alert_count') {
     return (
-      <div className="space-y-1.5 py-1">
-        {items.map((item, i) => (
-          <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
-            <div className={cn(
-              "w-2 h-2 rounded-full shrink-0",
-              i < 2 ? "bg-success" : "bg-warning"
-            )} />
-            {item}
-          </div>
-        ))}
+      <div className="flex flex-col gap-1.5 py-2">
+        <div className="flex items-center justify-between text-xs px-2">
+          <span className="text-destructive font-medium">🔴 Critical</span>
+          <span className="font-bold text-destructive">2</span>
+        </div>
+        <div className="flex items-center justify-between text-xs px-2">
+          <span className="text-warning font-medium">🟡 Warning</span>
+          <span className="font-bold text-warning">5</span>
+        </div>
       </div>
     );
   }
