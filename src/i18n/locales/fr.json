@@ -87,6 +87,9 @@
       "team": { "title": "ÉQUIPE", "items": ["Utilisateurs illimités", "Multi-organisations", "SSO/SAML", "Permissions avancées"] },
       "support": { "title": "SUPPORT", "items": ["Support prioritaire (<4h)", "Channel Slack dédié", "Onboarding", "SLA 99.9%"] }
     },
+    "monthly": "Mensuel",
+    "annual": "Annuel",
+    "perMonthBilledAnnually": "/mois, facturé annuellement",
     "perMonth": "/mois",
     "faq": {
       "title": "Questions fréquentes",
