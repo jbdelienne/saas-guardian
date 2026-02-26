@@ -2,15 +2,40 @@ import { useState, useMemo } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useServices } from '@/hooks/use-supabase';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Loader2, Cloud } from 'lucide-react';
+import { ExternalLink, Loader2, Cloud, ChevronDown } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useTranslation } from 'react-i18next';
 import { useLatestSyncMetrics } from '@/hooks/use-all-sync-data';
 
 const CLOUD_TAGS = ['aws', 'ec2', 's3', 'lambda', 'rds', 'gcp', 'azure'];
+
+type CostPeriod = 'day' | 'month' | 'year';
+const costPeriodLabels: Record<CostPeriod, string> = {
+  day: '/jour',
+  month: '/mois',
+  year: '/an',
+};
+
+// Maps AWS Cost Explorer service names to our resource types
+const AWS_SERVICE_TYPE_MAP: Record<string, string> = {
+  'Amazon Elastic Compute Cloud - Compute': 'EC2',
+  'Amazon Elastic Compute Cloud': 'EC2',
+  'EC2 - Other': 'EC2',
+  'Amazon Simple Storage Service': 'S3',
+  'AWS Lambda': 'LAMBDA',
+  'Amazon Relational Database Service': 'RDS',
+};
+
+function getResourceBaseType(type: string): string {
+  // type can be "EC2 (t3.micro)" or "Lambda (nodejs18.x)" etc.
+  return type.split(' ')[0].toUpperCase();
+}
 
 interface CloudResource {
   id: string;
@@ -25,6 +50,7 @@ interface CloudResource {
 export default function CloudResourcesPage() {
   const { data: services = [], isLoading } = useServices();
   const { t } = useTranslation();
+  const [costPeriod, setCostPeriod] = useState<CostPeriod>('month');
 
   const cloudServices = useMemo(
     () => services.filter(s => s.tags?.some(tag => CLOUD_TAGS.includes(tag))),
@@ -32,6 +58,24 @@ export default function CloudResourcesPage() {
   );
 
   const { data: syncMetrics = [] } = useLatestSyncMetrics();
+
+  // Extract cost breakdown from sync metrics (30-day totals from AWS Cost Explorer)
+  const costByType = useMemo(() => {
+    const map: Record<string, number> = {};
+    const costMetric = syncMetrics.find(m => m.metric_key === 'aws_cost_by_service');
+    if (costMetric?.metadata) {
+      const svcs = (costMetric.metadata as Record<string, unknown>).services as Array<{ service: string; cost: number }> | undefined;
+      if (svcs) {
+        for (const s of svcs) {
+          const mappedType = AWS_SERVICE_TYPE_MAP[s.service];
+          if (mappedType) {
+            map[mappedType] = (map[mappedType] || 0) + s.cost;
+          }
+        }
+      }
+    }
+    return map; // 30-day totals per type
+  }, [syncMetrics]);
 
   const cloudResources = useMemo(() => {
     const resources: CloudResource[] = [];
@@ -130,6 +174,36 @@ export default function CloudResourcesPage() {
     return resources;
   }, [cloudServices, syncMetrics]);
 
+  // Count resources per base type for cost distribution
+  const countByType = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const r of cloudResources) {
+      const base = getResourceBaseType(r.type);
+      counts[base] = (counts[base] || 0) + 1;
+    }
+    return counts;
+  }, [cloudResources]);
+
+  const getResourceCost = (resource: CloudResource): number | null => {
+    const baseType = getResourceBaseType(resource.type);
+    const total30d = costByType[baseType];
+    if (total30d === undefined) return null;
+    const count = countByType[baseType] || 1;
+    const perResourceMonthly = total30d / count;
+
+    switch (costPeriod) {
+      case 'day': return perResourceMonthly / 30;
+      case 'month': return perResourceMonthly;
+      case 'year': return perResourceMonthly * 12;
+    }
+  };
+
+  const formatCost = (cost: number | null): string => {
+    if (cost === null) return '—';
+    if (cost < 0.01) return '< $0.01';
+    return `$${cost.toFixed(2)}`;
+  };
+
   const statusConfig: Record<string, { label: string; dotClass: string }> = {
     up: { label: t('services.operational'), dotClass: 'status-dot-up' },
     down: { label: t('services.down'), dotClass: 'status-dot-down' },
@@ -167,6 +241,27 @@ export default function CloudResourcesPage() {
                   <TableHead>Type</TableHead>
                   <TableHead>Provider</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors font-medium text-xs">
+                          Coût ({costPeriodLabels[costPeriod]})
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover border-border z-50">
+                        {(Object.keys(costPeriodLabels) as CostPeriod[]).map((p) => (
+                          <DropdownMenuItem
+                            key={p}
+                            onClick={() => setCostPeriod(p)}
+                            className={costPeriod === p ? 'bg-accent' : ''}
+                          >
+                            {costPeriodLabels[p]}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableHead>
                   <TableHead>Dernier refresh</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -174,6 +269,7 @@ export default function CloudResourcesPage() {
               <TableBody>
                 {cloudResources.map((resource) => {
                   const status = statusConfig[resource.status] ?? statusConfig.unknown;
+                  const cost = getResourceCost(resource);
                   return (
                     <TableRow key={resource.id}>
                       <TableCell className="font-medium text-foreground">{resource.name}</TableCell>
@@ -195,6 +291,9 @@ export default function CloudResourcesPage() {
                           <div className={status.dotClass} />
                           <span className="text-xs">{status.label}</span>
                         </div>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-sm">
+                        {formatCost(cost)}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {resource.syncedAt
