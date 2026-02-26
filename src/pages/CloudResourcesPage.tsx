@@ -54,14 +54,14 @@ export default function CloudResourcesPage() {
     const serviceNames = new Set(cloudServices.map(s => s.name));
     for (const m of syncMetrics) {
       if (m.metric_key === 'ec2_instances_detail' && m.metadata) {
-        const instances = (m.metadata as Record<string, unknown>).instances as Array<{ id: string; type: string; state: string }> | undefined;
+        const instances = (m.metadata as Record<string, unknown>).instances as Array<{ id: string; type: string; state: string; name?: string }> | undefined;
         if (instances) {
           for (const inst of instances) {
-            const name = `EC2 ${inst.id}`;
-            if (serviceNames.has(name)) continue;
+            const displayName = inst.name ? `${inst.name} (${inst.id})` : `EC2 ${inst.id}`;
+            if (serviceNames.has(displayName)) continue;
             resources.push({
               id: `sync-ec2-${inst.id}`,
-              name,
+              name: inst.name || inst.id,
               arnOrId: inst.id,
               type: `EC2 (${inst.type})`,
               provider: 'AWS',

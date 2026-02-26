@@ -36,18 +36,22 @@ async function discoverEC2(aws: AwsClient, region: string): Promise<AwsMetric[]>
       { metric_type: "ec2", metric_key: "ec2_stopped", metric_value: stoppedMatches.length, metric_unit: "count" }
     );
 
-    // Extract instance details
-    const instances: Array<{ id: string; type: string; state: string }> = [];
-    const idRegex = /<instanceId>(.*?)<\/instanceId>/g;
-    const typeRegex = /<instanceType>(.*?)<\/instanceType>/g;
-    const stateRegex = /<instance>.*?<name>(.*?)<\/name>/gs;
-    let idMatch, typeMatch;
-    while ((idMatch = idRegex.exec(text)) !== null) {
-      typeMatch = typeRegex.exec(text);
+    // Extract instance details with Name tag
+    const instances: Array<{ id: string; type: string; state: string; name: string }> = [];
+    // Split by <item> inside <instancesSet> to parse each instance
+    const instanceBlocks = text.split(/<item>/).slice(1);
+    for (const block of instanceBlocks) {
+      const idM = block.match(/<instanceId>(.*?)<\/instanceId>/);
+      if (!idM) continue;
+      const typeM = block.match(/<instanceType>(.*?)<\/instanceType>/);
+      const stateM = block.match(/<instanceState>.*?<name>(.*?)<\/name>/s);
+      // Extract Name from tags: <key>Name</key><value>...</value>
+      const nameM = block.match(/<key>Name<\/key>\s*<value>(.*?)<\/value>/s);
       instances.push({
-        id: idMatch[1],
-        type: typeMatch?.[1] || "unknown",
-        state: "unknown",
+        id: idM[1],
+        type: typeM?.[1] || "unknown",
+        state: stateM?.[1] || "unknown",
+        name: nameM?.[1] || "",
       });
     }
     if (instances.length > 0) {
@@ -449,10 +453,11 @@ Deno.serve(async (req) => {
     // EC2 instances
     const ec2Detail = ec2.find(m => m.metric_key === "ec2_instances_detail");
     if (ec2Detail?.metadata?.instances) {
-      for (const inst of ec2Detail.metadata.instances as Array<{ id: string; type: string; state: string }>) {
+      for (const inst of ec2Detail.metadata.instances as Array<{ id: string; type: string; state: string; name: string }>) {
         const st = inst.state === "running" ? "up" : inst.state === "stopped" ? "down" : "unknown";
+        const displayName = inst.name ? `${inst.name} (${inst.id})` : `EC2 ${inst.id}`;
         computeServices.push({
-          name: `EC2 ${inst.id}`,
+          name: displayName,
           url: `https://${cred.region}.console.aws.amazon.com/ec2/home?region=${cred.region}#InstanceDetails:instanceId=${inst.id}`,
           icon: "🖥️",
           status: st,
