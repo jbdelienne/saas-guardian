@@ -184,6 +184,18 @@ function DashboardDetailView({
   const deleteWidget = useDeleteDashboardWidget();
   const [addOpen, setAddOpen] = useState(false);
   const [tvMode, setTvMode] = useState(false);
+
+  const enterTvMode = useCallback(() => {
+    setTvMode(true);
+    document.documentElement.requestFullscreen?.().catch(() => {});
+  }, []);
+
+  const exitTvMode = useCallback(() => {
+    setTvMode(false);
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {});
+    }
+  }, []);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(dashboardName);
   const layoutChangeRef = useRef<LayoutItem[]>([]);
@@ -251,7 +263,7 @@ function DashboardDetailView({
           <div className="flex items-center gap-3">
             <span className="text-sm font-semibold text-muted-foreground tracking-wide">moniduck</span>
             <button
-              onClick={() => setTvMode(false)}
+              onClick={exitTvMode}
               className="bg-card/80 backdrop-blur border border-border rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               {t('topbar.exitTvMode')}
@@ -350,7 +362,7 @@ function DashboardDetailView({
             <Plus className="w-4 h-4" />
             {t('dashboard.addWidget')}
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setTvMode(true)} className="gap-2" title="TV Mode">
+          <Button variant="outline" size="sm" onClick={enterTvMode} className="gap-2" title="TV Mode">
             <Monitor className="w-4 h-4" />
           </Button>
           <Button variant="outline" size="sm" onClick={onDelete} className="gap-2 text-destructive hover:bg-destructive/10">
