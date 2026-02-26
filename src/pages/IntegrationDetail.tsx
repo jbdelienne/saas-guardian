@@ -103,7 +103,10 @@ export default function IntegrationDetail() {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error('Not authenticated');
-        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/aws-sync`;
+        // Fetch the AWS credential ID for this workspace
+        const { data: creds } = await supabase.from('aws_credentials').select('id').limit(1).single();
+        if (!creds) throw new Error('No AWS credentials found');
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/aws-sync?credential_id=${creds.id}`;
         const res = await fetch(url, {
           method: 'POST',
           headers: {
