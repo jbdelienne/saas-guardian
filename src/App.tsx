@@ -12,6 +12,7 @@ import Landing from "@/pages/Landing";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
 import ServicesPage from "@/pages/ServicesPage";
+import CloudResourcesPage from "@/pages/CloudResourcesPage";
 import Integrations from "@/pages/Integrations";
 import IntegrationDetail from "@/pages/IntegrationDetail";
 import Alerts from "@/pages/Alerts";
@@ -60,6 +61,7 @@ const LangRoutes = () => (
       <Route path="auth" element={<Auth />} />
       <Route path="dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="services" element={<ProtectedRoute><ServicesPage /></ProtectedRoute>} />
+      <Route path="cloud-resources" element={<ProtectedRoute><CloudResourcesPage /></ProtectedRoute>} />
       <Route path="integrations" element={<ProtectedRoute><Integrations /></ProtectedRoute>} />
       <Route path="integrations/aws/costs" element={<ProtectedRoute><AwsCostDashboard /></ProtectedRoute>} />
       <Route path="integrations/:type" element={<ProtectedRoute><IntegrationDetail /></ProtectedRoute>} />
