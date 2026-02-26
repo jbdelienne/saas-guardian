@@ -507,19 +507,19 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Upsert each compute service (match by name + user)
+    // Upsert each compute service (match by URL which contains the unique resource ID)
     for (const svc of computeServices) {
       const { data: existing } = await supabaseAdmin
         .from("services")
         .select("id")
         .eq("user_id", userId)
-        .eq("name", svc.name)
+        .eq("url", svc.url)
         .maybeSingle();
 
       if (existing) {
         await supabaseAdmin.from("services").update({
+          name: svc.name,
           status: svc.status,
-          url: svc.url,
           icon: svc.icon,
           tags: svc.tags,
           last_check: new Date().toISOString(),
@@ -533,7 +533,7 @@ Deno.serve(async (req) => {
           icon: svc.icon,
           status: svc.status,
           tags: svc.tags,
-          is_paused: true, // don't HTTP-ping AWS console URLs
+          is_paused: true,
           check_interval: 0,
           last_check: new Date().toISOString(),
         });
