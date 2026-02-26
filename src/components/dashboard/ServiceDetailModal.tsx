@@ -1,11 +1,11 @@
 import { useState, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Service, useChecks, useTogglePause, useUpdateService } from '@/hooks/use-supabase';
+import { Service, useChecks, useTogglePause, useUpdateService, useForceCheck } from '@/hooks/use-supabase';
 import { supabase } from '@/integrations/supabase/client';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
 import { formatDistanceToNow, format, differenceInDays, subDays } from 'date-fns';
-import { Trash2, Pause, Play, Loader2, Shield, Activity, Clock, ArrowUpCircle, Globe, Zap, FileText, Search, Download, TrendingUp, ExternalLink } from 'lucide-react';
+import { Trash2, Pause, Play, Loader2, Shield, Activity, Clock, ArrowUpCircle, Globe, Zap, FileText, Search, Download, TrendingUp, ExternalLink, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UptimePeriod, useUptimeChart } from '@/hooks/use-uptime';
 import OwnerTagsEditor, { OwnerTagsDisplay } from './OwnerTagsEditor';
@@ -59,6 +59,7 @@ function downloadFile(content: string, filename: string, type: string) {
 export default function ServiceDetailModal({ service, open, onClose, onDelete }: ServiceDetailModalProps) {
   const togglePause = useTogglePause();
   const updateService = useUpdateService();
+  const forceCheck = useForceCheck();
   const { data: checks = [], isLoading: checksLoading } = useChecks(service?.id, 50);
   const [chartPeriod, setChartPeriod] = useState<UptimePeriod>('7d');
   const [reportPeriod, setReportPeriod] = useState<'24h' | '7d' | '30d' | 'all'>('7d');
@@ -497,6 +498,26 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
                     });
                   }}
                 />
+              </div>
+
+              <div className="flex items-center justify-between p-4 border border-border rounded-xl">
+                <div>
+                  <p className="font-medium text-foreground text-sm">Force check</p>
+                  <p className="text-xs text-muted-foreground">Trigger an immediate health check</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => forceCheck.mutate(service.id, {
+                    onSuccess: () => toast.success('Check triggered'),
+                    onError: (err) => toast.error(err.message),
+                  })}
+                  className="gap-2"
+                  disabled={forceCheck.isPending}
+                >
+                  {forceCheck.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  Check now
+                </Button>
               </div>
 
               <div className="flex items-center justify-between p-4 border border-border rounded-xl">

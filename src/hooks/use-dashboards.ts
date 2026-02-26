@@ -76,6 +76,17 @@ export function useDeleteDashboard() {
   });
 }
 
+export function useRenameDashboard() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, name }: { id: string; name: string }) => {
+      const { error } = await supabase.from('dashboards').update({ name }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['dashboards'] }),
+  });
+}
+
 export function useDashboardWidgets(dashboardId: string | undefined) {
   const { user } = useAuth();
   return useQuery({

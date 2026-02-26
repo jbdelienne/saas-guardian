@@ -5,6 +5,7 @@ import {
   useDashboards,
   useCreateDashboard,
   useDeleteDashboard,
+  useRenameDashboard,
   useDashboardWidgets,
   useAddDashboardWidget,
   useUpdateWidgetPositions,
@@ -14,7 +15,7 @@ import { useLatestSyncMetrics, SyncMetric } from '@/hooks/use-all-sync-data';
 import WidgetRenderer, { WidgetConfig } from '@/components/dashboard/WidgetRenderer';
 import AddWidgetModal, { NewWidgetDef } from '@/components/dashboard/AddWidgetModal';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, ArrowLeft, Loader2, LayoutDashboard, X } from 'lucide-react';
+import { Plus, Trash2, ArrowLeft, Loader2, LayoutDashboard, X, Pencil, Check } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -34,6 +35,7 @@ export default function Dashboard() {
   const { data: dashboards = [], isLoading } = useDashboards();
   const createDashboard = useCreateDashboard();
   const deleteDashboard = useDeleteDashboard();
+  const renameDashboard = useRenameDashboard();
   const [selectedDashboardId, setSelectedDashboardId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState('');
@@ -71,6 +73,9 @@ export default function Dashboard() {
           onDelete={async () => {
             await deleteDashboard.mutateAsync(selectedDashboard.id);
             setSelectedDashboardId(null);
+          }}
+          onRename={async (name: string) => {
+            await renameDashboard.mutateAsync({ id: selectedDashboard.id, name });
           }}
         />
       </AppLayout>
@@ -162,6 +167,7 @@ function DashboardDetailView({
   syncMetrics,
   onBack,
   onDelete,
+  onRename,
 }: {
   dashboardId: string;
   dashboardName: string;
@@ -169,12 +175,15 @@ function DashboardDetailView({
   syncMetrics: SyncMetric[];
   onBack: () => void;
   onDelete: () => void;
+  onRename: (name: string) => void;
 }) {
   const { data: widgets = [], isLoading } = useDashboardWidgets(dashboardId);
   const addWidget = useAddDashboardWidget();
   const updatePositions = useUpdateWidgetPositions();
   const deleteWidget = useDeleteDashboardWidget();
   const [addOpen, setAddOpen] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState(dashboardName);
   const layoutChangeRef = useRef<LayoutItem[]>([]);
   const { width: containerWidth, ref: containerRef } = useContainerWidth({ initialWidth: 1200 });
   const { t } = useTranslation();
@@ -238,7 +247,46 @@ function DashboardDetailView({
           <Button variant="ghost" size="icon" onClick={onBack} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-xl font-bold text-foreground">{dashboardName}</h1>
+          {isRenaming ? (
+            <div className="flex items-center gap-2">
+              <Input
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+                className="h-8 text-lg font-bold w-60"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && renameValue.trim()) {
+                    onRename(renameValue.trim());
+                    setIsRenaming(false);
+                  }
+                  if (e.key === 'Escape') {
+                    setRenameValue(dashboardName);
+                    setIsRenaming(false);
+                  }
+                }}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-success"
+                onClick={() => {
+                  if (renameValue.trim()) {
+                    onRename(renameValue.trim());
+                    setIsRenaming(false);
+                  }
+                }}
+              >
+                <Check className="w-4 h-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-foreground">{dashboardName}</h1>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => setIsRenaming(true)}>
+                <Pencil className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button onClick={() => setAddOpen(true)} className="gap-2 gradient-primary text-primary-foreground hover:opacity-90" size="sm">

@@ -93,6 +93,37 @@ export function useTogglePause() {
   });
 }
 
+export function useForceCheck() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (serviceId: string) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-services?service_id=${serviceId}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Check failed');
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['services'] });
+      qc.invalidateQueries({ queryKey: ['checks'] });
+    },
+  });
+}
+
 export function useChecks(serviceId: string | undefined, limit = 50) {
   const { user } = useAuth();
   return useQuery({

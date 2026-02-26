@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useTheme } from 'next-themes';
-import { Moon, Sun, Users, Settings, Mail, Trash2, Shield, Crown, Loader2 } from 'lucide-react';
+import { Moon, Sun, Users, Settings, Mail, Trash2, Shield, Crown, Loader2, Key, CreditCard } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
@@ -22,6 +23,11 @@ import {
 } from '@/hooks/use-workspace';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { toast as sonnerToast } from 'sonner';
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -40,6 +46,11 @@ export default function SettingsPage() {
   const [wsName, setWsName] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'admin' | 'member'>('member');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const handleSaveWorkspace = async () => {
     if (!wsName.trim()) return;
@@ -55,6 +66,56 @@ export default function SettingsPage() {
       toast({ title: t('settings.team.inviteSent') });
     } catch (e: any) {
       toast({ title: t('settings.team.inviteError'), description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (newPassword.length < 6) {
+      sonnerToast.error('Password must be at least 6 characters');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      sonnerToast.error('Passwords do not match');
+      return;
+    }
+    setPasswordLoading(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      setNewPassword('');
+      setConfirmPassword('');
+      sonnerToast.success('Password updated');
+    } catch (e: any) {
+      sonnerToast.error(e.message);
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const handleDeleteWorkspace = async () => {
+    if (!workspace?.id) return;
+    setDeleteLoading(true);
+    try {
+      // Delete all workspace data in order
+      await supabase.from('dashboard_widgets').delete().in('dashboard_id',
+        (await supabase.from('dashboards').select('id').eq('workspace_id', workspace.id)).data?.map(d => d.id) || []
+      );
+      await supabase.from('dashboards').delete().eq('workspace_id', workspace.id);
+      await supabase.from('alerts').delete().eq('workspace_id', workspace.id);
+      await supabase.from('alert_thresholds').delete().eq('workspace_id', workspace.id);
+      await supabase.from('services').delete().eq('workspace_id', workspace.id);
+      await supabase.from('integrations').delete().eq('workspace_id', workspace.id);
+      await supabase.from('aws_credentials').delete().eq('workspace_id', workspace.id);
+      await supabase.from('workspace_invitations').delete().eq('workspace_id', workspace.id);
+      await supabase.from('workspace_members').delete().eq('workspace_id', workspace.id);
+      // Note: workspace itself may need admin deletion
+      sonnerToast.success('Workspace deleted. You will be signed out.');
+      await supabase.auth.signOut();
+    } catch (e: any) {
+      sonnerToast.error(e.message);
+    } finally {
+      setDeleteLoading(false);
+      setDeleteConfirmOpen(false);
     }
   };
 
@@ -77,6 +138,10 @@ export default function SettingsPage() {
                   {members.length}
                 </span>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="billing" className="gap-1.5">
+              <CreditCard className="w-4 h-4" />
+              Billing
             </TabsTrigger>
           </TabsList>
 
@@ -121,6 +186,67 @@ export default function SettingsPage() {
                 />
               </div>
             </div>
+
+            {/* Change password */}
+            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+              <div className="flex items-center gap-3 mb-2">
+                <Key className="w-5 h-5 text-muted-foreground" />
+                <div>
+                  <p className="font-semibold text-foreground text-sm">Change password</p>
+                  <p className="text-xs text-muted-foreground">Update your account password</p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label className="text-sm">New password</Label>
+                  <Input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="••••••••"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm">Confirm password</Label>
+                  <Input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleChangePassword}
+                  disabled={passwordLoading || !newPassword}
+                  className="gap-2"
+                >
+                  {passwordLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Update password
+                </Button>
+              </div>
+            </div>
+
+            {/* Danger zone */}
+            {isAdmin && (
+              <div className="bg-card border border-destructive/20 rounded-xl p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold text-destructive text-sm">Delete workspace</p>
+                    <p className="text-xs text-muted-foreground">Permanently delete this workspace and all its data. This action cannot be undone.</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 border-destructive/30 text-destructive hover:bg-destructive/10"
+                    onClick={() => setDeleteConfirmOpen(true)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           {/* Team tab */}
@@ -264,8 +390,45 @@ export default function SettingsPage() {
               )}
             </div>
           </TabsContent>
+
+          {/* Billing tab */}
+          <TabsContent value="billing" className="space-y-6">
+            <div className="bg-card border border-border rounded-xl p-8 text-center">
+              <CreditCard className="w-12 h-12 text-muted-foreground/40 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">Billing & Subscription</h3>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto mb-6">
+                Subscription management and billing details will be available soon. You're currently on the free plan.
+              </p>
+              <Button variant="outline" disabled>
+                Coming soon
+              </Button>
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
+
+      {/* Delete workspace confirmation */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete workspace?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the workspace "{workspace?.name}" and all its data (services, dashboards, integrations, alerts). This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteWorkspace}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleteLoading}
+            >
+              {deleteLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              Delete workspace
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
