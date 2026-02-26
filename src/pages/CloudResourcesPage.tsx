@@ -101,7 +101,7 @@ export default function CloudResourcesPage() {
         const instances = (m.metadata as Record<string, unknown>).instances as Array<{ id: string; type: string; state: string; name?: string }> | undefined;
         if (instances) {
           for (const inst of instances) {
-            const displayName = inst.name ? `${inst.name} (${inst.id})` : `EC2 ${inst.id}`;
+            const displayName = inst.name || `EC2 ${inst.id}`;
             if (serviceNames.has(displayName)) continue;
             resources.push({
               id: `sync-ec2-${inst.id}`,
