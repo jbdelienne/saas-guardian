@@ -37,18 +37,30 @@ async function discoverEC2(aws: AwsClient, region: string): Promise<AwsMetric[]>
     );
 
     // Extract instance details with Name tag
+    // Use reservationSet > instancesSet structure instead of splitting by <item> (which breaks nested tags)
     const instances: Array<{ id: string; type: string; state: string; name: string }> = [];
-    // Split by <item> inside <instancesSet> to parse each instance
-    const instanceBlocks = text.split(/<item>/).slice(1);
-    for (const block of instanceBlocks) {
-      const idM = block.match(/<instanceId>(.*?)<\/instanceId>/);
-      if (!idM) continue;
+    // Match each instance block: from <instanceId> to the next </tagSet> or </instancesSet>
+    const instanceRegex = /<instanceId>(.*?)<\/instanceId>[\s\S]*?<instanceType>(.*?)<\/instanceType>[\s\S]*?<instanceState>[\s\S]*?<name>(.*?)<\/name>[\s\S]*?<\/instanceState>([\s\S]*?)(?:<\/item>\s*<\/instancesSet>|<\/item>\s*<item>\s*<instanceId>)/g;
+    
+    // Simpler approach: find all instanceIds first, then extract details for each
+    const allInstanceIds = [...text.matchAll(/<instanceId>(i-[a-f0-9]+)<\/instanceId>/g)];
+    for (const idMatch of allInstanceIds) {
+      const instId = idMatch[1];
+      const startIdx = idMatch.index!;
+      // Find the closing </item> for this instance's instancesSet item
+      // Look for the next instanceId or end of instancesSet
+      const nextIdMatch = text.indexOf('<instanceId>', startIdx + 1);
+      const endOfSet = text.indexOf('</instancesSet>', startIdx);
+      const endIdx = nextIdMatch > 0 && nextIdMatch < endOfSet ? nextIdMatch : endOfSet > 0 ? endOfSet : text.length;
+      const block = text.substring(startIdx, endIdx);
+      
       const typeM = block.match(/<instanceType>(.*?)<\/instanceType>/);
-      const stateM = block.match(/<instanceState>.*?<name>(.*?)<\/name>/s);
-      // Extract Name from tags: <key>Name</key><value>...</value>
-      const nameM = block.match(/<key>Name<\/key>\s*<value>(.*?)<\/value>/s);
+      const stateM = block.match(/<instanceState>[\s\S]*?<name>(.*?)<\/name>/);
+      // Name tag in tagSet: <key>Name</key><value>...</value>
+      const nameM = block.match(/<key>Name<\/key>[\s\S]*?<value>(.*?)<\/value>/);
+      
       instances.push({
-        id: idM[1],
+        id: instId,
         type: typeM?.[1] || "unknown",
         state: stateM?.[1] || "unknown",
         name: nameM?.[1] || "",
