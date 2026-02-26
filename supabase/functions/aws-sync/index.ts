@@ -162,7 +162,8 @@ async function fetchCosts(aws: AwsClient, region: string): Promise<AwsMetric[]> 
       GroupBy: [{ Type: "DIMENSION", Key: "SERVICE" }],
     });
 
-    const res = await aws.fetch(`https://ce.${region}.amazonaws.com/`, {
+    // Cost Explorer is only available in us-east-1
+    const res = await aws.fetch(`https://ce.us-east-1.amazonaws.com/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-amz-json-1.1",
