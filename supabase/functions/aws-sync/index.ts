@@ -148,7 +148,9 @@ async function discoverRDS(aws: AwsClient, region: string): Promise<AwsMetric[]>
   return metrics;
 }
 
-async function fetchCosts(aws: AwsClient, region: string): Promise<AwsMetric[]> {
+async function fetchCosts(creds: { accessKeyId: string; secretAccessKey: string }, _region: string): Promise<AwsMetric[]> {
+  // Cost Explorer is a global service only available in us-east-1
+  const ceClient = new AwsClient({ ...creds, region: "us-east-1" });
   const metrics: AwsMetric[] = [];
   try {
     const now = new Date();
@@ -162,7 +164,7 @@ async function fetchCosts(aws: AwsClient, region: string): Promise<AwsMetric[]> 
       GroupBy: [{ Type: "DIMENSION", Key: "SERVICE" }],
     });
 
-    // Cost Explorer is only available in us-east-1
+    const res = await ceClient.fetch(`https://ce.us-east-1.amazonaws.com/`, {
     const res = await aws.fetch(`https://ce.us-east-1.amazonaws.com/`, {
       method: "POST",
       headers: {
@@ -214,7 +216,9 @@ async function fetchCosts(aws: AwsClient, region: string): Promise<AwsMetric[]> 
   return metrics;
 }
 
-async function fetchHealth(aws: AwsClient, region: string): Promise<AwsMetric[]> {
+async function fetchHealth(creds: { accessKeyId: string; secretAccessKey: string }, _region: string): Promise<AwsMetric[]> {
+  // AWS Health API is a global service only available in us-east-1
+  const healthClient = new AwsClient({ ...creds, region: "us-east-1" });
   const metrics: AwsMetric[] = [];
   try {
     const body = JSON.stringify({
@@ -224,7 +228,7 @@ async function fetchHealth(aws: AwsClient, region: string): Promise<AwsMetric[]>
       maxResults: 100,
     });
 
-    const res = await aws.fetch(`https://health.${region}.amazonaws.com/`, {
+    const res = await healthClient.fetch(`https://health.us-east-1.amazonaws.com/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-amz-json-1.1",
@@ -419,8 +423,8 @@ Deno.serve(async (req) => {
       discoverS3(aws),
       discoverLambda(aws, cred.region),
       discoverRDS(aws, cred.region),
-      fetchCosts(aws, cred.region),
-      fetchHealth(aws, cred.region),
+      fetchCosts({ accessKeyId: cred.access_key_id, secretAccessKey: cred.secret_access_key }, cred.region),
+      fetchHealth({ accessKeyId: cred.access_key_id, secretAccessKey: cred.secret_access_key }, cred.region),
     ]);
 
     const allMetrics: AwsMetric[] = [
