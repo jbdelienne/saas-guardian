@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
+import moniduckLogo from '@/assets/moniduck-logo.png';
 import AppLayout from '@/components/layout/AppLayout';
 import { useServices, Service } from '@/hooks/use-supabase';
 import {
@@ -259,7 +260,7 @@ function DashboardDetailView({
         </div>
         {/* Logo watermark bottom-right */}
         <img
-          src="/lovable-uploads/77bc7ad1-714f-4f02-b4b4-490a97f61f9d.png"
+          src={moniduckLogo}
           alt="MoniDuck"
           className="fixed bottom-4 right-4 w-12 h-12 z-50 pointer-events-none"
         />
