@@ -285,10 +285,6 @@ function DashboardDetailView({
               breakpoints={{ lg: 1200, md: 900, sm: 600, xs: 0 }}
               cols={{ lg: 12, md: 8, sm: 4, xs: 2 }}
               rowHeight={80}
-              onLayoutChange={handleLayoutChange}
-              onDragStop={handleDragOrResizeStop}
-              onResizeStop={handleDragOrResizeStop}
-              draggableHandle=".widget-drag-handle"
               isResizable={false}
               isDraggable={false}
             >
