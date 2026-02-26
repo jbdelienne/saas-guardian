@@ -289,8 +289,8 @@ function DashboardDetailView({
               onDragStop={handleDragOrResizeStop}
               onResizeStop={handleDragOrResizeStop}
               draggableHandle=".widget-drag-handle"
-              isResizable
-              isDraggable
+              isResizable={false}
+              isDraggable={false}
             >
               {widgetConfigs.map((widget) => (
                 <div key={widget.id} className="bg-card border border-border rounded-xl overflow-hidden flex flex-col">
