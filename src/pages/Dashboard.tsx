@@ -112,7 +112,7 @@ export default function Dashboard() {
               <button
                 key={db.id}
                 onClick={() => setSelectedDashboardId(db.id)}
-                className="relative bg-card border border-border rounded-xl p-6 text-left hover:border-primary/30 hover:shadow-lg transition-all"
+                className="bg-card border border-border rounded-xl p-6 text-left hover:border-primary/30 hover:shadow-lg transition-all"
               >
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -123,7 +123,6 @@ export default function Dashboard() {
                 <p className="text-[10px] text-muted-foreground/60 mt-3">
                   {t('dashboard.created')} {new Date(db.created_at).toLocaleDateString()}
                 </p>
-                <img src="/lovable-uploads/77bc7ad1-714f-4f02-b4b4-490a97f61f9d.png" alt="MoniDuck" className="absolute bottom-2 right-2 w-5 h-5 opacity-30" />
               </button>
             ))}
           </div>
@@ -245,15 +244,26 @@ function DashboardDetailView({
   if (tvMode) {
     return (
       <div className="fixed inset-0 z-50 bg-background tv-mode">
-        <div className="fixed top-4 right-4 z-50">
-          <button
-            onClick={() => setTvMode(false)}
-            className="bg-card/80 backdrop-blur border border-border rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {t('topbar.exitTvMode')}
-          </button>
+        {/* Top bar: dashboard name left, moniduck + exit right */}
+        <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-3">
+          <span className="text-sm font-semibold text-muted-foreground">{dashboardName}</span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold text-muted-foreground tracking-wide">moniduck</span>
+            <button
+              onClick={() => setTvMode(false)}
+              className="bg-card/80 backdrop-blur border border-border rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {t('topbar.exitTvMode')}
+            </button>
+          </div>
         </div>
-        <div className="p-6 h-full overflow-auto" ref={containerRef}>
+        {/* Logo watermark bottom-right */}
+        <img
+          src="/lovable-uploads/77bc7ad1-714f-4f02-b4b4-490a97f61f9d.png"
+          alt="MoniDuck"
+          className="fixed bottom-4 right-4 w-8 h-8 opacity-30 z-50 pointer-events-none"
+        />
+        <div className="p-6 pt-14 h-full overflow-auto" ref={containerRef}>
           {widgetConfigs.length > 0 && (
             <ResponsiveGridLayout
               width={containerWidth}
