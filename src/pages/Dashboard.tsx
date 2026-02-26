@@ -294,7 +294,7 @@ function DashboardDetailView({
             >
               {widgetConfigs.map((widget) => (
                 <div key={widget.id} className="bg-card border border-border rounded-xl overflow-hidden flex flex-col">
-                  <div className="widget-drag-handle flex items-center justify-between px-3 py-2 bg-muted/30 cursor-grab active:cursor-grabbing border-b border-border">
+                  <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b border-border">
                     <span className="text-xs font-medium text-muted-foreground truncate">{widget.title}</span>
                   </div>
                   <div className="flex-1 p-3 overflow-hidden">
