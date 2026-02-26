@@ -217,6 +217,100 @@ export type Database = {
           },
         ]
       }
+      cost_by_service: {
+        Row: {
+          account_id: string
+          amount: number
+          created_at: string
+          currency: string
+          date: string
+          granularity: string
+          id: string
+          service_name: string
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          account_id: string
+          amount?: number
+          created_at?: string
+          currency?: string
+          date: string
+          granularity?: string
+          id?: string
+          service_name: string
+          user_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          account_id?: string
+          amount?: number
+          created_at?: string
+          currency?: string
+          date?: string
+          granularity?: string
+          id?: string
+          service_name?: string
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_by_service_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cost_snapshots: {
+        Row: {
+          account_id: string
+          cached_at: string
+          created_at: string
+          end_date: string
+          granularity: string
+          id: string
+          raw_data: Json
+          start_date: string
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          account_id: string
+          cached_at?: string
+          created_at?: string
+          end_date: string
+          granularity?: string
+          id?: string
+          raw_data?: Json
+          start_date: string
+          user_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          account_id?: string
+          cached_at?: string
+          created_at?: string
+          end_date?: string
+          granularity?: string
+          id?: string
+          raw_data?: Json
+          start_date?: string
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_snapshots_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboard_widgets: {
         Row: {
           config: Json

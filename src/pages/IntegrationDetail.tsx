@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, RefreshCw, Loader2, HardDrive, Users, Shield, MessageSquare, Hash, Key, FolderOpen, Trash2, Database, Clock } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Loader2, HardDrive, Users, Shield, MessageSquare, Hash, Key, FolderOpen, Trash2, Database, Clock, DollarSign } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -213,14 +213,22 @@ export default function IntegrationDetail() {
             )}
           </div>
           {integration && (
-            <Button onClick={handleSync} disabled={syncIntegration.isPending} className="gap-2">
-              {syncIntegration.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <RefreshCw className="w-4 h-4" />
+            <div className="flex items-center gap-2">
+              {type === 'aws' && (
+                <Button variant="outline" onClick={() => navigate(`${lp}/integrations/aws/costs`)} className="gap-2">
+                  <DollarSign className="w-4 h-4" />
+                  Cost Explorer
+                </Button>
               )}
-              {t('integrationDetail.synchronize')}
-            </Button>
+              <Button onClick={handleSync} disabled={syncIntegration.isPending} className="gap-2">
+                {syncIntegration.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4" />
+                )}
+                {t('integrationDetail.synchronize')}
+              </Button>
+            </div>
           )}
         </div>
 
