@@ -455,7 +455,7 @@ Deno.serve(async (req) => {
     if (ec2Detail?.metadata?.instances) {
       for (const inst of ec2Detail.metadata.instances as Array<{ id: string; type: string; state: string; name: string }>) {
         const st = inst.state === "running" ? "up" : inst.state === "stopped" ? "down" : "unknown";
-        const displayName = inst.name ? `${inst.name} (${inst.id})` : `EC2 ${inst.id}`;
+        const displayName = inst.name || `EC2 ${inst.id}`;
         computeServices.push({
           name: displayName,
           url: `https://${cred.region}.console.aws.amazon.com/ec2/home?region=${cred.region}#InstanceDetails:instanceId=${inst.id}`,
