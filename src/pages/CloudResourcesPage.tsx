@@ -79,15 +79,41 @@ export default function CloudResourcesPage() {
 
   const cloudResources = useMemo(() => {
     const resources: CloudResource[] = [];
+    // Track instance IDs already added from services table to avoid duplicates
+    const seenInstanceIds = new Set<string>();
+
+    // Helper: extract instance ID from AWS console URL
+    const extractInstanceId = (url: string): string | null => {
+      const m = url.match(/instanceId=(i-[a-f0-9]+)/);
+      return m ? m[1] : null;
+    };
 
     for (const s of cloudServices) {
       const tags = s.tags || [];
       const type = tags.find(t => ['ec2', 's3', 'lambda', 'rds'].includes(t))?.toUpperCase() || 'Unknown';
       const provider = tags.includes('aws') ? 'AWS' : tags.includes('gcp') ? 'GCP' : tags.includes('azure') ? 'Azure' : 'Cloud';
+      const instanceId = extractInstanceId(s.url);
+      if (instanceId) seenInstanceIds.add(instanceId);
+
+      // For arnOrId: use extracted instance ID or strip prefix from name
+      const arnOrId = instanceId || s.name.replace(/^(EC2|Lambda|RDS|S3)\s+/, '');
+
+      // For name: use the Name tag from sync data if available, otherwise service name
+      let displayName = s.name;
+      // Try to find a better name from sync metrics
+      if (instanceId) {
+        const ec2Detail = syncMetrics.find(m => m.metric_key === 'ec2_instances_detail');
+        if (ec2Detail?.metadata) {
+          const instances = (ec2Detail.metadata as Record<string, unknown>).instances as Array<{ id: string; name?: string }> | undefined;
+          const inst = instances?.find(i => i.id === instanceId);
+          if (inst?.name) displayName = inst.name;
+        }
+      }
+
       resources.push({
         id: s.id,
-        name: s.name,
-        arnOrId: s.name.replace(/^(EC2|Lambda|RDS|S3)\s+/, ''),
+        name: displayName,
+        arnOrId,
         type,
         provider,
         status: s.status,
@@ -95,14 +121,14 @@ export default function CloudResourcesPage() {
       });
     }
 
-    const serviceNames = new Set(cloudServices.map(s => s.name));
+    // Add resources from sync metrics that aren't already in services table
     for (const m of syncMetrics) {
       if (m.metric_key === 'ec2_instances_detail' && m.metadata) {
         const instances = (m.metadata as Record<string, unknown>).instances as Array<{ id: string; type: string; state: string; name?: string }> | undefined;
         if (instances) {
           for (const inst of instances) {
-            const displayName = inst.name || `EC2 ${inst.id}`;
-            if (serviceNames.has(displayName)) continue;
+            if (seenInstanceIds.has(inst.id)) continue;
+            seenInstanceIds.add(inst.id);
             resources.push({
               id: `sync-ec2-${inst.id}`,
               name: inst.name || inst.id,
@@ -119,8 +145,8 @@ export default function CloudResourcesPage() {
         const functions = (m.metadata as Record<string, unknown>).functions as Array<{ name: string; runtime: string }> | undefined;
         if (functions) {
           for (const fn of functions) {
-            const name = `Lambda ${fn.name}`;
-            if (serviceNames.has(name)) continue;
+            const lambdaName = `Lambda ${fn.name}`;
+            if (cloudServices.some(s => s.name === lambdaName)) continue;
             resources.push({
               id: `sync-lambda-${fn.name}`,
               name: fn.name,
@@ -137,8 +163,8 @@ export default function CloudResourcesPage() {
         const instances = (m.metadata as Record<string, unknown>).instances as Array<{ id: string; engine: string; status: string }> | undefined;
         if (instances) {
           for (const inst of instances) {
-            const name = `RDS ${inst.id}`;
-            if (serviceNames.has(name)) continue;
+            const rdsName = `RDS ${inst.id}`;
+            if (cloudServices.some(s => s.name === rdsName)) continue;
             resources.push({
               id: `sync-rds-${inst.id}`,
               name: inst.id,
@@ -155,8 +181,8 @@ export default function CloudResourcesPage() {
         const buckets = (m.metadata as Record<string, unknown>).buckets as string[] | undefined;
         if (buckets) {
           for (const bucket of buckets) {
-            const name = `S3 ${bucket}`;
-            if (serviceNames.has(name)) continue;
+            const s3Name = `S3 ${bucket}`;
+            if (cloudServices.some(s => s.name === s3Name)) continue;
             resources.push({
               id: `sync-s3-${bucket}`,
               name: bucket,
