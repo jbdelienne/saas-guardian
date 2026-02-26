@@ -70,14 +70,14 @@ function resolveValue(
       };
     }
     case 'aws_monthly_cost': {
-      const cost = syncMetrics.find(m => m.metric_key === 'aws_cost_total');
+      const cost = syncMetrics.find(m => m.metric_key === 'aws_total_cost_30d');
       return {
         value: cost ? `$${Math.round(cost.metric_value).toLocaleString()}` : '—',
         label: 'AWS Monthly Cost',
       };
     }
     case 'aws_cost_trend': {
-      const cost = syncMetrics.find(m => m.metric_key === 'aws_cost_total');
+      const cost = syncMetrics.find(m => m.metric_key === 'aws_total_cost_30d');
       const prev = syncMetrics.find(m => m.metric_key === 'aws_cost_previous');
       const trend = cost && prev && prev.metric_value > 0
         ? Math.round(((cost.metric_value - prev.metric_value) / prev.metric_value) * 100)
