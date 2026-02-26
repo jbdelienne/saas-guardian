@@ -259,7 +259,7 @@ function DashboardDetailView({
       <div className="fixed inset-0 z-50 bg-background tv-mode">
         {/* Top bar: dashboard name left, moniduck + exit right */}
         <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-3">
-          <span className="text-xl font-bold text-foreground">{dashboardName}</span>
+          <span className="text-4xl font-bold text-foreground">{dashboardName}</span>
           <div className="flex items-center gap-3">
             <span className="text-sm font-semibold text-muted-foreground tracking-wide">moniduck</span>
             <button
@@ -274,7 +274,7 @@ function DashboardDetailView({
         <img
           src={moniduckLogo}
           alt="MoniDuck"
-          className="fixed bottom-4 right-4 w-12 h-12 z-50 pointer-events-none"
+          className="fixed bottom-4 right-4 w-24 h-24 z-50 pointer-events-none"
         />
         <div className="p-6 pt-14 h-full overflow-auto" ref={containerRef}>
           {widgetConfigs.length > 0 && (
