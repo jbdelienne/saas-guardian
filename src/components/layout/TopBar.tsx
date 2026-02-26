@@ -24,7 +24,6 @@ export default function TopBar({ onToggleSidebar, sidebarCollapsed }: TopBarProp
         <button onClick={onToggleSidebar} className="text-muted-foreground hover:text-foreground transition-colors lg:hidden">
           <Menu className="w-5 h-5" />
         </button>
-        <span className="text-sm font-semibold text-muted-foreground tracking-wide">moniduck</span>
       </div>
 
       <div className="flex items-center gap-2">
