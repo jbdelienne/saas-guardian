@@ -168,11 +168,11 @@ export default function ServicesPage() {
                           : t('services.never')}
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center justify-end gap-1">
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            className="h-7 w-7"
                             title={t('services.forceCheck')}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -183,23 +183,25 @@ export default function ServicesPage() {
                             }}
                             disabled={forceCheck.isPending}
                           >
-                            {forceCheck.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                            {forceCheck.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            className="h-7 w-7"
+                            title={service.is_paused ? t('services.resume') : t('services.pause')}
                             onClick={(e) => { e.stopPropagation(); togglePause.mutate({ id: service.id, is_paused: !service.is_paused }); }}
                           >
-                            {service.is_paused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+                            {service.is_paused ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                            title={t('dashboard.delete')}
                             onClick={(e) => { e.stopPropagation(); setDeleteTarget(service); }}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </div>
                       </TableCell>
