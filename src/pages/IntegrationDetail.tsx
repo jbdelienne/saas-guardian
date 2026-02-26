@@ -99,11 +99,13 @@ export default function IntegrationDetail() {
   const handleSync = async () => {
     if (!integration) return;
     if (type === 'aws') {
-      // AWS uses its own sync edge function, not integration-sync
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) throw new Error('Not authenticated');
-        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/aws-sync`;
+        // Fetch the credential_id for this user
+        const { data: cred } = await supabase.from('aws_credentials').select('id').maybeSingle();
+        if (!cred) throw new Error('No AWS credentials found');
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/aws-sync?credential_id=${cred.id}`;
         const res = await fetch(url, {
           method: 'POST',
           headers: {
