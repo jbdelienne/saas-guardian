@@ -96,8 +96,35 @@ export default function IntegrationDetail() {
   const queryClient = useQueryClient();
   const [syncingDriveIds, setSyncingDriveIds] = useState<Set<string>>(new Set());
 
-  const handleSync = () => {
+  const handleSync = async () => {
     if (!integration) return;
+    if (type === 'aws') {
+      // AWS uses its own sync edge function, not integration-sync
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) throw new Error('Not authenticated');
+        const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/aws-sync`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            'Content-Type': 'application/json',
+          },
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'AWS sync failed');
+        }
+        queryClient.invalidateQueries({ queryKey: ['sync-data'] });
+        queryClient.invalidateQueries({ queryKey: ['integrations'] });
+        queryClient.invalidateQueries({ queryKey: ['all-sync-data'] });
+        toast.success(t('integrationDetail.syncComplete'));
+      } catch (e: any) {
+        toast.error(e.message);
+      }
+      return;
+    }
     syncIntegration.mutate(integration.id, {
       onSuccess: () => toast.success(t('integrationDetail.syncComplete')),
       onError: (e) => toast.error(e.message),
