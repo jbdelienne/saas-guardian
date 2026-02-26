@@ -112,7 +112,7 @@ export default function Dashboard() {
               <button
                 key={db.id}
                 onClick={() => setSelectedDashboardId(db.id)}
-                className="bg-card border border-border rounded-xl p-6 text-left hover:border-primary/30 hover:shadow-lg transition-all"
+                className="relative bg-card border border-border rounded-xl p-6 text-left hover:border-primary/30 hover:shadow-lg transition-all"
               >
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -123,6 +123,7 @@ export default function Dashboard() {
                 <p className="text-[10px] text-muted-foreground/60 mt-3">
                   {t('dashboard.created')} {new Date(db.created_at).toLocaleDateString()}
                 </p>
+                <img src="/lovable-uploads/77bc7ad1-714f-4f02-b4b4-490a97f61f9d.png" alt="MoniDuck" className="absolute bottom-2 right-2 w-5 h-5 opacity-30" />
               </button>
             ))}
           </div>
