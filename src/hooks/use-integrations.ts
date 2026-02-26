@@ -183,3 +183,84 @@ export function useAwsCredentials() {
     enabled: !!user,
   });
 }
+
+export function useDisconnectIntegration() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (integrationId: string) => {
+      const { error } = await supabase
+        .from('integrations')
+        .update({ is_connected: false, access_token_encrypted: null, refresh_token_encrypted: null })
+        .eq('id', integrationId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['integrations'] });
+      qc.invalidateQueries({ queryKey: ['sync-data'] });
+    },
+  });
+}
+
+export function useDisconnectAws() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (credentialId: string) => {
+      // Delete AWS credentials
+      const { error } = await supabase
+        .from('aws_credentials')
+        .delete()
+        .eq('id', credentialId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['aws-credentials'] });
+      qc.invalidateQueries({ queryKey: ['integrations'] });
+    },
+  });
+}
+
+export function useNotificationSettings() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['notification-settings', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('notification_settings')
+        .select('*')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+}
+
+export function useUpsertNotificationSettings() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (settings: { email_enabled: boolean; min_severity: string; slack_webhook_url: string | null }) => {
+      // Check if settings exist
+      const { data: existing } = await supabase
+        .from('notification_settings')
+        .select('id')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+
+      if (existing) {
+        const { error } = await supabase
+          .from('notification_settings')
+          .update(settings)
+          .eq('id', existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('notification_settings')
+          .insert({ ...settings, user_id: user!.id });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notification-settings'] }),
+  });
+}

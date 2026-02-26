@@ -1,9 +1,9 @@
 import AppLayout from '@/components/layout/AppLayout';
 import { useIntegrations } from '@/hooks/use-supabase';
-import { useStartOAuth, useSyncData, useSyncIntegration, useSyncAwsCredentials, useAwsCredentials } from '@/hooks/use-integrations';
+import { useStartOAuth, useSyncData, useSyncIntegration, useSyncAwsCredentials, useAwsCredentials, useDisconnectIntegration, useDisconnectAws } from '@/hooks/use-integrations';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, ExternalLink, Loader2, RefreshCw, ChevronRight, Settings } from 'lucide-react';
+import { CheckCircle, ExternalLink, Loader2, RefreshCw, ChevronRight, Settings, Unlink } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import AwsConnectModal from '@/components/integrations/AwsConnectModal';
@@ -75,6 +75,8 @@ export default function Integrations() {
   const startOAuth = useStartOAuth();
   const syncIntegration = useSyncIntegration();
   const syncAws = useSyncAwsCredentials();
+  const disconnectIntegration = useDisconnectIntegration();
+  const disconnectAws = useDisconnectAws();
   const { data: awsCred } = useAwsCredentials();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -184,6 +186,26 @@ export default function Integrations() {
                                     <Settings className="w-3 h-3" />
                                     Settings
                                   </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="gap-1 text-xs text-destructive hover:bg-destructive/10"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      disconnectAws.mutate(awsCred!.id, {
+                                        onSuccess: () => toast.success('AWS disconnected'),
+                                        onError: (err) => toast.error(err.message),
+                                      });
+                                    }}
+                                    disabled={disconnectAws.isPending}
+                                  >
+                                    {disconnectAws.isPending ? (
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      <Unlink className="w-3 h-3" />
+                                    )}
+                                    Disconnect
+                                  </Button>
                                 </div>
                                 {awsIntegration && <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                               </div>
@@ -288,6 +310,26 @@ export default function Integrations() {
                                     <ExternalLink className="w-3 h-3" />
                                   )}
                                   {t('integrations.reconnect')}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="gap-1 text-xs text-destructive hover:bg-destructive/10"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    disconnectIntegration.mutate(integration.id, {
+                                      onSuccess: () => toast.success(t('integrations.disconnected')),
+                                      onError: (err) => toast.error(err.message),
+                                    });
+                                  }}
+                                  disabled={disconnectIntegration.isPending}
+                                >
+                                  {disconnectIntegration.isPending ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <Unlink className="w-3 h-3" />
+                                  )}
+                                  {t('integrations.disconnect')}
                                 </Button>
                               </div>
                               <ChevronRight className="w-4 h-4 text-muted-foreground" />

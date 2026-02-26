@@ -1,10 +1,16 @@
 import AppLayout from '@/components/layout/AppLayout';
 import { useAlerts, useDismissAlert, Alert } from '@/hooks/use-supabase';
-import { AlertTriangle, AlertCircle, Info, CheckCircle, Loader2, ChevronDown, ChevronUp, ExternalLink, Clock, Globe, Hash, Timer, Zap } from 'lucide-react';
+import { useNotificationSettings, useUpsertNotificationSettings } from '@/hooks/use-integrations';
+import { AlertTriangle, AlertCircle, Info, CheckCircle, Loader2, ChevronDown, ChevronUp, ExternalLink, Clock, Globe, Hash, Timer, Zap, Bell, Mail, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { Input } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDistanceToNow, format } from 'date-fns';
+import { toast } from 'sonner';
 
 const severityConfig: Record<string, { icon: typeof AlertCircle; dotClass: string; badgeBg: string; badgeText: string }> = {
   critical: { icon: AlertCircle, dotClass: 'bg-destructive', badgeBg: 'bg-destructive/10', badgeText: 'text-destructive' },
@@ -12,7 +18,7 @@ const severityConfig: Record<string, { icon: typeof AlertCircle; dotClass: strin
   info: { icon: Info, dotClass: 'bg-info', badgeBg: 'bg-info/10', badgeText: 'text-info' },
 };
 
-type FilterTab = 'active_downtimes' | 'all' | 'critical' | 'warning' | 'dismissed';
+type FilterTab = 'active_downtimes' | 'all' | 'critical' | 'warning' | 'dismissed' | 'channels';
 
 function isActiveDowntime(alert: Alert): boolean {
   if (alert.alert_type !== 'downtime' || alert.is_dismissed) return false;
@@ -36,13 +42,27 @@ function formatDuration(minutes: number): string {
 export default function Alerts() {
   const { data: alerts = [], isLoading } = useAlerts();
   const dismissAlert = useDismissAlert();
+  const { data: notifSettings } = useNotificationSettings();
+  const upsertNotif = useUpsertNotificationSettings();
   const [filter, setFilter] = useState<FilterTab>('active_downtimes');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [emailEnabled, setEmailEnabled] = useState(true);
+  const [minSeverity, setMinSeverity] = useState('warning');
+  const [slackUrl, setSlackUrl] = useState('');
   const { t } = useTranslation();
+
+  useEffect(() => {
+    if (notifSettings) {
+      setEmailEnabled(notifSettings.email_enabled);
+      setMinSeverity(notifSettings.min_severity);
+      setSlackUrl(notifSettings.slack_webhook_url || '');
+    }
+  }, [notifSettings]);
 
   const activeDowntimes = alerts.filter(isActiveDowntime);
 
   const filtered = alerts.filter((a) => {
+    if (filter === 'channels') return false;
     if (filter === 'active_downtimes') return isActiveDowntime(a);
     if (filter === 'dismissed') return a.is_dismissed;
     if (filter === 'all') return !a.is_dismissed && !isActiveDowntime(a);
@@ -56,12 +76,13 @@ export default function Alerts() {
   const warningCount = alerts.filter((a) => a.severity === 'warning' && !isActiveDowntime(a)).length;
   const dismissedCount = alerts.filter((a) => a.is_dismissed && !isResolvedDowntime(a)).length;
 
-  const tabs: { key: FilterTab; label: string; count?: number }[] = [
+  const tabs: { key: FilterTab; label: string; count?: number; icon?: typeof Bell }[] = [
     { key: 'active_downtimes', label: t('alerts.activeDowntimes'), count: activeDowntimes.length },
     { key: 'all', label: t('alerts.all') },
     { key: 'critical', label: t('alerts.critical'), count: criticalCount },
     { key: 'warning', label: t('alerts.warning'), count: warningCount },
     { key: 'dismissed', label: t('alerts.dismissed'), count: dismissedCount },
+    { key: 'channels', label: t('alerts.channels', { defaultValue: 'Channels' }), icon: Bell },
   ];
 
   const toggleExpand = (id: string) => {
@@ -90,6 +111,7 @@ export default function Alerts() {
               }`}
             >
               {tab.key === 'active_downtimes' && <Zap className="w-3.5 h-3.5" />}
+              {tab.icon && <tab.icon className="w-3.5 h-3.5" />}
               {tab.label}
               {tab.count !== undefined && tab.count > 0 && (
                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
@@ -104,7 +126,78 @@ export default function Alerts() {
           ))}
         </div>
 
-        {isLoading ? (
+        {filter === 'channels' ? (
+          <div className="space-y-4">
+            {/* Email notifications */}
+            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Mail className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground text-sm">Email Notifications</h3>
+                  <p className="text-xs text-muted-foreground">Receive alerts by email</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Enable email alerts</Label>
+                <Switch checked={emailEnabled} onCheckedChange={setEmailEnabled} />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Minimum severity</Label>
+                <Select value={minSeverity} onValueChange={setMinSeverity}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="info">Info</SelectItem>
+                    <SelectItem value="warning">Warning</SelectItem>
+                    <SelectItem value="critical">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Slack */}
+            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <MessageSquare className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-foreground text-sm">Slack</h3>
+                  <p className="text-xs text-muted-foreground">Post alerts to a Slack channel via webhook</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm">Webhook URL</Label>
+                <Input
+                  placeholder="https://hooks.slack.com/services/..."
+                  value={slackUrl}
+                  onChange={(e) => setSlackUrl(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <Button
+              className="gradient-primary text-primary-foreground hover:opacity-90"
+              onClick={() => {
+                upsertNotif.mutate({
+                  email_enabled: emailEnabled,
+                  min_severity: minSeverity,
+                  slack_webhook_url: slackUrl || null,
+                }, {
+                  onSuccess: () => toast.success(t('alerts.channelsSaved', { defaultValue: 'Notification settings saved' })),
+                  onError: (err) => toast.error(err.message),
+                });
+              }}
+              disabled={upsertNotif.isPending}
+            >
+              {upsertNotif.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Save settings
+            </Button>
+          </div>
+        ) : isLoading ? (
           <div className="flex justify-center py-16">
             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>

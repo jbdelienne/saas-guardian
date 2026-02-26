@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
-import { useServices, useAddService, useDeleteService, useTogglePause, Service } from '@/hooks/use-supabase';
+import { useServices, useAddService, useDeleteService, useTogglePause, useForceCheck, Service } from '@/hooks/use-supabase';
 import AddServiceModal from '@/components/dashboard/AddServiceModal';
 import ServiceDetailModal from '@/components/dashboard/ServiceDetailModal';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, Pause, Play, ExternalLink, Loader2, ChevronDown } from 'lucide-react';
+import { Plus, Trash2, Pause, Play, ExternalLink, Loader2, ChevronDown, RefreshCw } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useTranslation } from 'react-i18next';
 import { UptimePeriod, useUptimeForServices } from '@/hooks/use-uptime';
+import { toast } from 'sonner';
 
 const periodLabels: Record<UptimePeriod, string> = {
   '24h': '24h',
@@ -31,6 +32,7 @@ export default function ServicesPage() {
   const addService = useAddService();
   const deleteService = useDeleteService();
   const togglePause = useTogglePause();
+  const forceCheck = useForceCheck();
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Service | null>(null);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -167,6 +169,22 @@ export default function ServicesPage() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            title={t('services.forceCheck')}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              forceCheck.mutate(service.id, {
+                                onSuccess: () => toast.success(t('services.checkTriggered')),
+                                onError: (err) => toast.error(err.message),
+                              });
+                            }}
+                            disabled={forceCheck.isPending}
+                          >
+                            {forceCheck.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
