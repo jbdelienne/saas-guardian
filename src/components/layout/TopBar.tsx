@@ -1,4 +1,4 @@
-import { Bell, LogOut, Menu, Monitor } from 'lucide-react';
+import { Bell, LogOut, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -9,11 +9,9 @@ import LanguageSwitcher from '@/components/LanguageSwitcher';
 interface TopBarProps {
   onToggleSidebar: () => void;
   sidebarCollapsed: boolean;
-  tvMode: boolean;
-  onToggleTvMode: () => void;
 }
 
-export default function TopBar({ onToggleSidebar, sidebarCollapsed, tvMode, onToggleTvMode }: TopBarProps) {
+export default function TopBar({ onToggleSidebar, sidebarCollapsed }: TopBarProps) {
   const { user, signOut } = useAuth();
   const { data: alerts = [] } = useAlerts();
   const { t } = useTranslation();
@@ -30,16 +28,6 @@ export default function TopBar({ onToggleSidebar, sidebarCollapsed, tvMode, onTo
 
       <div className="flex items-center gap-2">
         <LanguageSwitcher />
-
-        <Button
-          variant={tvMode ? 'default' : 'ghost'}
-          size="icon"
-          onClick={onToggleTvMode}
-          className="text-muted-foreground"
-          title="TV Mode"
-        >
-          <Monitor className="w-5 h-5" />
-        </Button>
 
         <Button variant="ghost" size="icon" className="relative text-muted-foreground">
           <Bell className="w-5 h-5" />
