@@ -165,7 +165,6 @@ async function fetchCosts(creds: { accessKeyId: string; secretAccessKey: string 
     });
 
     const res = await ceClient.fetch(`https://ce.us-east-1.amazonaws.com/`, {
-    const res = await aws.fetch(`https://ce.us-east-1.amazonaws.com/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-amz-json-1.1",

@@ -19,6 +19,7 @@ import SettingsPage from "@/pages/SettingsPage";
 import NotFound from "@/pages/NotFound";
 import Waitlist from "@/pages/Waitlist";
 import ReportsPage from "@/pages/ReportsPage";
+import AwsCostDashboard from "@/pages/AwsCostDashboard";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +61,7 @@ const LangRoutes = () => (
       <Route path="dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="services" element={<ProtectedRoute><ServicesPage /></ProtectedRoute>} />
       <Route path="integrations" element={<ProtectedRoute><Integrations /></ProtectedRoute>} />
+      <Route path="integrations/aws/costs" element={<ProtectedRoute><AwsCostDashboard /></ProtectedRoute>} />
       <Route path="integrations/:type" element={<ProtectedRoute><IntegrationDetail /></ProtectedRoute>} />
       <Route path="alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
       <Route path="reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
