@@ -1,7 +1,7 @@
 import { useState, ReactNode } from 'react';
 import AppSidebar from './AppSidebar';
 import TopBar from './TopBar';
-import { useTranslation } from 'react-i18next';
+
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -10,26 +10,6 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children, centered = false }: AppLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [tvMode, setTvMode] = useState(false);
-  const { t } = useTranslation();
-
-  if (tvMode) {
-    return (
-      <div className="min-h-screen bg-background tv-mode">
-        <div className="fixed top-4 right-4 z-50">
-          <button
-            onClick={() => setTvMode(false)}
-            className="bg-card/80 backdrop-blur border border-border rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {t('topbar.exitTvMode')}
-          </button>
-        </div>
-        <main className="p-6">
-          {children}
-        </main>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -38,8 +18,6 @@ export default function AppLayout({ children, centered = false }: AppLayoutProps
         <TopBar
           onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
           sidebarCollapsed={sidebarCollapsed}
-          tvMode={tvMode}
-          onToggleTvMode={() => setTvMode(true)}
         />
         <main className={`flex-1 p-6 ${centered ? 'flex items-center justify-center' : ''}`}>
           {children}

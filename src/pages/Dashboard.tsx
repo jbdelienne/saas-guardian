@@ -15,7 +15,7 @@ import { useLatestSyncMetrics, SyncMetric } from '@/hooks/use-all-sync-data';
 import WidgetRenderer, { WidgetConfig } from '@/components/dashboard/WidgetRenderer';
 import AddWidgetModal, { NewWidgetDef } from '@/components/dashboard/AddWidgetModal';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, ArrowLeft, Loader2, LayoutDashboard, X, Pencil, Check } from 'lucide-react';
+import { Plus, Trash2, ArrowLeft, Loader2, LayoutDashboard, X, Pencil, Check, Monitor } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -182,6 +182,7 @@ function DashboardDetailView({
   const updatePositions = useUpdateWidgetPositions();
   const deleteWidget = useDeleteDashboardWidget();
   const [addOpen, setAddOpen] = useState(false);
+  const [tvMode, setTvMode] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(dashboardName);
   const layoutChangeRef = useRef<LayoutItem[]>([]);
@@ -240,6 +241,50 @@ function DashboardDetailView({
     setAddOpen(false);
   };
 
+  if (tvMode) {
+    return (
+      <div className="fixed inset-0 z-50 bg-background tv-mode">
+        <div className="fixed top-4 right-4 z-50">
+          <button
+            onClick={() => setTvMode(false)}
+            className="bg-card/80 backdrop-blur border border-border rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {t('topbar.exitTvMode')}
+          </button>
+        </div>
+        <div className="p-6 h-full overflow-auto" ref={containerRef}>
+          {widgetConfigs.length > 0 && (
+            <ResponsiveGridLayout
+              width={containerWidth}
+              className="layout"
+              layouts={{ lg: layouts }}
+              breakpoints={{ lg: 1200, md: 900, sm: 600, xs: 0 }}
+              cols={{ lg: 12, md: 8, sm: 4, xs: 2 }}
+              rowHeight={80}
+              onLayoutChange={handleLayoutChange}
+              onDragStop={handleDragOrResizeStop}
+              onResizeStop={handleDragOrResizeStop}
+              draggableHandle=".widget-drag-handle"
+              isResizable
+              isDraggable
+            >
+              {widgetConfigs.map((widget) => (
+                <div key={widget.id} className="bg-card border border-border rounded-xl overflow-hidden flex flex-col">
+                  <div className="widget-drag-handle flex items-center justify-between px-3 py-2 bg-muted/30 cursor-grab active:cursor-grabbing border-b border-border">
+                    <span className="text-xs font-medium text-muted-foreground truncate">{widget.title}</span>
+                  </div>
+                  <div className="flex-1 p-3 overflow-hidden">
+                    <WidgetRenderer widget={widget} services={services} syncMetrics={syncMetrics} />
+                  </div>
+                </div>
+              ))}
+            </ResponsiveGridLayout>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="animate-fade-in" ref={containerRef}>
       <div className="flex items-center justify-between mb-6">
@@ -292,6 +337,9 @@ function DashboardDetailView({
           <Button onClick={() => setAddOpen(true)} className="gap-2 gradient-primary text-primary-foreground hover:opacity-90" size="sm">
             <Plus className="w-4 h-4" />
             {t('dashboard.addWidget')}
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setTvMode(true)} className="gap-2" title="TV Mode">
+            <Monitor className="w-4 h-4" />
           </Button>
           <Button variant="outline" size="sm" onClick={onDelete} className="gap-2 text-destructive hover:bg-destructive/10">
             <Trash2 className="w-4 h-4" />
