@@ -313,12 +313,13 @@ export default function Integrations() {
                                 </Button>
                                 <Button
                                   variant="ghost"
-                                  size="sm"
-                                  className="gap-1 text-xs text-destructive hover:bg-destructive/10"
+                                  size="icon"
+                                  className="h-7 w-7 text-destructive hover:bg-destructive/10"
+                                  title="Disconnect"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     disconnectIntegration.mutate(integration.id, {
-                                      onSuccess: () => toast.success(t('integrations.disconnected')),
+                                      onSuccess: () => toast.success('Disconnected'),
                                       onError: (err) => toast.error(err.message),
                                     });
                                   }}
@@ -329,7 +330,6 @@ export default function Integrations() {
                                   ) : (
                                     <Unlink className="w-3 h-3" />
                                   )}
-                                  {t('integrations.disconnect')}
                                 </Button>
                               </div>
                               <ChevronRight className="w-4 h-4 text-muted-foreground" />
