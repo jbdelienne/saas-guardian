@@ -109,7 +109,7 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto p-0 gap-0 bg-card border-border rounded-2xl">
         {/* Header */}
         <div className="px-6 pt-6 pb-5">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-3 mb-1.5">
                 <span className="text-2xl">{service.icon}</span>
