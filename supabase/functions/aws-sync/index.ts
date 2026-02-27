@@ -492,6 +492,20 @@ Deno.serve(async (req) => {
       }
     }
 
+    // S3 buckets
+    const s3Detail = s3.find(m => m.metric_key === "s3_total_buckets");
+    if (s3Detail?.metadata?.buckets) {
+      for (const bucketName of s3Detail.metadata.buckets as string[]) {
+        computeServices.push({
+          name: `S3 ${bucketName}`,
+          url: `https://s3.console.aws.amazon.com/s3/buckets/${bucketName}?region=${cred.region}`,
+          icon: "🪣",
+          status: "up",
+          tags: ["aws", "s3"],
+        });
+      }
+    }
+
     // RDS instances
     const rdsDetail = rds.find(m => m.metric_key === "rds_total_instances");
     if (rdsDetail?.metadata?.instances) {
