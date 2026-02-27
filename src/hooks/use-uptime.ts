@@ -24,21 +24,32 @@ export function useUptimeForServices(serviceIds: string[], period: UptimePeriod)
     queryFn: async () => {
       if (serviceIds.length === 0) return {};
 
-      // Fetch checks for all services in the period
-      const { data, error } = await supabase
-        .from('checks')
-        .select('service_id, status')
-        .in('service_id', serviceIds)
-        .gte('checked_at', start.toISOString())
-        .order('checked_at', { ascending: false });
+      // Paginate to get all checks (Supabase default limit is 1000)
+      const allChecks: { service_id: string; status: string }[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('checks')
+          .select('service_id, status')
+          .in('service_id', serviceIds)
+          .gte('checked_at', start.toISOString())
+          .order('checked_at', { ascending: false })
+          .range(from, from + pageSize - 1);
+
+        if (error) throw error;
+        allChecks.push(...(data || []));
+        hasMore = (data?.length ?? 0) === pageSize;
+        from += pageSize;
+      }
 
       // Compute uptime % per service
       const result: Record<string, number> = {};
       const counts: Record<string, { total: number; up: number }> = {};
 
-      for (const check of data) {
+      for (const check of allChecks) {
         if (!counts[check.service_id]) counts[check.service_id] = { total: 0, up: 0 };
         counts[check.service_id].total++;
         if (check.status === 'up') counts[check.service_id].up++;
@@ -71,19 +82,31 @@ export function useUptimeChart(serviceId: string | undefined, period: UptimePeri
 
       const start = getPeriodStart(period);
 
-      const { data, error } = await supabase
-        .from('checks')
-        .select('checked_at, status')
-        .eq('service_id', serviceId)
-        .gte('checked_at', start.toISOString())
-        .order('checked_at', { ascending: true });
+      // Paginate to get all checks (Supabase default limit is 1000)
+      const allChecks: { checked_at: string; status: string }[] = [];
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
 
-      if (error) throw error;
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('checks')
+          .select('checked_at, status')
+          .eq('service_id', serviceId)
+          .gte('checked_at', start.toISOString())
+          .order('checked_at', { ascending: true })
+          .range(from, from + pageSize - 1);
+
+        if (error) throw error;
+        allChecks.push(...(data || []));
+        hasMore = (data?.length ?? 0) === pageSize;
+        from += pageSize;
+      }
 
       // Group by bucket
       const buckets: Record<string, { total: number; up: number }> = {};
 
-      for (const check of data) {
+      for (const check of allChecks) {
         const d = new Date(check.checked_at);
         let key: string;
         switch (period) {
