@@ -45,6 +45,7 @@ export default function WidgetRenderer({ widget, services, syncMetrics = [] }: W
           service={service}
           services={services}
           syncMetrics={syncMetrics}
+          period={(widget.config.period as any) ?? '24h'}
         />
       );
     case 'status_badge':
