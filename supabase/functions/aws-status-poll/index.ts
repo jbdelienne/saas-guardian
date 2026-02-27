@@ -22,15 +22,21 @@ async function pollEC2Status(aws: AwsClient, region: string) {
     );
     const text = await res.text();
 
-    // Parse each <item> inside <instancesSet> for id + state
-    const instanceBlocks = text.match(/<item>[\s\S]*?<instanceId>(.*?)<\/instanceId>[\s\S]*?<instanceState>[\s\S]*?<name>(.*?)<\/name>[\s\S]*?<\/instanceState>[\s\S]*?<\/item>/g) || [];
-    
-    for (const block of instanceBlocks) {
-      const idMatch = block.match(/<instanceId>(.*?)<\/instanceId>/);
+    // Robust parsing: iterate instance IDs then parse state from each local block
+    const allInstanceIds = [...text.matchAll(/<instanceId>(i-[a-z0-9]+)<\/instanceId>/g)];
+    for (const idMatch of allInstanceIds) {
+      const instId = idMatch[1];
+      const startIdx = idMatch.index ?? 0;
+      const nextIdIdx = text.indexOf("<instanceId>", startIdx + 1);
+      const endOfSetIdx = text.indexOf("</instancesSet>", startIdx);
+      const endIdx = nextIdIdx > 0 && (endOfSetIdx < 0 || nextIdIdx < endOfSetIdx)
+        ? nextIdIdx
+        : endOfSetIdx > 0
+          ? endOfSetIdx
+          : text.length;
+      const block = text.substring(startIdx, endIdx);
       const stateMatch = block.match(/<instanceState>[\s\S]*?<name>(.*?)<\/name>/);
-      if (idMatch && stateMatch) {
-        results.push({ id: idMatch[1], state: stateMatch[1] });
-      }
+      results.push({ id: instId, state: stateMatch?.[1] || "unknown" });
     }
   } catch (e) {
     console.error("EC2 poll error:", e);
@@ -102,47 +108,61 @@ Deno.serve(async (req) => {
 
       const now = new Date().toISOString();
 
-      // Update EC2 service statuses + insert checks
-      for (const inst of ec2Instances) {
-        const serviceName = `EC2 ${inst.id}`;
-        const status = inst.state === "running" ? "up" : inst.state === "stopped" ? "down" : "degraded";
-        
-        const { data: updated } = await supabaseAdmin
-          .from("services")
-          .update({ status, last_check: now })
-          .eq("user_id", cred.user_id)
-          .eq("name", serviceName)
-          .select("id");
-        
-        if (updated?.length) {
-          totalUpdated++;
-          // Insert a check record so uptime widgets can compute %
-          await supabaseAdmin.from("checks").insert({
-            service_id: updated[0].id,
-            user_id: cred.user_id,
-            status,
-            response_time: 0,
-            checked_at: now,
-          });
-        }
-      }
+      // Load services once (filter AWS in memory to avoid array-operator quirks)
+      const { data: awsServices = [] } = await supabaseAdmin
+        .from("services")
+        .select("id, name, url, tags")
+        .eq("user_id", cred.user_id);
 
-      // Update RDS service statuses + insert checks
-      for (const db of rdsInstances) {
-        const serviceName = `RDS ${db.id}`;
-        const status = db.status === "available" ? "up" : db.status === "stopped" ? "down" : "degraded";
-        
+      
+      const ec2StatusById = new Map(
+        ec2Instances.map((inst) => [
+          inst.id,
+          inst.state === "running" ? "up" : inst.state === "stopped" ? "down" : "degraded",
+        ])
+      );
+      const rdsStatusById = new Map(
+        rdsInstances.map((db) => [
+          db.id,
+          db.status === "available" ? "up" : db.status === "stopped" ? "down" : "degraded",
+        ])
+      );
+
+      // Update all AWS compute resources by instance/database ID from URL
+      // Fallback to current service status when provider API doesn't return the resource.
+      const computeServices = awsServices.filter((s: any) =>
+        Array.isArray(s.tags) && (s.tags.includes("ec2") || s.tags.includes("rds"))
+      );
+
+      for (const svc of computeServices) {
+        const isEc2 = svc.tags.includes("ec2");
+        const isRds = svc.tags.includes("rds");
+
+        const ec2Id = typeof svc.url === "string"
+          ? svc.url.match(/instanceId=(i-[a-z0-9]+)/)?.[1]
+          : undefined;
+        const rdsId = typeof svc.url === "string"
+          ? svc.url.match(/#database:id=([^&]+)/)?.[1]
+          : undefined;
+
+        const computedStatus = isEc2 && ec2Id
+          ? ec2StatusById.get(ec2Id)
+          : isRds && rdsId
+            ? rdsStatusById.get(rdsId)
+            : undefined;
+
+        const status = computedStatus ?? "up";
+
         const { data: updated } = await supabaseAdmin
           .from("services")
           .update({ status, last_check: now })
-          .eq("user_id", cred.user_id)
-          .eq("name", serviceName)
+          .eq("id", svc.id)
           .select("id");
-        
+
         if (updated?.length) {
           totalUpdated++;
           await supabaseAdmin.from("checks").insert({
-            service_id: updated[0].id,
+            service_id: svc.id,
             user_id: cred.user_id,
             status,
             response_time: 0,
