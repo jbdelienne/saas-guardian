@@ -225,10 +225,34 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
           </div>
         </div>
 
-        {/* Alerts */}
+        {/* Incidents en cours */}
         <div className="px-6 pb-5">
+          <h3 className="text-sm font-semibold text-foreground mb-3">Incidents en cours</h3>
+          {checksLoading ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : incidents.length === 0 ? (
+            <div className="text-center py-4 rounded-xl bg-success/5 border border-success/20">
+              <p className="text-sm text-success">No recent incidents 🎉</p>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {incidents.map((inc) => (
+                <div key={inc.id} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-muted/10 transition-colors text-sm">
+                  <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />
+                  <span className="text-muted-foreground font-medium shrink-0">{inc.date}</span>
+                  <span className="text-destructive truncate flex-1">{inc.reason}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Previous Alerts */}
+        <div className="px-6 pb-6">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-foreground">Alerts</h3>
+            <h3 className="text-sm font-semibold text-foreground">Previous alerts</h3>
             {serviceAlerts.length > 0 && (
               <Badge variant="outline" className="text-xs font-medium">
                 {serviceAlerts.length}
@@ -266,30 +290,6 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
                   </div>
                 );
               })}
-            </div>
-          )}
-        </div>
-
-        {/* Recent Incidents */}
-        <div className="px-6 pb-6">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Recent Incidents</h3>
-          {checksLoading ? (
-            <div className="flex justify-center py-4">
-              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-            </div>
-          ) : incidents.length === 0 ? (
-            <div className="text-center py-4 rounded-xl bg-success/5 border border-success/20">
-              <p className="text-sm text-success">No recent incidents 🎉</p>
-            </div>
-          ) : (
-            <div className="space-y-1.5">
-              {incidents.map((inc) => (
-                <div key={inc.id} className="flex items-center gap-3 py-2 px-3 rounded-lg hover:bg-muted/10 transition-colors text-sm">
-                  <span className="w-2 h-2 rounded-full bg-destructive shrink-0" />
-                  <span className="text-muted-foreground font-medium shrink-0">{inc.date}</span>
-                  <span className="text-destructive truncate flex-1">{inc.reason}</span>
-                </div>
-              ))}
             </div>
           )}
         </div>
