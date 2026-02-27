@@ -1,5 +1,6 @@
 import { Service, useAlerts } from '@/hooks/use-supabase';
 import { SyncMetric } from '@/hooks/use-all-sync-data';
+import { useUptimeForServices, UptimePeriod } from '@/hooks/use-uptime';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 
@@ -8,12 +9,18 @@ interface Props {
   service?: Service;
   services?: Service[];
   syncMetrics?: SyncMetric[];
+  period?: UptimePeriod;
 }
 
-export default function BigNumberWidget({ metricKey, service, services = [], syncMetrics = [] }: Props) {
+export default function BigNumberWidget({ metricKey, service, services = [], syncMetrics = [], period = '24h' }: Props) {
   const { data: alerts = [] } = useAlerts();
 
-  const resolved = resolveValue(metricKey, service, services, syncMetrics, alerts);
+  // Compute live uptime from checks table for the selected service
+  const serviceIds = service ? [service.id] : [];
+  const { data: uptimeMap } = useUptimeForServices(serviceIds, period);
+  const liveUptime = service && uptimeMap ? uptimeMap[service.id] : undefined;
+
+  const resolved = resolveValue(metricKey, service, services, syncMetrics, alerts, liveUptime);
 
   return (
     <div className="h-full flex flex-col items-center justify-center text-center p-2">
@@ -45,12 +52,13 @@ function resolveValue(
   service: Service | undefined,
   services: Service[],
   syncMetrics: SyncMetric[],
-  alerts: any[]
+  alerts: any[],
+  liveUptime?: number
 ): ResolvedValue {
   switch (metricKey) {
     case 'service_uptime':
       return {
-        value: service ? `${service.uptime_percentage ?? 0}` : '—',
+        value: liveUptime !== undefined ? `${liveUptime}` : service ? `${service.uptime_percentage ?? 0}` : '—',
         unit: '%',
         label: service?.name ?? 'Uptime',
       };
