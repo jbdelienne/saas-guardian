@@ -81,11 +81,18 @@ async function discoverEC2(aws: AwsClient, region: string): Promise<AwsMetric[]>
   return metrics;
 }
 
-async function discoverS3(aws: AwsClient): Promise<AwsMetric[]> {
+async function discoverS3(creds: { accessKeyId: string; secretAccessKey: string }): Promise<AwsMetric[]> {
+  // S3 ListBuckets global endpoint requires us-east-1 signing
+  const s3Client = new AwsClient({ ...creds, region: "us-east-1" });
   const metrics: AwsMetric[] = [];
   try {
-    const res = await aws.fetch("https://s3.amazonaws.com/", { method: "GET" });
+    const res = await s3Client.fetch("https://s3.amazonaws.com/", { method: "GET" });
     const text = await res.text();
+    if (!res.ok) {
+      console.error("S3 ListBuckets error:", res.status, text);
+      metrics.push({ metric_type: "s3", metric_key: "s3_total_buckets", metric_value: 0, metric_unit: "count", metadata: { error: text.substring(0, 200) } });
+      return metrics;
+    }
     const bucketNames = text.match(/<Name>(.*?)<\/Name>/g) || [];
     const names = bucketNames.map((b) => b.replace(/<\/?Name>/g, ""));
 
@@ -435,7 +442,7 @@ Deno.serve(async (req) => {
     // Run all discoveries in parallel
     const [ec2, s3, lambda, rds, costs, health] = await Promise.all([
       discoverEC2(aws, cred.region),
-      discoverS3(aws),
+      discoverS3({ accessKeyId: cred.access_key_id, secretAccessKey: cred.secret_access_key }),
       discoverLambda(aws, cred.region),
       discoverRDS(aws, cred.region),
       fetchCosts({ accessKeyId: cred.access_key_id, secretAccessKey: cred.secret_access_key }, cred.region),
