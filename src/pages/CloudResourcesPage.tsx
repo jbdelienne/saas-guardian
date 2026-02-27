@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useServices } from '@/hooks/use-supabase';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Loader2, Cloud, ChevronDown } from 'lucide-react';
+import { ExternalLink, Loader2, Cloud, ChevronDown, AlertTriangle, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import SearchBar from '@/components/SearchBar';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -11,8 +11,10 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useTranslation } from 'react-i18next';
 import { useLatestSyncMetrics } from '@/hooks/use-all-sync-data';
+import { Badge } from '@/components/ui/badge';
 
 const CLOUD_TAGS = ['aws', 'ec2', 's3', 'lambda', 'rds', 'gcp', 'azure'];
 
@@ -23,7 +25,6 @@ const costPeriodLabels: Record<CostPeriod, string> = {
   year: '/an',
 };
 
-// Maps AWS Cost Explorer service names to our resource types
 const AWS_SERVICE_TYPE_MAP: Record<string, string> = {
   'Amazon Elastic Compute Cloud - Compute': 'EC2',
   'Amazon Elastic Compute Cloud': 'EC2',
@@ -34,7 +35,6 @@ const AWS_SERVICE_TYPE_MAP: Record<string, string> = {
 };
 
 function getResourceBaseType(type: string): string {
-  // type can be "EC2 (t3.micro)" or "Lambda (nodejs18.x)" etc.
   return type.split(' ')[0].toUpperCase();
 }
 
@@ -46,13 +46,45 @@ interface CloudResource {
   provider: string;
   status: string;
   syncedAt: string;
+  // EC2-specific
+  instanceType?: string;
+  publicIp?: string;
+  stoppedSince?: string;
+  // RDS-specific
+  storageUsed?: number;
+  storageTotal?: number;
+  lastBackup?: string;
+  publiclyAccessible?: boolean;
+  engine?: string;
+  // Lambda-specific
+  runtime?: string;
+  errorRate?: number;
+  throttles?: number;
+  avgDuration?: number;
+  // S3-specific
+  publicAccess?: boolean;
+  totalSize?: number;
+  versioningEnabled?: boolean;
+  encryptionEnabled?: boolean;
 }
+
+type ResourceCategory = 'ec2' | 'rds' | 'lambda' | 's3' | 'alb' | 'cloudfront';
+
+const categoryLabels: Record<ResourceCategory, string> = {
+  ec2: 'EC2',
+  rds: 'RDS',
+  lambda: 'Lambda',
+  s3: 'S3',
+  alb: 'ALB / API Gateway',
+  cloudfront: 'CloudFront',
+};
 
 export default function CloudResourcesPage() {
   const { data: services = [], isLoading } = useServices();
   const { t } = useTranslation();
   const [costPeriod, setCostPeriod] = useState<CostPeriod>('month');
   const [search, setSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<ResourceCategory>('ec2');
 
   const cloudServices = useMemo(
     () => services.filter(s => s.tags?.some(tag => CLOUD_TAGS.includes(tag))),
@@ -61,7 +93,6 @@ export default function CloudResourcesPage() {
 
   const { data: syncMetrics = [] } = useLatestSyncMetrics();
 
-  // Extract cost breakdown from sync metrics (30-day totals from AWS Cost Explorer)
   const costByType = useMemo(() => {
     const map: Record<string, number> = {};
     const costMetric = syncMetrics.find(m => m.metric_key === 'aws_cost_by_service');
@@ -76,15 +107,13 @@ export default function CloudResourcesPage() {
         }
       }
     }
-    return map; // 30-day totals per type
+    return map;
   }, [syncMetrics]);
 
   const cloudResources = useMemo(() => {
     const resources: CloudResource[] = [];
-    // Track instance IDs already added from services table to avoid duplicates
     const seenInstanceIds = new Set<string>();
 
-    // Helper: extract instance ID from AWS console URL
     const extractInstanceId = (url: string): string | null => {
       const m = url.match(/instanceId=(i-[a-f0-9]+)/);
       return m ? m[1] : null;
@@ -97,18 +126,30 @@ export default function CloudResourcesPage() {
       const instanceId = extractInstanceId(s.url);
       if (instanceId) seenInstanceIds.add(instanceId);
 
-      // For arnOrId: use extracted instance ID or strip prefix from name
       const arnOrId = instanceId || s.name.replace(/^(EC2|Lambda|RDS|S3)\s+/, '');
 
-      // For name: use the Name tag from sync data if available, otherwise service name
       let displayName = s.name;
-      // Try to find a better name from sync metrics
       if (instanceId) {
         const ec2Detail = syncMetrics.find(m => m.metric_key === 'ec2_instances_detail');
         if (ec2Detail?.metadata) {
-          const instances = (ec2Detail.metadata as Record<string, unknown>).instances as Array<{ id: string; name?: string }> | undefined;
+          const instances = (ec2Detail.metadata as Record<string, unknown>).instances as Array<{ id: string; name?: string; type?: string; publicIp?: string; state?: string; stateTransitionReason?: string }> | undefined;
           const inst = instances?.find(i => i.id === instanceId);
           if (inst?.name) displayName = inst.name;
+          if (inst) {
+            resources.push({
+              id: s.id,
+              name: displayName,
+              arnOrId,
+              type,
+              provider,
+              status: s.status,
+              syncedAt: s.last_check || s.updated_at,
+              instanceType: inst.type,
+              publicIp: inst.publicIp,
+              stoppedSince: inst.state === 'stopped' ? inst.stateTransitionReason : undefined,
+            });
+            continue;
+          }
         }
       }
 
@@ -123,10 +164,10 @@ export default function CloudResourcesPage() {
       });
     }
 
-    // Add resources from sync metrics that aren't already in services table
+    // Add from sync metrics
     for (const m of syncMetrics) {
       if (m.metric_key === 'ec2_instances_detail' && m.metadata) {
-        const instances = (m.metadata as Record<string, unknown>).instances as Array<{ id: string; type: string; state: string; name?: string }> | undefined;
+        const instances = (m.metadata as Record<string, unknown>).instances as Array<{ id: string; type: string; state: string; name?: string; publicIp?: string; stateTransitionReason?: string }> | undefined;
         if (instances) {
           for (const inst of instances) {
             if (seenInstanceIds.has(inst.id)) continue;
@@ -139,6 +180,9 @@ export default function CloudResourcesPage() {
               provider: 'AWS',
               status: inst.state === 'running' ? 'up' : inst.state === 'stopped' ? 'down' : 'unknown',
               syncedAt: m.synced_at,
+              instanceType: inst.type,
+              publicIp: inst.publicIp,
+              stoppedSince: inst.state === 'stopped' ? inst.stateTransitionReason : undefined,
             });
           }
         }
@@ -157,12 +201,13 @@ export default function CloudResourcesPage() {
               provider: 'AWS',
               status: 'up',
               syncedAt: m.synced_at,
+              runtime: fn.runtime,
             });
           }
         }
       }
       if (m.metric_key === 'rds_total_instances' && m.metadata) {
-        const instances = (m.metadata as Record<string, unknown>).instances as Array<{ id: string; engine: string; status: string }> | undefined;
+        const instances = (m.metadata as Record<string, unknown>).instances as Array<{ id: string; engine: string; status: string; allocatedStorage?: number; publiclyAccessible?: boolean }> | undefined;
         if (instances) {
           for (const inst of instances) {
             const rdsName = `RDS ${inst.id}`;
@@ -175,6 +220,9 @@ export default function CloudResourcesPage() {
               provider: 'AWS',
               status: inst.status === 'available' ? 'up' : 'degraded',
               syncedAt: m.synced_at,
+              engine: inst.engine,
+              storageTotal: inst.allocatedStorage,
+              publiclyAccessible: inst.publiclyAccessible,
             });
           }
         }
@@ -202,15 +250,30 @@ export default function CloudResourcesPage() {
     return resources;
   }, [cloudServices, syncMetrics]);
 
-  const filteredResources = useMemo(() => {
-    if (!search.trim()) return cloudResources;
-    const q = search.toLowerCase();
-    return cloudResources.filter(r =>
-      r.name.toLowerCase().includes(q) || r.arnOrId.toLowerCase().includes(q)
-    );
-  }, [cloudResources, search]);
+  // Group resources by category
+  const resourcesByCategory = useMemo(() => {
+    const groups: Record<ResourceCategory, CloudResource[]> = {
+      ec2: [], rds: [], lambda: [], s3: [], alb: [], cloudfront: [],
+    };
+    for (const r of cloudResources) {
+      const base = getResourceBaseType(r.type);
+      if (base === 'EC2') groups.ec2.push(r);
+      else if (base === 'RDS') groups.rds.push(r);
+      else if (base === 'LAMBDA') groups.lambda.push(r);
+      else if (base === 'S3') groups.s3.push(r);
+      else if (base === 'ALB' || base === 'API') groups.alb.push(r);
+      else if (base === 'CLOUDFRONT') groups.cloudfront.push(r);
+    }
+    return groups;
+  }, [cloudResources]);
 
-  // Count resources per base type for cost distribution
+  const filteredResources = useMemo(() => {
+    const list = resourcesByCategory[activeTab];
+    if (!search.trim()) return list;
+    const q = search.toLowerCase();
+    return list.filter(r => r.name.toLowerCase().includes(q) || r.arnOrId.toLowerCase().includes(q));
+  }, [resourcesByCategory, activeTab, search]);
+
   const countByType = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const r of cloudResources) {
@@ -226,7 +289,6 @@ export default function CloudResourcesPage() {
     if (total30d === undefined) return null;
     const count = countByType[baseType] || 1;
     const perResourceMonthly = total30d / count;
-
     switch (costPeriod) {
       case 'day': return perResourceMonthly / 30;
       case 'month': return perResourceMonthly;
@@ -247,14 +309,297 @@ export default function CloudResourcesPage() {
     unknown: { label: t('services.pending'), dotClass: 'status-dot-unknown' },
   };
 
+  const CostHeader = () => (
+    <TableHead className="text-right">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors font-medium text-xs">
+            Coût est. ({costPeriodLabels[costPeriod]})
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="bg-popover border-border z-50">
+          {(Object.keys(costPeriodLabels) as CostPeriod[]).map((p) => (
+            <DropdownMenuItem key={p} onClick={() => setCostPeriod(p)} className={costPeriod === p ? 'bg-accent' : ''}>
+              {costPeriodLabels[p]}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </TableHead>
+  );
+
+  const StatusCell = ({ status }: { status: string }) => {
+    const cfg = statusConfig[status] ?? statusConfig.unknown;
+    return (
+      <div className="flex items-center gap-2">
+        <div className={cfg.dotClass} />
+        <span className="text-xs">{cfg.label}</span>
+      </div>
+    );
+  };
+
+  const SecurityBadge = ({ safe, label }: { safe: boolean; label?: string }) => (
+    <Badge variant={safe ? 'outline' : 'destructive'} className={`text-xs gap-1 ${safe ? 'border-emerald-500/30 text-emerald-400' : ''}`}>
+      {safe ? <CheckCircle2 className="w-3 h-3" /> : <ShieldAlert className="w-3 h-3" />}
+      {label ?? (safe ? 'Non' : 'Oui')}
+    </Badge>
+  );
+
+  const tabCounts = Object.entries(resourcesByCategory).map(([key, list]) => ({ key: key as ResourceCategory, count: list.length }));
+
+  const renderEC2Table = () => (
+    <Table>
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          <TableHead>Nom</TableHead>
+          <TableHead>Instance ID</TableHead>
+          <TableHead>Type</TableHead>
+          <TableHead>État</TableHead>
+          <TableHead>Zombie</TableHead>
+          <TableHead>IP publique</TableHead>
+          <CostHeader />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {filteredResources.map((r) => {
+          const cost = getResourceCost(r);
+          const isDown = r.status === 'down';
+          return (
+            <TableRow key={r.id}>
+              <TableCell className="font-medium text-foreground">{r.name}</TableCell>
+              <TableCell><code className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-mono">{r.arnOrId}</code></TableCell>
+              <TableCell className="text-xs text-muted-foreground">{r.instanceType || '—'}</TableCell>
+              <TableCell><StatusCell status={r.status} /></TableCell>
+              <TableCell>
+                {isDown ? (
+                  <span className="text-xs text-warning flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />
+                    {r.stoppedSince || 'Stopped'}
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">—</span>
+                )}
+              </TableCell>
+              <TableCell>
+                {r.publicIp ? (
+                  <code className="text-xs font-mono text-foreground">{r.publicIp}</code>
+                ) : (
+                  <span className="text-xs text-muted-foreground">—</span>
+                )}
+              </TableCell>
+              <TableCell className="text-right font-mono text-sm">{formatCost(cost)}</TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
+  );
+
+  const renderRDSTable = () => (
+    <Table>
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          <TableHead>Nom</TableHead>
+          <TableHead>Engine</TableHead>
+          <TableHead>État</TableHead>
+          <TableHead>Storage</TableHead>
+          <TableHead>Dernière backup</TableHead>
+          <TableHead>Accès public</TableHead>
+          <CostHeader />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {filteredResources.map((r) => {
+          const cost = getResourceCost(r);
+          const storagePercent = r.storageUsed && r.storageTotal ? Math.round((r.storageUsed / r.storageTotal) * 100) : null;
+          const storageAlert = storagePercent !== null && storagePercent >= 80;
+          return (
+            <TableRow key={r.id}>
+              <TableCell className="font-medium text-foreground">{r.name}</TableCell>
+              <TableCell><span className="text-xs font-medium bg-accent/50 text-accent-foreground px-2 py-0.5 rounded-full">{r.engine || '—'}</span></TableCell>
+              <TableCell><StatusCell status={r.status} /></TableCell>
+              <TableCell>
+                {storagePercent !== null ? (
+                  <span className={`text-xs font-mono ${storageAlert ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>
+                    {storageAlert && <AlertTriangle className="w-3 h-3 inline mr-1" />}
+                    {r.storageUsed} / {r.storageTotal} GB ({storagePercent}%)
+                  </span>
+                ) : r.storageTotal ? (
+                  <span className="text-xs text-muted-foreground font-mono">{r.storageTotal} GB alloc.</span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">—</span>
+                )}
+              </TableCell>
+              <TableCell className="text-xs text-muted-foreground">{r.lastBackup ? formatDistanceToNow(new Date(r.lastBackup), { addSuffix: true }) : '—'}</TableCell>
+              <TableCell>
+                {r.publiclyAccessible !== undefined ? (
+                  <SecurityBadge safe={!r.publiclyAccessible} label={r.publiclyAccessible ? 'Oui ⚠️' : 'Non'} />
+                ) : (
+                  <span className="text-xs text-muted-foreground">—</span>
+                )}
+              </TableCell>
+              <TableCell className="text-right font-mono text-sm">{formatCost(cost)}</TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
+  );
+
+  const renderLambdaTable = () => (
+    <Table>
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          <TableHead>Nom</TableHead>
+          <TableHead>Runtime</TableHead>
+          <TableHead>Error rate</TableHead>
+          <TableHead>Throttles</TableHead>
+          <TableHead>Durée moy.</TableHead>
+          <CostHeader />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {filteredResources.map((r) => {
+          const cost = getResourceCost(r);
+          return (
+            <TableRow key={r.id}>
+              <TableCell className="font-medium text-foreground">{r.name}</TableCell>
+              <TableCell><span className="text-xs font-medium bg-accent/50 text-accent-foreground px-2 py-0.5 rounded-full">{r.runtime || r.type.match(/\((.+)\)/)?.[1] || '—'}</span></TableCell>
+              <TableCell>
+                {r.errorRate !== undefined ? (
+                  <span className={`text-xs font-mono ${r.errorRate > 5 ? 'text-destructive font-semibold' : 'text-muted-foreground'}`}>
+                    {r.errorRate.toFixed(1)}%
+                  </span>
+                ) : <span className="text-xs text-muted-foreground">—</span>}
+              </TableCell>
+              <TableCell className="text-xs text-muted-foreground font-mono">{r.throttles ?? '—'}</TableCell>
+              <TableCell>
+                {r.avgDuration !== undefined ? (
+                  <span className={`text-xs font-mono ${r.avgDuration > 10000 ? 'text-warning font-semibold' : 'text-muted-foreground'}`}>
+                    {r.avgDuration > 1000 ? `${(r.avgDuration / 1000).toFixed(1)}s` : `${r.avgDuration}ms`}
+                  </span>
+                ) : <span className="text-xs text-muted-foreground">—</span>}
+              </TableCell>
+              <TableCell className="text-right font-mono text-sm">{formatCost(cost)}</TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
+  );
+
+  const renderS3Table = () => (
+    <Table>
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          <TableHead>Bucket</TableHead>
+          <TableHead>Accès public</TableHead>
+          <TableHead>Taille totale</TableHead>
+          <TableHead>Versioning</TableHead>
+          <TableHead>Encryption</TableHead>
+          <CostHeader />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {filteredResources.map((r) => {
+          const cost = getResourceCost(r);
+          return (
+            <TableRow key={r.id}>
+              <TableCell className="font-medium text-foreground">{r.name}</TableCell>
+              <TableCell>
+                {r.publicAccess !== undefined ? (
+                  <SecurityBadge safe={!r.publicAccess} label={r.publicAccess ? '⚠️ PUBLIC' : 'Privé'} />
+                ) : <span className="text-xs text-muted-foreground">—</span>}
+              </TableCell>
+              <TableCell className="text-xs font-mono text-muted-foreground">
+                {r.totalSize !== undefined ? `${(r.totalSize / (1024 ** 3)).toFixed(2)} GB` : '—'}
+              </TableCell>
+              <TableCell>
+                {r.versioningEnabled !== undefined ? (
+                  <SecurityBadge safe={r.versioningEnabled} label={r.versioningEnabled ? 'Activé' : 'Désactivé'} />
+                ) : <span className="text-xs text-muted-foreground">—</span>}
+              </TableCell>
+              <TableCell>
+                {r.encryptionEnabled !== undefined ? (
+                  <SecurityBadge safe={r.encryptionEnabled} label={r.encryptionEnabled ? 'Activé' : 'Désactivé'} />
+                ) : <span className="text-xs text-muted-foreground">—</span>}
+              </TableCell>
+              <TableCell className="text-right font-mono text-sm">{formatCost(cost)}</TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
+  );
+
+  const renderALBTable = () => (
+    <Table>
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          <TableHead>Nom</TableHead>
+          <TableHead>Request count</TableHead>
+          <TableHead>5xx error rate</TableHead>
+          <TableHead>Latence moy.</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {filteredResources.length === 0 ? (
+          <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Aucune ressource ALB / API Gateway détectée</TableCell></TableRow>
+        ) : filteredResources.map((r) => (
+          <TableRow key={r.id}>
+            <TableCell className="font-medium text-foreground">{r.name}</TableCell>
+            <TableCell className="text-xs text-muted-foreground">—</TableCell>
+            <TableCell className="text-xs text-muted-foreground">—</TableCell>
+            <TableCell className="text-xs text-muted-foreground">—</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+
+  const renderCloudFrontTable = () => (
+    <Table>
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          <TableHead>Distribution</TableHead>
+          <TableHead>Cache hit ratio</TableHead>
+          <TableHead>Error rate</TableHead>
+          <TableHead>Bandwidth</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {filteredResources.length === 0 ? (
+          <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Aucune distribution CloudFront détectée</TableCell></TableRow>
+        ) : filteredResources.map((r) => (
+          <TableRow key={r.id}>
+            <TableCell className="font-medium text-foreground">{r.name}</TableCell>
+            <TableCell className="text-xs text-muted-foreground">—</TableCell>
+            <TableCell className="text-xs text-muted-foreground">—</TableCell>
+            <TableCell className="text-xs text-muted-foreground">—</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+
+  const renderTable = () => {
+    switch (activeTab) {
+      case 'ec2': return renderEC2Table();
+      case 'rds': return renderRDSTable();
+      case 'lambda': return renderLambdaTable();
+      case 's3': return renderS3Table();
+      case 'alb': return renderALBTable();
+      case 'cloudfront': return renderCloudFrontTable();
+    }
+  };
+
   return (
-    <AppLayout centered>
-      <div className="max-w-6xl animate-fade-in">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Cloud Resources</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Ressources importées depuis vos cloud providers</p>
-          </div>
+    <AppLayout>
+      <h1 className="text-2xl font-bold text-foreground mb-6">Cloud Resources</h1>
+      <div className="max-w-6xl mx-auto w-full animate-fade-in">
+        <div className="flex items-center justify-between mb-5">
+          <p className="text-sm text-muted-foreground">Ressources importées depuis vos cloud providers</p>
           <SearchBar value={search} onChange={setSearch} placeholder="Rechercher par nom ou ID…" />
         </div>
 
@@ -262,97 +607,35 @@ export default function CloudResourcesPage() {
           <div className="flex justify-center py-16">
             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
-        ) : filteredResources.length === 0 ? (
+        ) : cloudResources.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <Cloud className="w-12 h-12 text-muted-foreground/40 mb-4" />
             <p className="text-muted-foreground mb-2">Aucune ressource cloud importée</p>
             <p className="text-xs text-muted-foreground/70">Connectez un cloud provider depuis l'onglet Intégrations pour voir vos ressources ici.</p>
           </div>
         ) : (
-          <div className="border border-border rounded-xl overflow-hidden bg-card">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>Nom</TableHead>
-                  <TableHead>ID / ARN</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Provider</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="inline-flex items-center gap-1 hover:text-foreground transition-colors font-medium text-xs">
-                          Coût ({costPeriodLabels[costPeriod]})
-                          <ChevronDown className="w-3.5 h-3.5" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-popover border-border z-50">
-                        {(Object.keys(costPeriodLabels) as CostPeriod[]).map((p) => (
-                          <DropdownMenuItem
-                            key={p}
-                            onClick={() => setCostPeriod(p)}
-                            className={costPeriod === p ? 'bg-accent' : ''}
-                          >
-                            {costPeriodLabels[p]}
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableHead>
-                  <TableHead>Dernier refresh</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredResources.map((resource) => {
-                  const status = statusConfig[resource.status] ?? statusConfig.unknown;
-                  const cost = getResourceCost(resource);
-                  return (
-                    <TableRow key={resource.id}>
-                      <TableCell className="font-medium text-foreground">{resource.name}</TableCell>
-                      <TableCell>
-                        <code className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-mono">
-                          {resource.arnOrId}
-                        </code>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-xs font-medium bg-accent/50 text-accent-foreground px-2 py-0.5 rounded-full">
-                          {resource.type}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-xs font-medium">{resource.provider}</span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className={status.dotClass} />
-                          <span className="text-xs">{status.label}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-sm">
-                        {formatCost(cost)}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {resource.syncedAt
-                          ? formatDistanceToNow(new Date(resource.syncedAt), { addSuffix: true })
-                          : '—'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-7 w-7"
-                          title="Voir dans la console"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ResourceCategory)}>
+            <TabsList className="mb-4">
+              {tabCounts.map(({ key, count }) => (
+                <TabsTrigger key={key} value={key} className="gap-1.5 text-xs">
+                  {categoryLabels[key]}
+                  {count > 0 && (
+                    <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-bold ml-1">
+                      {count}
+                    </span>
+                  )}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
+            {Object.keys(categoryLabels).map((key) => (
+              <TabsContent key={key} value={key}>
+                <div className="border border-border rounded-xl overflow-hidden bg-card">
+                  {renderTable()}
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
         )}
       </div>
     </AppLayout>
