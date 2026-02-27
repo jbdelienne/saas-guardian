@@ -47,8 +47,6 @@ async function discoverEC2(aws: AwsClient, region: string): Promise<AwsMetric[]>
     for (const idMatch of allInstanceIds) {
       const instId = idMatch[1];
       const startIdx = idMatch.index!;
-      // Find the closing </item> for this instance's instancesSet item
-      // Look for the next instanceId or end of instancesSet
       const nextIdMatch = text.indexOf('<instanceId>', startIdx + 1);
       const endOfSet = text.indexOf('</instancesSet>', startIdx);
       const endIdx = nextIdMatch > 0 && nextIdMatch < endOfSet ? nextIdMatch : endOfSet > 0 ? endOfSet : text.length;
@@ -56,14 +54,18 @@ async function discoverEC2(aws: AwsClient, region: string): Promise<AwsMetric[]>
       
       const typeM = block.match(/<instanceType>(.*?)<\/instanceType>/);
       const stateM = block.match(/<instanceState>[\s\S]*?<name>(.*?)<\/name>/);
-      // Name tag in tagSet: <key>Name</key><value>...</value>
       const nameM = block.match(/<key>Name<\/key>[\s\S]*?<value>(.*?)<\/value>/);
+      // Extract public IP address
+      const publicIpM = block.match(/<ipAddress>(.*?)<\/ipAddress>/);
+      const privateIpM = block.match(/<privateIpAddress>(.*?)<\/privateIpAddress>/);
       
       instances.push({
         id: instId,
         type: typeM?.[1] || "unknown",
         state: stateM?.[1] || "unknown",
         name: nameM?.[1] || "",
+        publicIp: publicIpM?.[1] || null,
+        privateIp: privateIpM?.[1] || null,
       });
     }
     if (instances.length > 0) {
