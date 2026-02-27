@@ -26,21 +26,25 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { format } from 'date-fns';
+import { format, subDays, subMonths } from 'date-fns';
 import { fr, enUS, de } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
 import { FileText, Plus, Eye, Download, Share2, CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import ReportView from '@/components/reports/ReportView';
 
 type PeriodOption = '7d' | '30d' | '3m' | 'custom';
 
-interface GeneratedReport {
+export interface GeneratedReport {
   id: string;
   createdAt: string;
   period: string;
   periodLabel: string;
   scope: string;
   includeSla: boolean;
+  serviceIds: string[]; // empty = all
+  periodStart: string;
+  periodEnd: string;
 }
 
 function getDateLocale(lang: string) {
@@ -65,6 +69,7 @@ export default function ReportsPage() {
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [reports, setReports] = useState<GeneratedReport[]>([]);
+  const [viewingReport, setViewingReport] = useState<GeneratedReport | null>(null);
 
   // Form state
   const [period, setPeriod] = useState<PeriodOption>('7d');
@@ -107,13 +112,24 @@ export default function ReportsPage() {
           .map((s) => s.name)
           .join(', ') || 'None';
 
+    const now = new Date();
+    let pStart: Date;
+    if (period === '7d') pStart = subDays(now, 7);
+    else if (period === '30d') pStart = subDays(now, 30);
+    else if (period === '3m') pStart = subMonths(now, 3);
+    else pStart = customFrom!;
+    const pEnd = period === 'custom' ? customTo! : now;
+
     const newReport: GeneratedReport = {
       id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
+      createdAt: now.toISOString(),
       period: period,
       periodLabel,
       scope: scopeLabel,
       includeSla,
+      serviceIds: scopeAll ? [] : [...selectedServiceIds],
+      periodStart: pStart.toISOString(),
+      periodEnd: pEnd.toISOString(),
     };
 
     setReports((prev) => [newReport, ...prev]);
@@ -135,6 +151,10 @@ export default function ReportsPage() {
   return (
     <AppLayout>
       <div className="space-y-6">
+        {viewingReport ? (
+          <ReportView report={viewingReport} onBack={() => setViewingReport(null)} />
+        ) : (
+          <>
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -189,7 +209,7 @@ export default function ReportsPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title="View">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="View" onClick={() => setViewingReport(report)}>
                           <Eye className="w-4 h-4" />
                         </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8" title="Export PDF">
@@ -205,6 +225,8 @@ export default function ReportsPage() {
               </TableBody>
             </Table>
           </div>
+        )}
+          </>
         )}
       </div>
 
