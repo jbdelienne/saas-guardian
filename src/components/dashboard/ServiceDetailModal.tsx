@@ -3,9 +3,10 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Service, useChecks, useAlerts } from '@/hooks/use-supabase';
 import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts';
 import { format, differenceInDays, formatDistanceToNow } from 'date-fns';
-import { Loader2, ExternalLink, ShieldCheck, Clock, Activity, AlertTriangle, XCircle, Info, ChevronRight } from 'lucide-react';
+import { Loader2, ExternalLink, ShieldCheck, Clock, Activity, AlertTriangle, XCircle, Info, ChevronRight, ChevronDown } from 'lucide-react';
 import { UptimePeriod, useUptimeForServices } from '@/hooks/use-uptime';
 import { Badge } from '@/components/ui/badge';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
   up: { label: 'Operational', color: 'text-success', bg: 'bg-success/10' },
@@ -249,49 +250,56 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
           )}
         </div>
 
-        {/* Previous Alerts */}
+        {/* Previous Alerts - Collapsible */}
         <div className="px-6 pb-6">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-foreground">Previous alerts</h3>
-            {serviceAlerts.length > 0 && (
-              <Badge variant="outline" className="text-xs font-medium">
-                {serviceAlerts.length}
-              </Badge>
-            )}
-          </div>
-          {alertsLoading ? (
-            <div className="flex justify-center py-4">
-              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-            </div>
-          ) : serviceAlerts.length === 0 ? (
-            <div className="text-center py-4 rounded-xl bg-muted/10 border border-border">
-              <p className="text-sm text-muted-foreground">No alerts for this service</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {serviceAlerts.slice(0, 10).map((alert) => {
-                const Icon = severityIcons[alert.severity] ?? Info;
-                const badgeCls = severityBadge[alert.severity] ?? severityBadge.info;
-                return (
-                  <div key={alert.id} className="flex items-start gap-3 p-3 rounded-xl bg-muted/10 border border-border hover:bg-muted/20 transition-colors">
-                    <div className={`p-1.5 rounded-lg ${badgeCls.split(' ').filter(c => c.startsWith('bg-')).join(' ')}`}>
-                      <Icon className={`w-3.5 h-3.5 ${badgeCls.split(' ').filter(c => c.startsWith('text-')).join(' ')}`} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{alert.title}</p>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">{alert.description}</p>
-                      <p className="text-xs text-muted-foreground/60 mt-1">
-                        {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true })}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className={`text-[10px] shrink-0 ${badgeCls}`}>
-                      {alert.severity}
-                    </Badge>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center justify-between w-full group">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-foreground">Previous alerts</h3>
+                {serviceAlerts.length > 0 && (
+                  <Badge variant="outline" className="text-xs font-medium">
+                    {serviceAlerts.length}
+                  </Badge>
+                )}
+              </div>
+              <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3">
+              {alertsLoading ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                </div>
+              ) : serviceAlerts.length === 0 ? (
+                <div className="text-center py-4 rounded-xl bg-muted/10 border border-border">
+                  <p className="text-sm text-muted-foreground">No alerts for this service</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {serviceAlerts.slice(0, 10).map((alert) => {
+                    const Icon = severityIcons[alert.severity] ?? Info;
+                    const badgeCls = severityBadge[alert.severity] ?? severityBadge.info;
+                    return (
+                      <div key={alert.id} className="flex items-start gap-3 p-3 rounded-xl bg-muted/10 border border-border hover:bg-muted/20 transition-colors">
+                        <div className={`p-1.5 rounded-lg ${badgeCls.split(' ').filter(c => c.startsWith('bg-')).join(' ')}`}>
+                          <Icon className={`w-3.5 h-3.5 ${badgeCls.split(' ').filter(c => c.startsWith('text-')).join(' ')}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{alert.title}</p>
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">{alert.description}</p>
+                          <p className="text-xs text-muted-foreground/60 mt-1">
+                            {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true })}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className={`text-[10px] shrink-0 ${badgeCls}`}>
+                          {alert.severity}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       </DialogContent>
     </Dialog>
