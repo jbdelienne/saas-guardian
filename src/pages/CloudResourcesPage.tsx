@@ -231,8 +231,7 @@ export default function CloudResourcesPage() {
         const buckets = (m.metadata as Record<string, unknown>).buckets as string[] | undefined;
         if (buckets) {
           for (const bucket of buckets) {
-            const s3Name = `S3 ${bucket}`;
-            if (cloudServices.some(s => s.name === s3Name)) continue;
+            if (cloudServices.some(s => s.name === bucket || s.name === `S3 ${bucket}`)) continue;
             resources.push({
               id: `sync-s3-${bucket}`,
               name: bucket,
