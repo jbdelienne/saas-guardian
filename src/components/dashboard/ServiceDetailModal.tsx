@@ -64,7 +64,7 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
   const [chartPeriod, setChartPeriod] = useState<UptimePeriod>('7d');
   const [reportPeriod, setReportPeriod] = useState<'24h' | '7d' | '30d' | 'all'>('7d');
   const [reportLoading, setReportLoading] = useState(false);
-  const { data: uptimeChartData = [], isLoading: chartLoading } = useUptimeChart(service?.id, chartPeriod);
+  const { data: uptimeChartData = [], isLoading: chartLoading, isFetching: chartFetching } = useUptimeChart(service?.id, chartPeriod);
 
   const responseChartData = checks
     .slice(0, 24)
@@ -284,8 +284,8 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
                     ))}
                   </div>
                 </div>
-                <div className="h-44">
-                  {chartLoading ? (
+                <div className="h-44 relative">
+                  {(chartLoading || chartFetching) ? (
                     <div className="flex items-center justify-center h-full">
                       <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                     </div>
@@ -294,7 +294,7 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
                       No data for this period
                     </div>
                   ) : (
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer key={chartPeriod} width="100%" height="100%">
                       <BarChart data={uptimeChartData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                         <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
