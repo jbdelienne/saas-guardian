@@ -1,3 +1,4 @@
+import { type RefObject } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -49,9 +50,10 @@ const SAAS_LABELS: Record<string, string> = {
 interface ReportViewProps {
   report: GeneratedReport;
   onBack: () => void;
+  contentRef?: RefObject<HTMLDivElement>;
 }
 
-export default function ReportView({ report, onBack }: ReportViewProps) {
+export default function ReportView({ report, onBack, contentRef }: ReportViewProps) {
   const { user } = useAuth();
   const { data: workspace } = useWorkspace();
   const workspaceId = workspace?.id;
@@ -234,7 +236,7 @@ export default function ReportView({ report, onBack }: ReportViewProps) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={contentRef}>
       {/* Back button + title */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">

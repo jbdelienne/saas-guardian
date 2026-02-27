@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,7 +29,10 @@ import {
 import { format, subDays, subMonths } from 'date-fns';
 import { fr, enUS, de } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
-import { FileText, Plus, Eye, Download, Share2, CalendarIcon } from 'lucide-react';
+import { FileText, Plus, Eye, Download, Link2, CalendarIcon } from 'lucide-react';
+import { toast } from 'sonner';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import { cn } from '@/lib/utils';
 import ReportView from '@/components/reports/ReportView';
 
@@ -70,6 +73,8 @@ export default function ReportsPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [reports, setReports] = useState<GeneratedReport[]>([]);
   const [viewingReport, setViewingReport] = useState<GeneratedReport | null>(null);
+  const [exportingId, setExportingId] = useState<string | null>(null);
+  const reportViewRef = useRef<HTMLDivElement>(null);
 
   // Form state
   const [period, setPeriod] = useState<PeriodOption>('7d');
@@ -144,6 +149,52 @@ export default function ReportsPage() {
     setIncludeSla(false);
   };
 
+  const handleExportPDF = async (report: GeneratedReport) => {
+    // If not viewing, open the report first
+    if (!viewingReport || viewingReport.id !== report.id) {
+      setViewingReport(report);
+      // Wait for render
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    setExportingId(report.id);
+    try {
+      // Wait a tick for ref to be available
+      await new Promise((r) => setTimeout(r, 200));
+      const el = reportViewRef.current;
+      if (!el) {
+        toast.error('Could not capture report');
+        return;
+      }
+      const canvas = await html2canvas(el, { backgroundColor: null, scale: 2, useCORS: true });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      let heightLeft = pdfHeight;
+      let position = 0;
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pageHeight;
+      while (heightLeft > 0) {
+        position -= pageHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+      }
+      const dateStr = format(new Date(), 'yyyy-MM-dd');
+      pdf.save(`moniduck-report-${report.period}-${dateStr}.pdf`);
+      toast.success('PDF exported');
+    } finally {
+      setExportingId(null);
+    }
+  };
+
+  const handleCopyLink = (report: GeneratedReport) => {
+    const url = `${window.location.origin}${window.location.pathname}?report=${report.id}`;
+    navigator.clipboard.writeText(url);
+    toast.success('Link copied to clipboard');
+  };
+
   const isGenerateDisabled =
     (period === 'custom' && (!customFrom || !customTo)) ||
     (!scopeAll && selectedServiceIds.length === 0);
@@ -152,7 +203,7 @@ export default function ReportsPage() {
     <AppLayout>
       <div className="space-y-6">
         {viewingReport ? (
-          <ReportView report={viewingReport} onBack={() => setViewingReport(null)} />
+          <ReportView report={viewingReport} onBack={() => setViewingReport(null)} contentRef={reportViewRef} />
         ) : (
           <>
         {/* Header */}
@@ -212,11 +263,11 @@ export default function ReportsPage() {
                         <Button variant="ghost" size="icon" className="h-8 w-8" title="View" onClick={() => setViewingReport(report)}>
                           <Eye className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Export PDF">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Export PDF" onClick={() => handleExportPDF(report)} disabled={exportingId === report.id}>
                           <Download className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Share">
-                          <Share2 className="w-4 h-4" />
+                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Copy link" onClick={() => handleCopyLink(report)}>
+                          <Link2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </TableCell>
