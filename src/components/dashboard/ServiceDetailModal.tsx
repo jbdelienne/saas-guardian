@@ -1,43 +1,25 @@
-import { useState, useCallback } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { useState, useMemo } from 'react';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Service, useChecks, useTogglePause, useUpdateService, useForceCheck } from '@/hooks/use-supabase';
-import { supabase } from '@/integrations/supabase/client';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
-import { formatDistanceToNow, format, differenceInDays, subDays } from 'date-fns';
-import { Trash2, Pause, Play, Loader2, Shield, Activity, Clock, ArrowUpCircle, Globe, Zap, FileText, Search, Download, TrendingUp, ExternalLink, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { UptimePeriod, useUptimeChart } from '@/hooks/use-uptime';
-import OwnerTagsEditor, { OwnerTagsDisplay } from './OwnerTagsEditor';
+import { LineChart, Line, ResponsiveContainer } from 'recharts';
+import { formatDistanceToNow, format, differenceInDays } from 'date-fns';
+import { Loader2, ExternalLink, Pencil } from 'lucide-react';
+import { UptimePeriod, useUptimeForServices } from '@/hooks/use-uptime';
 import { toast } from 'sonner';
 
-const statusDotClass: Record<string, string> = {
-  up: 'status-dot-up',
-  down: 'status-dot-down',
-  degraded: 'status-dot-degraded',
-  unknown: 'status-dot-unknown',
-};
-
 const statusLabel: Record<string, string> = {
-  up: 'Operational',
+  up: 'Up',
   down: 'Down',
   degraded: 'Degraded',
   unknown: 'Pending',
 };
 
-const statusBadgeClass: Record<string, string> = {
-  up: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  down: 'bg-destructive/10 text-destructive border-destructive/20',
-  degraded: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  unknown: 'bg-muted text-muted-foreground border-border',
+const statusDotColor: Record<string, string> = {
+  up: 'bg-emerald-400',
+  down: 'bg-destructive',
+  degraded: 'bg-amber-400',
+  unknown: 'bg-muted-foreground',
 };
-
-const periodOptions: { value: UptimePeriod; label: string }[] = [
-  { value: '24h', label: '24h' },
-  { value: '7d', label: '7d' },
-  { value: '30d', label: '30d' },
-  { value: '12m', label: '12m' },
-];
 
 interface ServiceDetailModalProps {
   service: Service | null;
@@ -46,64 +28,15 @@ interface ServiceDetailModalProps {
   onDelete?: (id: string) => void;
 }
 
-function downloadFile(content: string, filename: string, type: string) {
-  const blob = new Blob([content], { type });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 export default function ServiceDetailModal({ service, open, onClose, onDelete }: ServiceDetailModalProps) {
-  const togglePause = useTogglePause();
-  const updateService = useUpdateService();
-  const forceCheck = useForceCheck();
   const { data: checks = [], isLoading: checksLoading } = useChecks(service?.id, 50);
-  const [chartPeriod, setChartPeriod] = useState<UptimePeriod>('7d');
-  const [reportPeriod, setReportPeriod] = useState<'24h' | '7d' | '30d' | 'all'>('7d');
-  const [reportLoading, setReportLoading] = useState(false);
-  const { data: uptimeChartData = [], isLoading: chartLoading, isFetching: chartFetching } = useUptimeChart(service?.id, chartPeriod);
+  const [editing, setEditing] = useState(false);
+  const updateService = useUpdateService();
 
-  const responseChartData = checks
-    .slice(0, 24)
-    .reverse()
-    .map((c) => ({
-      time: format(new Date(c.checked_at), 'HH:mm'),
-      responseTime: c.response_time,
-      status: c.status,
-    }));
-
-  const reportPeriodLabel: Record<string, string> = { '24h': 'Last 24 hours', '7d': 'Last 7 days', '30d': 'Last 30 days', 'all': 'All time (up to 12 months)' };
-
-  const fetchReportChecks = useCallback(async () => {
-    if (!service) return [];
-    let query = supabase
-      .from('checks')
-      .select('*')
-      .eq('service_id', service.id)
-      .order('checked_at', { ascending: false });
-
-    if (reportPeriod !== 'all') {
-      const days = reportPeriod === '24h' ? 1 : reportPeriod === '7d' ? 7 : 30;
-      const cutoff = subDays(new Date(), days).toISOString();
-      query = query.gte('checked_at', cutoff);
-    }
-
-    const allChecks: any[] = [];
-    let from = 0;
-    const pageSize = 1000;
-    let hasMore = true;
-    while (hasMore) {
-      const { data, error } = await query.range(from, from + pageSize - 1);
-      if (error) throw error;
-      allChecks.push(...(data || []));
-      hasMore = (data?.length ?? 0) === pageSize;
-      from += pageSize;
-    }
-    return allChecks;
-  }, [service, reportPeriod]);
+  const serviceIds = useMemo(() => service ? [service.id] : [], [service?.id]);
+  const { data: uptime24h } = useUptimeForServices(serviceIds, '24h');
+  const { data: uptime7d } = useUptimeForServices(serviceIds, '7d');
+  const { data: uptime30d } = useUptimeForServices(serviceIds, '30d');
 
   if (!service) return null;
 
@@ -111,449 +44,172 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
     ? new Date((service as any).ssl_expiry_date)
     : null;
   const sslDaysLeft = sslExpiry ? differenceInDays(sslExpiry, new Date()) : null;
-  const sslIssuer = (service as any).ssl_issuer as string | null;
 
-  const sslColor =
-    sslDaysLeft === null
-      ? 'text-muted-foreground'
-      : sslDaysLeft <= 7
-        ? 'text-destructive'
-        : sslDaysLeft <= 30
-          ? 'text-warning'
-          : 'text-emerald-500';
+  // Response time sparkline data (last 24 checks)
+  const sparklineData = checks
+    .slice(0, 24)
+    .reverse()
+    .map((c) => ({ v: c.response_time }));
 
-  const handleDownloadCSV = async () => {
-    setReportLoading(true);
-    try {
-      const filtered = await fetchReportChecks();
-      if (filtered.length === 0) { toast.error('No data for this period'); return; }
-      const headers = ['Timestamp', 'Status', 'Response Time (ms)', 'TTFB (ms)', 'Status Code', 'Region', 'Error'];
-      const rows = filtered.map((c: any) => [c.checked_at, c.status, c.response_time, c.ttfb ?? '', c.status_code ?? '', c.check_region ?? '', c.error_message ?? '']);
-      const csv = [headers.join(','), ...rows.map((r: any[]) => r.map((v: any) => `"${v}"`).join(','))].join('\n');
-      downloadFile(csv, `${service.name.replace(/\s+/g, '_')}_${reportPeriod}_report.csv`, 'text/csv');
-      toast.success(`CSV report downloaded — ${filtered.length} checks (${reportPeriodLabel[reportPeriod]})`);
-    } catch (e) {
-      toast.error('Failed to generate report');
-    } finally {
-      setReportLoading(false);
-    }
-  };
+  // Response time stats
+  const responseTimes = checks.slice(0, 24).map(c => c.response_time).filter(Boolean);
+  const minResponse = responseTimes.length ? Math.min(...responseTimes) : 0;
+  const avgResponse = responseTimes.length ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length) : 0;
+  const p95Response = responseTimes.length
+    ? responseTimes.sort((a, b) => a - b)[Math.floor(responseTimes.length * 0.95)] ?? 0
+    : 0;
 
-  const handleDownloadJSON = async () => {
-    setReportLoading(true);
-    try {
-      const filtered = await fetchReportChecks();
-      if (filtered.length === 0) { toast.error('No data for this period'); return; }
-      const report = {
-        service: { name: service.name, url: service.url, status: service.status, uptime: service.uptime_percentage, avg_response_time: service.avg_response_time },
-        period: reportPeriodLabel[reportPeriod],
-        exported_at: new Date().toISOString(),
-        total_checks: filtered.length,
-        checks: filtered.map((c: any) => ({ timestamp: c.checked_at, status: c.status, response_time_ms: c.response_time, ttfb_ms: c.ttfb, status_code: c.status_code, region: c.check_region, error: c.error_message })),
+  // Uptime values per period
+  const u24 = uptime24h?.[service.id] ?? null;
+  const u7 = uptime7d?.[service.id] ?? null;
+  const u30 = uptime30d?.[service.id] ?? (service.uptime_percentage ?? null);
+
+  // Incidents: recent checks with status !== 'up'
+  const incidents = checks
+    .filter(c => c.status !== 'up')
+    .slice(0, 10)
+    .map(c => {
+      const ca = c as any;
+      return {
+        id: c.id,
+        date: format(new Date(c.checked_at), 'MMM dd'),
+        duration: ca.response_time ? `${Math.ceil(ca.response_time / 1000)} min` : '—',
+        reason: ca.error_message || (ca.status_code ? `${ca.status_code}` : c.status),
       };
-      downloadFile(JSON.stringify(report, null, 2), `${service.name.replace(/\s+/g, '_')}_${reportPeriod}_report.json`, 'application/json');
-      toast.success(`JSON report downloaded — ${filtered.length} checks (${reportPeriodLabel[reportPeriod]})`);
-    } catch (e) {
-      toast.error('Failed to generate report');
-    } finally {
-      setReportLoading(false);
-    }
-  };
+    });
+
+  const uptimeBars: { label: string; value: number | null }[] = [
+    { label: '24h', value: u24 },
+    { label: '7j', value: u7 },
+    { label: '30j', value: u30 },
+  ];
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0 gap-0">
-        {/* Hero header */}
-        <div className="relative px-6 pt-6 pb-5 border-b border-border bg-gradient-to-b from-primary/5 to-transparent">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 text-2xl shrink-0">
-                {service.icon}
-              </div>
-              <div className="min-w-0">
-                <DialogHeader className="p-0">
-                  <DialogTitle className="text-xl font-bold tracking-tight">{service.name}</DialogTitle>
-                </DialogHeader>
-                <div className="flex items-center gap-2 mt-1">
-                  <a
-                    href={service.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 truncate"
-                  >
-                    {service.url}
-                    <ExternalLink className="w-3 h-3 shrink-0" />
-                  </a>
-                </div>
-                <OwnerTagsDisplay ownerId={(service as any).owner_id} tags={(service as any).tags || []} />
-              </div>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto p-0 gap-0 bg-card border-border">
+        {/* Section 1: Header */}
+        <div className="px-5 pt-5 pb-4 border-b border-border">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-base font-bold text-foreground truncate">{service.name}</h2>
+              <a
+                href={service.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors truncate block mt-0.5"
+              >
+                {service.url}
+              </a>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${statusBadgeClass[service.status] ?? statusBadgeClass.unknown}`}>
-                <div className={`w-1.5 h-1.5 rounded-full ${service.status === 'up' ? 'bg-emerald-400' : service.status === 'down' ? 'bg-destructive' : service.status === 'degraded' ? 'bg-amber-400' : 'bg-muted-foreground'}`} />
+              <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                <span className={`w-2.5 h-2.5 rounded-full ${statusDotColor[service.status] ?? statusDotColor.unknown}`} />
                 {statusLabel[service.status] ?? 'Unknown'}
               </span>
+              <button
+                onClick={() => setEditing(!editing)}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                [Edit]
+              </button>
             </div>
           </div>
         </div>
 
-        <div className="px-6 pb-6">
-          <Tabs defaultValue="overview" className="mt-5">
-            <div className="flex items-center justify-between gap-3 mb-5">
-              <TabsList className="bg-muted/50">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="history">History</TabsTrigger>
-                <TabsTrigger value="reports" className="gap-1.5">
-                  <Download className="w-3.5 h-3.5" />
-                  Reports
-                </TabsTrigger>
-                <TabsTrigger value="settings">Settings</TabsTrigger>
-              </TabsList>
+        {/* Section 2: Key Metrics */}
+        <div className="px-5 py-4 border-b border-border">
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center">
+              <p className="text-lg font-bold text-foreground">{avgResponse}<span className="text-xs font-normal text-muted-foreground">ms</span></p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Response</p>
             </div>
+            <div className="text-center">
+              <p className="text-lg font-bold text-foreground">{u30 !== null ? `${u30}%` : '—'}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">Uptime 30j</p>
+            </div>
+            <div className="text-center">
+              <p className={`text-lg font-bold ${sslDaysLeft !== null ? (sslDaysLeft <= 7 ? 'text-destructive' : sslDaysLeft <= 30 ? 'text-amber-400' : 'text-foreground') : 'text-muted-foreground'}`}>
+                {sslDaysLeft !== null ? `${sslDaysLeft} days` : '—'}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">SSL expiry</p>
+            </div>
+          </div>
+        </div>
 
-            <TabsContent value="overview" className="space-y-5 mt-0">
-              {/* Stats cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-muted/50 border border-border rounded-xl p-4 text-center">
-                  <Activity className="w-4 h-4 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-lg font-bold text-foreground capitalize">{statusLabel[service.status] ?? 'Unknown'}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Status</p>
-                </div>
-                <div className="bg-muted/50 border border-border rounded-xl p-4 text-center">
-                  <ArrowUpCircle className="w-4 h-4 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-lg font-bold text-foreground">{service.uptime_percentage ?? 0}%</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Uptime</p>
-                </div>
-                <div className="bg-muted/50 border border-border rounded-xl p-4 text-center">
-                  <Clock className="w-4 h-4 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-lg font-bold text-foreground">{service.avg_response_time ?? 0}<span className="text-xs font-normal text-muted-foreground ml-0.5">ms</span></p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Avg Response</p>
-                </div>
-                <div className="bg-muted/50 border border-border rounded-xl p-4 text-center">
-                  <Shield className="w-4 h-4 text-muted-foreground mx-auto mb-2" />
-                  <p className={`text-lg font-bold ${sslColor}`}>
-                    {sslDaysLeft !== null ? `${sslDaysLeft}d` : '—'}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">SSL Expires</p>
-                  {sslIssuer && (
-                    <p className="text-[10px] text-muted-foreground truncate mt-0.5" title={sslIssuer}>{sslIssuer}</p>
-                  )}
-                </div>
+        {/* Section 3: Response Time Sparkline */}
+        <div className="px-5 py-4 border-b border-border">
+          <h3 className="text-xs font-semibold text-foreground mb-2">Response time – last 24h</h3>
+          <div className="h-12">
+            {checksLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
               </div>
+            ) : sparklineData.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No data</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={sparklineData}>
+                  <Line
+                    type="monotone"
+                    dataKey="v"
+                    stroke="hsl(var(--muted-foreground))"
+                    strokeWidth={1.5}
+                    dot={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+          {responseTimes.length > 0 && (
+            <p className="text-[11px] text-muted-foreground mt-2">
+              Min {minResponse}ms · Avg {avgResponse}ms · P95 {p95Response}ms
+            </p>
+          )}
+        </div>
 
-              {/* Check info */}
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground px-1">
-                <span>Check interval: <strong className="text-foreground">{service.check_interval}min</strong></span>
-                <span>·</span>
-                <span>Last check: <strong className="text-foreground">
-                  {service.last_check
-                    ? formatDistanceToNow(new Date(service.last_check), { addSuffix: true })
-                    : 'Never'}
-                </strong></span>
-                {(service as any).content_keyword && (
-                  <>
-                    <span>·</span>
-                    <span className="flex items-center gap-1">
-                      <Search className="w-3 h-3" />
-                      Keyword: <strong className="text-foreground">{(service as any).content_keyword}</strong>
-                    </span>
-                  </>
-                )}
+        {/* Section 4: Uptime Bars */}
+        <div className="px-5 py-4 border-b border-border">
+          <h3 className="text-xs font-semibold text-foreground mb-3">Uptime</h3>
+          <div className="space-y-2.5">
+            {uptimeBars.map((bar) => (
+              <div key={bar.label} className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground w-6 text-right shrink-0">{bar.label}</span>
+                <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-muted-foreground/50 rounded-full transition-all duration-500"
+                    style={{ width: bar.value !== null ? `${bar.value}%` : '0%' }}
+                  />
+                </div>
+                <span className="text-xs font-medium text-foreground w-16 text-right shrink-0">
+                  {bar.value !== null ? `${bar.value}%` : '—'}
+                </span>
               </div>
+            ))}
+          </div>
+        </div>
 
-              {/* Uptime chart */}
-              <div className="bg-muted/30 border border-border rounded-xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                    <TrendingUp className="w-4 h-4 text-primary" />
-                    Uptime History
-                  </h4>
-                  <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
-                    {periodOptions.map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setChartPeriod(opt.value)}
-                        className={`px-2.5 py-1 text-xs rounded-md transition-colors font-medium ${
-                          chartPeriod === opt.value
-                            ? 'bg-background text-foreground shadow-sm'
-                            : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
+        {/* Section 5: Incidents */}
+        <div className="px-5 py-4">
+          <h3 className="text-xs font-semibold text-foreground mb-3">Incidents</h3>
+          {checksLoading ? (
+            <div className="flex justify-center py-4">
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : incidents.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No incidents recorded</p>
+          ) : (
+            <div className="space-y-1.5">
+              {incidents.map((inc) => (
+                <div key={inc.id} className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="text-foreground font-medium">{inc.date}</span>
+                  <span>·</span>
+                  <span>{inc.duration}</span>
+                  <span>·</span>
+                  <span className="text-destructive truncate">{inc.reason}</span>
                 </div>
-                <div className="h-44 relative">
-                  {(chartLoading || chartFetching) ? (
-                    <div className="flex items-center justify-center h-full">
-                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : uptimeChartData.length === 0 ? (
-                    <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-                      No data for this period
-                    </div>
-                  ) : (
-                    <ResponsiveContainer key={chartPeriod} width="100%" height="100%">
-                      <BarChart data={uptimeChartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="label" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                        <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" unit="%" />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'hsl(var(--card))',
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '8px',
-                            fontSize: '12px',
-                          }}
-                          formatter={(value: number) => [`${value}%`, 'Uptime']}
-                        />
-                        <ReferenceLine y={99.9} stroke="hsl(var(--destructive))" strokeDasharray="3 3" label={{ value: 'SLA 99.9%', fontSize: 10, fill: 'hsl(var(--destructive))' }} />
-                        <Bar dataKey="uptime" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  )}
-                </div>
-              </div>
-
-              {/* Response time chart */}
-              <div className="bg-muted/30 border border-border rounded-xl p-4">
-                <h4 className="text-sm font-semibold mb-3 text-foreground flex items-center gap-1.5">
-                  <Zap className="w-4 h-4 text-primary" />
-                  Response Time <span className="text-muted-foreground font-normal">(last 24 checks)</span>
-                </h4>
-                <div className="h-44">
-                  {checksLoading ? (
-                    <div className="flex items-center justify-center h-full">
-                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                    </div>
-                  ) : responseChartData.length === 0 ? (
-                    <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-                      No check data yet
-                    </div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={responseChartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="time" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                        <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" unit="ms" />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: 'hsl(var(--card))',
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '8px',
-                            fontSize: '12px',
-                          }}
-                        />
-                        <Line type="monotone" dataKey="responseTime" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  )}
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="history" className="mt-0">
-              {checksLoading ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-                </div>
-              ) : checks.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">No checks recorded yet</p>
-              ) : (
-                <div className="space-y-1">
-                  {checks.slice(0, 20).map((check) => {
-                    const c = check as any;
-                    return (
-                      <div key={check.id} className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-muted/50 text-sm gap-2 transition-colors">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className={check.status === 'up' ? 'status-dot-up' : check.status === 'degraded' ? 'status-dot-degraded' : 'status-dot-down'} />
-                          <span className="text-foreground capitalize font-medium">{check.status}</span>
-                        </div>
-                        <span className="text-muted-foreground whitespace-nowrap">{check.response_time}ms</span>
-                        {c.ttfb != null && (
-                          <span className="text-muted-foreground whitespace-nowrap text-xs flex items-center gap-0.5" title="Time to First Byte">
-                            <Zap className="w-3 h-3" />{c.ttfb}ms
-                          </span>
-                        )}
-                        {c.response_size != null && (
-                          <span className="text-muted-foreground whitespace-nowrap text-xs flex items-center gap-0.5" title="Response size">
-                            <FileText className="w-3 h-3" />{c.response_size > 1024 ? `${(c.response_size / 1024).toFixed(1)}KB` : `${c.response_size}B`}
-                          </span>
-                        )}
-                        {c.check_region && (
-                          <span className="text-muted-foreground whitespace-nowrap text-xs flex items-center gap-0.5" title="Check region">
-                            <Globe className="w-3 h-3" />{c.check_region}
-                          </span>
-                        )}
-                        <span className="text-muted-foreground text-xs whitespace-nowrap">
-                          {formatDistanceToNow(new Date(check.checked_at), { addSuffix: true })}
-                        </span>
-                        {c.error_message && (
-                          <span className="text-destructive text-xs truncate max-w-[150px]" title={c.error_message}>
-                            {c.error_message}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </TabsContent>
-
-            {/* Reports tab */}
-            <TabsContent value="reports" className="mt-0 space-y-5">
-              <div className="text-sm text-muted-foreground">
-                Download monitoring reports for <strong className="text-foreground">{service.name}</strong>.
-              </div>
-
-              {/* Period selector */}
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground font-medium">Period:</span>
-                <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
-                  {(['24h', '7d', '30d', 'all'] as const).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setReportPeriod(p)}
-                      className={`px-3 py-1.5 text-xs rounded-md transition-colors font-medium ${
-                        reportPeriod === p
-                          ? 'bg-background text-foreground shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      {p === 'all' ? 'All' : p}
-                    </button>
-                  ))}
-                </div>
-                {reportLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground ml-auto" />}
-              </div>
-
-              <div className="grid sm:grid-cols-2 gap-3">
-                <div className="border border-border rounded-xl p-5 flex flex-col gap-3 bg-muted/30 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                      <FileText className="w-5 h-5 text-emerald-400" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-foreground text-sm">CSV Report</p>
-                      <p className="text-xs text-muted-foreground">Spreadsheet-friendly format</p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Export all checks as a CSV file. Ideal for Excel, Google Sheets or custom analysis.
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2 mt-auto w-full"
-                    onClick={handleDownloadCSV}
-                    disabled={reportLoading}
-                  >
-                    {reportLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                    {reportLoading ? 'Generating...' : 'Download CSV'}
-                  </Button>
-                </div>
-
-                <div className="border border-border rounded-xl p-5 flex flex-col gap-3 bg-muted/30 hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                      <FileText className="w-5 h-5 text-blue-400" />
-                    </div>
-                    <div>
-                      <p className="font-semibold text-foreground text-sm">JSON Report</p>
-                      <p className="text-xs text-muted-foreground">Developer-friendly format</p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Full structured report with service metadata and check history. Perfect for APIs or scripts.
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-2 mt-auto w-full"
-                    onClick={handleDownloadJSON}
-                    disabled={reportLoading}
-                  >
-                    {reportLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                    {reportLoading ? 'Generating...' : 'Download JSON'}
-                  </Button>
-                </div>
-              </div>
-
-            </TabsContent>
-
-            <TabsContent value="settings" className="mt-0 space-y-4">
-              <div className="p-4 border border-border rounded-xl">
-                <OwnerTagsEditor
-                  ownerId={(service as any).owner_id || null}
-                  tags={(service as any).tags || []}
-                  onOwnerChange={(ownerId) => {
-                    updateService.mutate({ id: service.id, owner_id: ownerId }, {
-                      onSuccess: () => toast.success('Owner updated'),
-                    });
-                  }}
-                  onTagsChange={(tags) => {
-                    updateService.mutate({ id: service.id, tags }, {
-                      onSuccess: () => toast.success('Tags updated'),
-                    });
-                  }}
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-4 border border-border rounded-xl">
-                <div>
-                  <p className="font-medium text-foreground text-sm">Force check</p>
-                  <p className="text-xs text-muted-foreground">Trigger an immediate health check</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => forceCheck.mutate(service.id, {
-                    onSuccess: () => toast.success('Check triggered'),
-                    onError: (err) => toast.error(err.message),
-                  })}
-                  className="gap-2"
-                  disabled={forceCheck.isPending}
-                >
-                  {forceCheck.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                  Check now
-                </Button>
-              </div>
-
-              <div className="flex items-center justify-between p-4 border border-border rounded-xl">
-                <div>
-                  <p className="font-medium text-foreground text-sm">Pause monitoring</p>
-                  <p className="text-xs text-muted-foreground">Temporarily stop health checks</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => togglePause.mutate({ id: service.id, is_paused: !service.is_paused })}
-                  className="gap-2"
-                  disabled={togglePause.isPending}
-                >
-                  {service.is_paused ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-                  {service.is_paused ? 'Resume' : 'Pause'}
-                </Button>
-              </div>
-
-              <div className="flex items-center justify-between p-4 border border-destructive/20 rounded-xl">
-                <div>
-                  <p className="font-medium text-destructive text-sm">Delete service</p>
-                  <p className="text-xs text-muted-foreground">Permanently remove this service and its history</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 border-destructive/30 text-destructive hover:bg-destructive/10"
-                  onClick={() => onDelete?.(service.id)}
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete
-                </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
+              ))}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
