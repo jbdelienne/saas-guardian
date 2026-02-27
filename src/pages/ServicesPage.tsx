@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { UptimePeriod, useUptimeForServices } from '@/hooks/use-uptime';
 import { toast } from 'sonner';
 import { useMemo } from 'react';
+import SearchBar from '@/components/SearchBar';
 
 const periodLabels: Record<UptimePeriod, string> = {
   '24h': '24h',
@@ -40,12 +41,18 @@ export default function ServicesPage() {
   const [deleteTarget, setDeleteTarget] = useState<Service | null>(null);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [uptimePeriod, setUptimePeriod] = useState<UptimePeriod>('12m');
+  const [search, setSearch] = useState('');
   const { t } = useTranslation();
 
   // Only show HTTP services (exclude cloud-imported ones)
   const httpServices = useMemo(
-    () => services.filter(s => !s.tags?.some(tag => CLOUD_TAGS.includes(tag))),
-    [services],
+    () => {
+      const base = services.filter(s => !s.tags?.some(tag => CLOUD_TAGS.includes(tag)));
+      if (!search.trim()) return base;
+      const q = search.toLowerCase();
+      return base.filter(s => s.name.toLowerCase().includes(q) || s.url.toLowerCase().includes(q));
+    },
+    [services, search],
   );
 
   const serviceIds = httpServices.map((s) => s.id);
@@ -82,10 +89,13 @@ export default function ServicesPage() {
             <h1 className="text-2xl font-bold text-foreground">HTTP Services</h1>
             <p className="text-sm text-muted-foreground mt-0.5">{t('services.subtitle')}</p>
           </div>
-          <Button onClick={() => setAddModalOpen(true)} className="gap-2 gradient-primary text-primary-foreground hover:opacity-90">
-            <Plus className="w-4 h-4" />
-            {t('services.addService')}
-          </Button>
+          <div className="flex items-center gap-3">
+            <SearchBar value={search} onChange={setSearch} placeholder="Rechercher par nom ou URL…" />
+            <Button onClick={() => setAddModalOpen(true)} className="gap-2 gradient-primary text-primary-foreground hover:opacity-90">
+              <Plus className="w-4 h-4" />
+              {t('services.addService')}
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (

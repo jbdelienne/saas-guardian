@@ -3,6 +3,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { useServices } from '@/hooks/use-supabase';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, Loader2, Cloud, ChevronDown } from 'lucide-react';
+import SearchBar from '@/components/SearchBar';
 import { formatDistanceToNow } from 'date-fns';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -51,6 +52,7 @@ export default function CloudResourcesPage() {
   const { data: services = [], isLoading } = useServices();
   const { t } = useTranslation();
   const [costPeriod, setCostPeriod] = useState<CostPeriod>('month');
+  const [search, setSearch] = useState('');
 
   const cloudServices = useMemo(
     () => services.filter(s => s.tags?.some(tag => CLOUD_TAGS.includes(tag))),
@@ -200,6 +202,14 @@ export default function CloudResourcesPage() {
     return resources;
   }, [cloudServices, syncMetrics]);
 
+  const filteredResources = useMemo(() => {
+    if (!search.trim()) return cloudResources;
+    const q = search.toLowerCase();
+    return cloudResources.filter(r =>
+      r.name.toLowerCase().includes(q) || r.arnOrId.toLowerCase().includes(q)
+    );
+  }, [cloudResources, search]);
+
   // Count resources per base type for cost distribution
   const countByType = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -245,13 +255,14 @@ export default function CloudResourcesPage() {
             <h1 className="text-2xl font-bold text-foreground">Cloud Resources</h1>
             <p className="text-sm text-muted-foreground mt-0.5">Ressources importées depuis vos cloud providers</p>
           </div>
+          <SearchBar value={search} onChange={setSearch} placeholder="Rechercher par nom ou ID…" />
         </div>
 
         {isLoading ? (
           <div className="flex justify-center py-16">
             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
-        ) : cloudResources.length === 0 ? (
+        ) : filteredResources.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <Cloud className="w-12 h-12 text-muted-foreground/40 mb-4" />
             <p className="text-muted-foreground mb-2">Aucune ressource cloud importée</p>
@@ -293,7 +304,7 @@ export default function CloudResourcesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {cloudResources.map((resource) => {
+                {filteredResources.map((resource) => {
                   const status = statusConfig[resource.status] ?? statusConfig.unknown;
                   const cost = getResourceCost(resource);
                   return (
