@@ -504,7 +504,7 @@ Deno.serve(async (req) => {
     if (s3Detail?.metadata?.buckets) {
       for (const bucketName of s3Detail.metadata.buckets as string[]) {
         computeServices.push({
-          name: `S3 ${bucketName}`,
+          name: bucketName,
           url: `https://s3.console.aws.amazon.com/s3/buckets/${bucketName}?region=${cred.region}`,
           icon: "🪣",
           status: "up",

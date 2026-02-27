@@ -128,7 +128,7 @@ export default function CloudResourcesPage() {
 
       const arnOrId = instanceId || s.name.replace(/^(EC2|Lambda|RDS|S3)\s+/, '');
 
-      let displayName = s.name;
+      let displayName = s.name.replace(/^(EC2|S3|Lambda|RDS)\s+/, '');
       if (instanceId) {
         const ec2Detail = syncMetrics.find(m => m.metric_key === 'ec2_instances_detail');
         if (ec2Detail?.metadata) {
