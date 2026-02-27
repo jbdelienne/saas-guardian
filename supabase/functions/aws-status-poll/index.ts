@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
 
       const now = new Date().toISOString();
 
-      // Update EC2 service statuses
+      // Update EC2 service statuses + insert checks
       for (const inst of ec2Instances) {
         const serviceName = `EC2 ${inst.id}`;
         const status = inst.state === "running" ? "up" : inst.state === "stopped" ? "down" : "degraded";
@@ -114,10 +114,20 @@ Deno.serve(async (req) => {
           .eq("name", serviceName)
           .select("id");
         
-        if (updated?.length) totalUpdated++;
+        if (updated?.length) {
+          totalUpdated++;
+          // Insert a check record so uptime widgets can compute %
+          await supabaseAdmin.from("checks").insert({
+            service_id: updated[0].id,
+            user_id: cred.user_id,
+            status,
+            response_time: 0,
+            checked_at: now,
+          });
+        }
       }
 
-      // Update RDS service statuses
+      // Update RDS service statuses + insert checks
       for (const db of rdsInstances) {
         const serviceName = `RDS ${db.id}`;
         const status = db.status === "available" ? "up" : db.status === "stopped" ? "down" : "degraded";
@@ -129,7 +139,16 @@ Deno.serve(async (req) => {
           .eq("name", serviceName)
           .select("id");
         
-        if (updated?.length) totalUpdated++;
+        if (updated?.length) {
+          totalUpdated++;
+          await supabaseAdmin.from("checks").insert({
+            service_id: updated[0].id,
+            user_id: cred.user_id,
+            status,
+            response_time: 0,
+            checked_at: now,
+          });
+        }
       }
 
       // Update last_sync_at on credential
