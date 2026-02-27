@@ -122,10 +122,10 @@ export default function SettingsPage() {
   return (
     <AppLayout centered>
       <div className="max-w-2xl animate-fade-in">
-        <h1 className="text-2xl font-bold text-foreground mb-6">{t('settings.title')}</h1>
+        <h1 className="text-2xl font-bold text-foreground mb-6 sticky top-0 z-10 bg-background py-2">{t('settings.title')}</h1>
 
         <Tabs defaultValue="general">
-          <TabsList className="mb-6">
+          <TabsList className="mb-6 sticky top-12 z-10 bg-background">
             <TabsTrigger value="general" className="gap-1.5">
               <Settings className="w-4 h-4" />
               {t('settings.general')}
