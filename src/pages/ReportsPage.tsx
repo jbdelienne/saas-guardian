@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWorkspace } from '@/hooks/use-workspace';
@@ -29,7 +29,7 @@ import {
 import { format, subDays, subMonths } from 'date-fns';
 import { fr, enUS, de } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
-import { FileText, Plus, Eye, Download, Link2, CalendarIcon } from 'lucide-react';
+import { FileText, Plus, Eye, Download, Link2, CalendarIcon, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -69,9 +69,9 @@ export default function ReportsPage() {
   const workspaceId = workspace?.id;
   const { i18n } = useTranslation();
   const dateLocale = getDateLocale(i18n.language);
+  const queryClient = useQueryClient();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [reports, setReports] = useState<GeneratedReport[]>([]);
   const [viewingReport, setViewingReport] = useState<GeneratedReport | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
   const reportViewRef = useRef<HTMLDivElement>(null);
@@ -83,6 +83,65 @@ export default function ReportsPage() {
   const [scopeAll, setScopeAll] = useState(true);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [includeSla, setIncludeSla] = useState(false);
+
+  // Fetch saved reports from DB
+  const { data: reports = [] } = useQuery({
+    queryKey: ['saved-reports', workspaceId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('saved_reports')
+        .select('*')
+        .eq('workspace_id', workspaceId!)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map((r: any) => ({
+        id: r.id,
+        createdAt: r.created_at,
+        period: r.period,
+        periodLabel: r.period_label,
+        scope: r.scope,
+        includeSla: r.include_sla,
+        serviceIds: r.service_ids || [],
+        periodStart: r.period_start,
+        periodEnd: r.period_end,
+      })) as GeneratedReport[];
+    },
+    enabled: !!workspaceId,
+  });
+
+  // Save report mutation
+  const saveReportMutation = useMutation({
+    mutationFn: async (report: GeneratedReport) => {
+      const { error } = await supabase.from('saved_reports').insert({
+        id: report.id,
+        workspace_id: workspaceId!,
+        created_by: user!.id,
+        period: report.period,
+        period_label: report.periodLabel,
+        period_start: report.periodStart,
+        period_end: report.periodEnd,
+        scope: report.scope,
+        include_sla: report.includeSla,
+        service_ids: report.serviceIds,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['saved-reports', workspaceId] });
+    },
+  });
+
+  // Delete report mutation
+  const deleteReportMutation = useMutation({
+    mutationFn: async (reportId: string) => {
+      const { error } = await supabase.from('saved_reports').delete().eq('id', reportId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['saved-reports', workspaceId] });
+      toast.success('Report deleted');
+    },
+  });
 
   // Fetch services for scope selector
   const { data: services = [] } = useQuery({
@@ -104,7 +163,7 @@ export default function ReportsPage() {
     );
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     let periodLabel = PERIOD_LABELS[period];
     if (period === 'custom' && customFrom && customTo) {
       periodLabel = `${format(customFrom, 'dd/MM/yyyy')} → ${format(customTo, 'dd/MM/yyyy')}`;
@@ -137,7 +196,13 @@ export default function ReportsPage() {
       periodEnd: pEnd.toISOString(),
     };
 
-    setReports((prev) => [newReport, ...prev]);
+    try {
+      await saveReportMutation.mutateAsync(newReport);
+      toast.success('Report generated & saved');
+    } catch (e) {
+      toast.error('Failed to save report');
+    }
+
     setDrawerOpen(false);
 
     // Reset form
@@ -268,6 +333,9 @@ export default function ReportsPage() {
                         </Button>
                         <Button variant="ghost" size="icon" className="h-8 w-8" title="Copy link" onClick={() => handleCopyLink(report)}>
                           <Link2 className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" title="Delete" onClick={() => deleteReportMutation.mutate(report.id)}>
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </TableCell>

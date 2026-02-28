@@ -573,6 +573,56 @@ export type Database = {
           },
         ]
       }
+      saved_reports: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          include_sla: boolean
+          period: string
+          period_end: string
+          period_label: string
+          period_start: string
+          scope: string
+          service_ids: string[]
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          include_sla?: boolean
+          period: string
+          period_end: string
+          period_label: string
+          period_start: string
+          scope: string
+          service_ids?: string[]
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          include_sla?: boolean
+          period?: string
+          period_end?: string
+          period_label?: string
+          period_start?: string
+          scope?: string
+          service_ids?: string[]
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_reports_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       services: {
         Row: {
           avg_response_time: number | null
