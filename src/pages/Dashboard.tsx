@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import moniduckLogo from '@/assets/moniduck-logo.png';
 import AppLayout from '@/components/layout/AppLayout';
 import { useServices, Service } from '@/hooks/use-supabase';
@@ -16,7 +16,7 @@ import { useLatestSyncMetrics, SyncMetric } from '@/hooks/use-all-sync-data';
 import WidgetRenderer, { WidgetConfig } from '@/components/dashboard/WidgetRenderer';
 import AddWidgetModal, { NewWidgetDef } from '@/components/dashboard/AddWidgetModal';
 import { Button } from '@/components/ui/button';
-import { Plus, Trash2, ArrowLeft, Loader2, LayoutDashboard, X, Pencil, Check, Monitor, GripVertical } from 'lucide-react';
+import { Plus, Trash2, ArrowLeft, Loader2, LayoutDashboard, X, Pencil, Check, Monitor } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -25,26 +25,9 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragOverlay,
-  type DragStartEvent,
-  type DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  rectSortingStrategy,
-  useSortable,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { cn } from '@/lib/utils';
+import { ResponsiveGridLayout, useContainerWidth, LayoutItem } from 'react-grid-layout';
+import 'react-grid-layout/css/styles.css';
+import 'react-resizable/css/styles.css';
 import { useTranslation } from 'react-i18next';
 
 export default function Dashboard() {
@@ -147,6 +130,7 @@ export default function Dashboard() {
         )}
       </div>
 
+      {/* Create Dashboard Modal */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
@@ -177,120 +161,6 @@ export default function Dashboard() {
   );
 }
 
-/* ─── Sortable Widget Card ─── */
-
-function SortableWidgetCard({
-  widget,
-  services,
-  syncMetrics,
-  onDelete,
-  tvMode,
-}: {
-  widget: WidgetConfig;
-  services: Service[];
-  syncMetrics: SyncMetric[];
-  onDelete: (id: string) => void;
-  tvMode?: boolean;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: widget.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
-  const colSpan = Math.min(widget.width, 12);
-  const rowSpan = widget.height;
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={{
-        ...style,
-        gridColumn: `span ${colSpan}`,
-        gridRow: `span ${rowSpan}`,
-      }}
-      className={cn(
-        'group relative rounded-2xl border border-border/60 overflow-hidden flex flex-col',
-        'bg-card/80 backdrop-blur-sm',
-        'shadow-sm hover:shadow-lg hover:border-primary/20',
-        'transition-all duration-300 ease-out',
-        isDragging && 'opacity-30 scale-[0.98]',
-      )}
-    >
-      {/* Header — entire bar is the drag handle */}
-      <div
-        className={cn(
-          'flex items-center justify-between px-4 py-2.5',
-          'border-b border-border/40',
-          'bg-gradient-to-r from-muted/20 to-transparent',
-          !tvMode && 'cursor-grab active:cursor-grabbing',
-        )}
-        {...(tvMode ? {} : { ...attributes, ...listeners })}
-      >
-        <div className="flex items-center gap-2 min-w-0">
-          {!tvMode && (
-            <GripVertical className="w-4 h-4 text-muted-foreground/40 shrink-0" />
-          )}
-          <span className="text-xs font-medium text-muted-foreground truncate">{widget.title}</span>
-        </div>
-        {!tvMode && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(widget.id); }}
-            onPointerDown={(e) => e.stopPropagation()}
-            className="opacity-0 group-hover:opacity-100 text-muted-foreground/40 hover:text-destructive transition-all duration-200 p-1 rounded-md hover:bg-destructive/10"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="flex-1 p-4 overflow-hidden">
-        <WidgetRenderer widget={widget} services={services} syncMetrics={syncMetrics} />
-      </div>
-
-      {/* Subtle bottom accent line */}
-      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-primary/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-    </div>
-  );
-}
-
-/* ─── Drag Overlay Card ─── */
-
-function DragOverlayCard({ widget, services, syncMetrics }: { widget: WidgetConfig; services: Service[]; syncMetrics: SyncMetric[] }) {
-  return (
-    <div
-      className={cn(
-        'rounded-2xl border-2 border-primary/40 overflow-hidden flex flex-col',
-        'bg-card/95 backdrop-blur-md shadow-2xl',
-        'ring-4 ring-primary/10',
-      )}
-      style={{
-        width: `${Math.min(widget.width, 6) * 120}px`,
-        minHeight: `${widget.height * 80}px`,
-      }}
-    >
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-primary/20 bg-primary/5">
-        <GripVertical className="w-4 h-4 text-primary/60" />
-        <span className="text-xs font-medium text-foreground truncate">{widget.title}</span>
-      </div>
-      <div className="flex-1 p-4 overflow-hidden">
-        <WidgetRenderer widget={widget} services={services} syncMetrics={syncMetrics} />
-      </div>
-    </div>
-  );
-}
-
-/* ─── Dashboard Detail View ─── */
-
 function DashboardDetailView({
   dashboardId,
   dashboardName,
@@ -314,7 +184,6 @@ function DashboardDetailView({
   const deleteWidget = useDeleteDashboardWidget();
   const [addOpen, setAddOpen] = useState(false);
   const [tvMode, setTvMode] = useState(false);
-  const [activeId, setActiveId] = useState<string | null>(null);
 
   const enterTvMode = useCallback(() => {
     setTvMode(true);
@@ -327,60 +196,53 @@ function DashboardDetailView({
       document.exitFullscreen?.().catch(() => {});
     }
   }, []);
-
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(dashboardName);
+  const layoutChangeRef = useRef<LayoutItem[]>([]);
+  const { width: containerWidth, ref: containerRef } = useContainerWidth({ initialWidth: 1200 });
   const { t } = useTranslation();
 
-  const widgetConfigs: WidgetConfig[] = useMemo(() =>
-    widgets.map((w) => ({
-      id: w.id,
-      widget_type: w.widget_type,
-      title: w.title,
-      config: (w.config as Record<string, unknown>) ?? {},
-      width: w.width,
-      height: w.height,
-    })),
-    [widgets]
+  const widgetConfigs: WidgetConfig[] = widgets.map((w) => ({
+    id: w.id,
+    widget_type: w.widget_type,
+    title: w.title,
+    config: (w.config as Record<string, unknown>) ?? {},
+    width: w.width,
+    height: w.height,
+  }));
+
+  const layouts: LayoutItem[] = widgets.map((w) => ({
+    i: w.id,
+    x: w.position_x,
+    y: w.position_y,
+    w: w.width,
+    h: w.height,
+    minW: 1,
+    minH: 1,
+  }));
+
+  const handleLayoutChange = useCallback(
+    (newLayout: LayoutItem[]) => {
+      layoutChangeRef.current = newLayout;
+    },
+    []
   );
 
-  const sortedIds = useMemo(() => widgetConfigs.map(w => w.id), [widgetConfigs]);
-  const activeWidget = activeId ? widgetConfigs.find(w => w.id === activeId) : null;
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-  );
-
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-  }, []);
-
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    setActiveId(null);
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = sortedIds.indexOf(active.id as string);
-    const newIndex = sortedIds.indexOf(over.id as string);
-    if (oldIndex === -1 || newIndex === -1) return;
-
-    const newOrder = arrayMove(sortedIds, oldIndex, newIndex);
-    const updates = newOrder.map((id, idx) => {
-      const w = widgetConfigs.find(wc => wc.id === id)!;
-      return {
-        id,
-        position_x: 0,
-        position_y: idx,
-        width: w.width,
-        height: w.height,
-      };
-    });
+  const handleDragOrResizeStop = useCallback(() => {
+    const newLayout = layoutChangeRef.current;
+    if (newLayout.length === 0) return;
+    const updates = newLayout.map((item) => ({
+      id: item.i,
+      position_x: item.x,
+      position_y: item.y,
+      width: item.w,
+      height: item.h,
+    }));
     updatePositions.mutate(updates);
-  }, [sortedIds, widgetConfigs, updatePositions]);
+  }, [updatePositions]);
 
   const handleAddWidget = async (def: NewWidgetDef) => {
-    const maxY = widgets.reduce((max, w) => Math.max(max, w.position_y + 1), 0);
+    const maxY = widgets.reduce((max, w) => Math.max(max, w.position_y + w.height), 0);
     await addWidget.mutateAsync({
       dashboardId,
       widget: {
@@ -395,6 +257,7 @@ function DashboardDetailView({
   if (tvMode) {
     return (
       <div className="fixed inset-0 z-50 bg-background tv-mode">
+        {/* Top bar: dashboard name left, moniduck + exit right */}
         <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-3">
           <span className="text-4xl font-bold text-foreground">{dashboardName}</span>
           <div className="flex items-center gap-3">
@@ -407,32 +270,43 @@ function DashboardDetailView({
             </button>
           </div>
         </div>
+        {/* Logo watermark bottom-right */}
         <img
           src={moniduckLogo}
           alt="MoniDuck"
           className="fixed bottom-4 right-4 w-24 h-24 z-50 pointer-events-none"
         />
-        <div className="p-6 pt-16 h-full overflow-auto">
-          <div className="grid grid-cols-12 auto-rows-[80px] gap-4">
-            {widgetConfigs.map((widget) => (
-              <SortableWidgetCard
-                key={widget.id}
-                widget={widget}
-                services={services}
-                syncMetrics={syncMetrics}
-                onDelete={() => {}}
-                tvMode
-              />
-            ))}
-          </div>
+        <div className="p-6 pt-14 h-full overflow-auto" ref={containerRef}>
+          {widgetConfigs.length > 0 && (
+            <ResponsiveGridLayout
+              width={containerWidth}
+              className="layout"
+              layouts={{ lg: layouts }}
+              breakpoints={{ lg: 1200, md: 900, sm: 600, xs: 0 }}
+              cols={{ lg: 12, md: 8, sm: 4, xs: 2 }}
+              rowHeight={80}
+              isResizable={false}
+              isDraggable={false}
+            >
+              {widgetConfigs.map((widget) => (
+                <div key={widget.id} className="bg-card border border-border rounded-xl overflow-hidden flex flex-col">
+                  <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b border-border">
+                    <span className="text-xs font-medium text-muted-foreground truncate">{widget.title}</span>
+                  </div>
+                  <div className="flex-1 p-3 overflow-hidden">
+                    <WidgetRenderer widget={widget} services={services} syncMetrics={syncMetrics} />
+                  </div>
+                </div>
+              ))}
+            </ResponsiveGridLayout>
+          )}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="animate-fade-in">
-      {/* Header */}
+    <div className="animate-fade-in" ref={containerRef}>
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={onBack} className="text-muted-foreground hover:text-foreground">
@@ -494,7 +368,6 @@ function DashboardDetailView({
         </div>
       </div>
 
-      {/* Grid */}
       {isLoading ? (
         <div className="flex justify-center py-16">
           <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -510,39 +383,37 @@ function DashboardDetailView({
           </Button>
         </div>
       ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
+        <ResponsiveGridLayout
+          width={containerWidth}
+          className="layout"
+          layouts={{ lg: layouts }}
+          breakpoints={{ lg: 1200, md: 900, sm: 600, xs: 0 }}
+          cols={{ lg: 12, md: 8, sm: 4, xs: 2 }}
+          rowHeight={80}
+          onLayoutChange={handleLayoutChange}
+          onDragStop={handleDragOrResizeStop}
+          onResizeStop={handleDragOrResizeStop}
+          draggableHandle=".widget-drag-handle"
+          isResizable
+          isDraggable
         >
-          <SortableContext items={sortedIds} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-12 auto-rows-[80px] gap-4">
-              {widgetConfigs.map((widget) => (
-                <SortableWidgetCard
-                  key={widget.id}
-                  widget={widget}
-                  services={services}
-                  syncMetrics={syncMetrics}
-                  onDelete={(id) => deleteWidget.mutate(id)}
-                />
-              ))}
+          {widgetConfigs.map((widget) => (
+            <div key={widget.id} className="bg-card border border-border rounded-xl overflow-hidden flex flex-col">
+              <div className="widget-drag-handle flex items-center justify-between px-3 py-2 bg-muted/30 cursor-grab active:cursor-grabbing border-b border-border">
+                <span className="text-xs font-medium text-muted-foreground truncate">{widget.title}</span>
+                <button
+                  onClick={() => deleteWidget.mutate(widget.id)}
+                  className="text-muted-foreground/60 hover:text-destructive transition-colors p-0.5"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div className="flex-1 p-3 overflow-hidden">
+                <WidgetRenderer widget={widget} services={services} syncMetrics={syncMetrics} />
+              </div>
             </div>
-          </SortableContext>
-
-          <DragOverlay dropAnimation={{
-            duration: 250,
-            easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
-          }}>
-            {activeWidget ? (
-              <DragOverlayCard
-                widget={activeWidget}
-                services={services}
-                syncMetrics={syncMetrics}
-              />
-            ) : null}
-          </DragOverlay>
-        </DndContext>
+          ))}
+        </ResponsiveGridLayout>
       )}
 
       <AddWidgetModal
