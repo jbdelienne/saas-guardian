@@ -225,27 +225,26 @@ function SortableWidgetCard({
         isDragging && 'opacity-30 scale-[0.98]',
       )}
     >
-      {/* Header */}
-      <div className={cn(
-        'flex items-center justify-between px-4 py-2.5',
-        'border-b border-border/40',
-        'bg-gradient-to-r from-muted/20 to-transparent',
-      )}>
+      {/* Header — entire bar is the drag handle */}
+      <div
+        className={cn(
+          'flex items-center justify-between px-4 py-2.5',
+          'border-b border-border/40',
+          'bg-gradient-to-r from-muted/20 to-transparent',
+          !tvMode && 'cursor-grab active:cursor-grabbing',
+        )}
+        {...(tvMode ? {} : { ...attributes, ...listeners })}
+      >
         <div className="flex items-center gap-2 min-w-0">
           {!tvMode && (
-            <button
-              {...attributes}
-              {...listeners}
-              className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground transition-colors touch-none"
-            >
-              <GripVertical className="w-4 h-4" />
-            </button>
+            <GripVertical className="w-4 h-4 text-muted-foreground/40 shrink-0" />
           )}
           <span className="text-xs font-medium text-muted-foreground truncate">{widget.title}</span>
         </div>
         {!tvMode && (
           <button
-            onClick={() => onDelete(widget.id)}
+            onClick={(e) => { e.stopPropagation(); onDelete(widget.id); }}
+            onPointerDown={(e) => e.stopPropagation()}
             className="opacity-0 group-hover:opacity-100 text-muted-foreground/40 hover:text-destructive transition-all duration-200 p-1 rounded-md hover:bg-destructive/10"
           >
             <X className="w-3.5 h-3.5" />
@@ -349,7 +348,7 @@ function DashboardDetailView({
   const activeWidget = activeId ? widgetConfigs.find(w => w.id === activeId) : null;
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
