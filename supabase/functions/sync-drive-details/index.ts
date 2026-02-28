@@ -187,9 +187,9 @@ Deno.serve(async (req) => {
           console.log(`Drive "${driveName}": rate limited at ${objectCount} objects`);
           rateLimited = true;
           break;
-        } else if (status === 401 || status === 403) {
+        } else if (status === 401) {
           // Token expired mid-pagination - refresh and retry
-          console.log(`Drive "${driveName}": ${status} error, refreshing token...`);
+          console.log(`Drive "${driveName}": 401 error, refreshing token...`);
           const { data: freshIntegration } = await supabaseAdmin.from("integrations")
             .select("*").eq("id", integration.id).single();
           try {
@@ -198,6 +198,48 @@ Deno.serve(async (req) => {
           } catch (e) {
             console.error(`Token refresh failed for drive "${driveName}":`, e);
             break;
+          }
+        } else if (status === 403) {
+          // Check if this is a token issue or a genuine access denied
+          const errorBody = await res.text();
+          if (objectCount > 0) {
+            // We already had successful pages, likely a token expiry mid-pagination
+            console.log(`Drive "${driveName}": 403 mid-pagination at ${objectCount} objects, refreshing token...`);
+            const { data: freshIntegration } = await supabaseAdmin.from("integrations")
+              .select("*").eq("id", integration.id).single();
+            try {
+              accessToken = await getAccessToken(freshIntegration || integration, encryptionKey, supabaseAdmin);
+              continue;
+            } catch (e) {
+              console.error(`Token refresh failed for drive "${driveName}":`, e);
+              break;
+            }
+          } else {
+            // First page 403 = no access to this drive
+            console.warn(`Drive "${driveName}": ACCESS DENIED (403) - admin has no access to files in this drive. Error: ${errorBody.substring(0, 200)}`);
+            // Mark this drive as inaccessible
+            await supabaseAdmin.from("integration_sync_data")
+              .update({
+                metric_value: -3,
+                metadata: {
+                  drive_id: driveId,
+                  name: driveName,
+                  object_count: -3,
+                  storage_used_gb: 0,
+                  syncing: false,
+                  access_denied: true,
+                  error: "No access to this drive's files",
+                },
+                synced_at: new Date().toISOString(),
+              })
+              .eq("integration_id", integrationId)
+              .eq("user_id", integration.user_id)
+              .eq("metric_type", "shared_drive")
+              .filter("metadata->>drive_id", "eq", driveId);
+
+            return new Response(JSON.stringify({ status: "access_denied", driveName }), {
+              status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
           }
         } else if (status >= 500) {
           let retried = false;
