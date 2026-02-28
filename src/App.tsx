@@ -21,6 +21,7 @@ import NotFound from "@/pages/NotFound";
 import Waitlist from "@/pages/Waitlist";
 import ReportsPage from "@/pages/ReportsPage";
 import AwsCostDashboard from "@/pages/AwsCostDashboard";
+import PublicReport from "@/pages/PublicReport";
 
 const queryClient = new QueryClient();
 
@@ -76,6 +77,7 @@ const LangRoutes = () => (
 const AppRoutes = () => (
   <Routes>
     <Route path="/" element={<RootRedirect />} />
+    <Route path="/reports/shared/:shareToken" element={<PublicReport />} />
     <Route path="/:lang/*" element={<LangRoutes />} />
   </Routes>
 );

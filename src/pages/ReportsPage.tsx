@@ -48,6 +48,7 @@ export interface GeneratedReport {
   serviceIds: string[]; // empty = all
   periodStart: string;
   periodEnd: string;
+  shareToken?: string;
 }
 
 function getDateLocale(lang: string) {
@@ -104,6 +105,7 @@ export default function ReportsPage() {
         serviceIds: r.service_ids || [],
         periodStart: r.period_start,
         periodEnd: r.period_end,
+        shareToken: r.share_token,
       })) as GeneratedReport[];
     },
     enabled: !!workspaceId,
@@ -255,9 +257,13 @@ export default function ReportsPage() {
   };
 
   const handleCopyLink = (report: GeneratedReport) => {
-    const url = `${window.location.origin}${window.location.pathname}?report=${report.id}`;
+    if (!report.shareToken) {
+      toast.error('No share token available');
+      return;
+    }
+    const url = `${window.location.origin}/reports/shared/${report.shareToken}`;
     navigator.clipboard.writeText(url);
-    toast.success('Link copied to clipboard');
+    toast.success('Public link copied to clipboard');
   };
 
   const isGenerateDisabled =
