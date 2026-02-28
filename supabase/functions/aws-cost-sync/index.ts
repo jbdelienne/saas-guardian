@@ -53,6 +53,51 @@ async function fetchCostAndUsage(
   return await res.json();
 }
 
+// ---- AWS Cost Explorer by Resource call ----
+async function fetchCostByResource(
+  creds: { accessKeyId: string; secretAccessKey: string },
+  granularity: "DAILY" | "MONTHLY",
+  startDate: string,
+  endDate: string,
+) {
+  try {
+    const ceClient = new AwsClient({ ...creds, region: "us-east-1" });
+    // Use shorter range for resource-level (last 30 days max to limit data)
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0];
+    const effectiveStart = startDate > thirtyDaysAgo ? startDate : thirtyDaysAgo;
+
+    const body = {
+      TimePeriod: { Start: effectiveStart, End: endDate },
+      Granularity: granularity,
+      Metrics: ["UnblendedCost"],
+      GroupBy: [
+        { Type: "DIMENSION", Key: "SERVICE" },
+        { Type: "DIMENSION", Key: "RESOURCE_ID" },
+      ],
+    };
+
+    const res = await ceClient.fetch("https://ce.us-east-1.amazonaws.com/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-amz-json-1.1",
+        "X-Amz-Target": "AWSInsightsIndexService.GetCostAndUsage",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      console.warn("Resource-level cost not available:", res.status, errText);
+      return null; // Gracefully degrade
+    }
+
+    return await res.json();
+  } catch (err) {
+    console.warn("Resource-level cost fetch failed (may not be enabled):", err);
+    return null;
+  }
+}
+
 // ---- Main handler ----
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -187,16 +232,12 @@ Deno.serve(async (req) => {
     // ---- Fetch from AWS ----
     console.log(`Fetching cost data: ${awsGranularity} from ${effectiveStart} to ${effectiveEnd}`);
 
-    // Two calls: grouped by service + total
-    const [byServiceData, totalData] = await Promise.all([
-      fetchCostAndUsage(
-        { accessKeyId: cred.access_key_id, secretAccessKey: cred.secret_access_key },
-        awsGranularity, effectiveStart, effectiveEnd, true
-      ),
-      fetchCostAndUsage(
-        { accessKeyId: cred.access_key_id, secretAccessKey: cred.secret_access_key },
-        awsGranularity, effectiveStart, effectiveEnd, false
-      ),
+    // Three calls: grouped by service, total, and by resource
+    const awsCreds = { accessKeyId: cred.access_key_id, secretAccessKey: cred.secret_access_key };
+    const [byServiceData, totalData, byResourceData] = await Promise.all([
+      fetchCostAndUsage(awsCreds, awsGranularity, effectiveStart, effectiveEnd, true),
+      fetchCostAndUsage(awsCreds, awsGranularity, effectiveStart, effectiveEnd, false),
+      fetchCostByResource(awsCreds, awsGranularity, effectiveStart, effectiveEnd),
     ]);
 
     // ---- Parse and store cost_by_service ----
@@ -246,22 +287,67 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ---- Parse resource-level costs ----
+    const resourceRows: Array<{
+      account_id: string;
+      user_id: string;
+      workspace_id: string;
+      date: string;
+      granularity: string;
+      resource_id: string;
+      service_name: string;
+      amount: number;
+      currency: string;
+    }> = [];
+
+    if (byResourceData?.ResultsByTime) {
+      for (const period of byResourceData.ResultsByTime) {
+        const periodStart = period.TimePeriod?.Start;
+        if (!periodStart) continue;
+        for (const group of period.Groups || []) {
+          const serviceName = group.Keys?.[0] || "Unknown";
+          const resourceId = group.Keys?.[1] || "Unknown";
+          const amount = parseFloat(group.Metrics?.UnblendedCost?.Amount || "0");
+          const currency = group.Metrics?.UnblendedCost?.Unit || "USD";
+          if (amount > 0.001) {
+            resourceRows.push({
+              account_id: accountId,
+              user_id: userId,
+              workspace_id: workspaceId,
+              date: periodStart,
+              granularity,
+              resource_id: resourceId,
+              service_name: serviceName,
+              amount: Math.round(amount * 10000) / 10000,
+              currency,
+            });
+          }
+        }
+      }
+    }
+
     // ---- Store in DB ----
     // Delete old data for this range
-    await supabaseAdmin
-      .from("cost_by_service")
-      .delete()
-      .eq("account_id", accountId)
-      .eq("granularity", granularity);
+    await Promise.all([
+      supabaseAdmin.from("cost_by_service").delete().eq("account_id", accountId).eq("granularity", granularity),
+      supabaseAdmin.from("cost_by_resource").delete().eq("account_id", accountId).eq("granularity", granularity),
+    ]);
 
+    // Insert service rows
     if (serviceRows.length > 0) {
-      // Insert in batches of 500
       for (let i = 0; i < serviceRows.length; i += 500) {
         const batch = serviceRows.slice(i, i + 500);
-        const { error: insertErr } = await supabaseAdmin
-          .from("cost_by_service")
-          .insert(batch);
+        const { error: insertErr } = await supabaseAdmin.from("cost_by_service").insert(batch);
         if (insertErr) console.error("Failed to insert cost_by_service batch:", insertErr);
+      }
+    }
+
+    // Insert resource rows
+    if (resourceRows.length > 0) {
+      for (let i = 0; i < resourceRows.length; i += 500) {
+        const batch = resourceRows.slice(i, i + 500);
+        const { error: insertErr } = await supabaseAdmin.from("cost_by_resource").insert(batch);
+        if (insertErr) console.error("Failed to insert cost_by_resource batch:", insertErr);
       }
     }
 
@@ -298,10 +384,12 @@ Deno.serve(async (req) => {
       cached_at: new Date().toISOString(),
       raw_data: rawData,
       cost_by_service: serviceRows,
+      cost_by_resource: resourceRows,
       total_by_period: totalByPeriod,
       start_date: effectiveStart,
       end_date: effectiveEnd,
       granularity,
+      resource_level_available: byResourceData !== null,
     }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
