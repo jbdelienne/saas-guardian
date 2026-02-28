@@ -72,11 +72,15 @@ export type Database = {
           alert_type: string
           created_at: string
           description: string
+          email_sent: boolean
           id: string
+          incident_id: string | null
           integration_type: string | null
           is_dismissed: boolean
           is_read: boolean
           metadata: Json | null
+          resolved_at: string | null
+          service_id: string | null
           severity: string
           title: string
           user_id: string
@@ -86,11 +90,15 @@ export type Database = {
           alert_type: string
           created_at?: string
           description: string
+          email_sent?: boolean
           id?: string
+          incident_id?: string | null
           integration_type?: string | null
           is_dismissed?: boolean
           is_read?: boolean
           metadata?: Json | null
+          resolved_at?: string | null
+          service_id?: string | null
           severity?: string
           title: string
           user_id: string
@@ -100,17 +108,28 @@ export type Database = {
           alert_type?: string
           created_at?: string
           description?: string
+          email_sent?: boolean
           id?: string
+          incident_id?: string | null
           integration_type?: string | null
           is_dismissed?: boolean
           is_read?: boolean
           metadata?: Json | null
+          resolved_at?: string | null
+          service_id?: string | null
           severity?: string
           title?: string
           user_id?: string
           workspace_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "alerts_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "alerts_workspace_id_fkey"
             columns: ["workspace_id"]
@@ -675,6 +694,9 @@ export type Database = {
       }
       services: {
         Row: {
+          alert_checks_threshold: number
+          alert_email: string | null
+          alert_email_enabled: boolean
           avg_response_time: number | null
           check_interval: number
           content_keyword: string | null
@@ -683,6 +705,7 @@ export type Database = {
           id: string
           is_paused: boolean
           last_check: string | null
+          maintenance_until: string | null
           name: string
           owner_id: string | null
           ssl_expiry_date: string | null
@@ -696,6 +719,9 @@ export type Database = {
           workspace_id: string | null
         }
         Insert: {
+          alert_checks_threshold?: number
+          alert_email?: string | null
+          alert_email_enabled?: boolean
           avg_response_time?: number | null
           check_interval?: number
           content_keyword?: string | null
@@ -704,6 +730,7 @@ export type Database = {
           id?: string
           is_paused?: boolean
           last_check?: string | null
+          maintenance_until?: string | null
           name: string
           owner_id?: string | null
           ssl_expiry_date?: string | null
@@ -717,6 +744,9 @@ export type Database = {
           workspace_id?: string | null
         }
         Update: {
+          alert_checks_threshold?: number
+          alert_email?: string | null
+          alert_email_enabled?: boolean
           avg_response_time?: number | null
           check_interval?: number
           content_keyword?: string | null
@@ -725,6 +755,7 @@ export type Database = {
           id?: string
           is_paused?: boolean
           last_check?: string | null
+          maintenance_until?: string | null
           name?: string
           owner_id?: string | null
           ssl_expiry_date?: string | null
