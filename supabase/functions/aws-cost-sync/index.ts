@@ -66,6 +66,22 @@ async function fetchCostByResource(
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString().split("T")[0];
     const effectiveStart = startDate > thirtyDaysAgo ? startDate : thirtyDaysAgo;
 
+    // Only these services support resource-level granularity
+    const RESOURCE_LEVEL_SERVICES = [
+      "Amazon Elastic Compute Cloud - Compute",
+      "EC2 - Other",
+      "AWS Lambda",
+      "Amazon Simple Queue Service",
+      "AWS Key Management Service",
+      "AWS Secrets Manager",
+      "Amazon Simple Notification Service",
+      "Amazon CloudWatch",
+      "Amazon Virtual Private Cloud",
+      "AWS Cost Explorer",
+      "AWS Glue",
+      "AWS Data Transfer",
+    ];
+
     const body = {
       TimePeriod: { Start: effectiveStart, End: endDate },
       Granularity: granularity,
@@ -74,6 +90,12 @@ async function fetchCostByResource(
         { Type: "DIMENSION", Key: "SERVICE" },
         { Type: "DIMENSION", Key: "RESOURCE_ID" },
       ],
+      Filter: {
+        Dimensions: {
+          Key: "SERVICE",
+          Values: RESOURCE_LEVEL_SERVICES,
+        },
+      },
     };
 
     const res = await ceClient.fetch("https://ce.us-east-1.amazonaws.com/", {
