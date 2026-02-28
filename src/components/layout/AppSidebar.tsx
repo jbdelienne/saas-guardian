@@ -2,18 +2,20 @@ import { LayoutDashboard, Server, Plug, Bell, Settings, FileText, Cloud } from "
 import { NavLink } from "@/components/NavLink";
 import { useTranslation } from "react-i18next";
 import { useLangPrefix } from "@/hooks/use-lang-prefix";
+import { useRealtimeAlerts } from "@/hooks/use-realtime-alerts";
 import duckLogo from "@/assets/moniduck-logo.png";
 
 export default function AppSidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const { t } = useTranslation();
   const lp = useLangPrefix();
+  const { unreadCount } = useRealtimeAlerts();
 
   const navItems = [
     { title: t("sidebar.dashboard"), url: `${lp}/dashboard`, icon: LayoutDashboard },
     { title: "HTTP Services", url: `${lp}/services`, icon: Server },
     { title: "Cloud Resources", url: `${lp}/cloud-resources`, icon: Cloud },
     { title: t("sidebar.integrations"), url: `${lp}/integrations`, icon: Plug },
-    { title: t("sidebar.alerts"), url: `${lp}/alerts`, icon: Bell },
+    { title: t("sidebar.alerts"), url: `${lp}/alerts`, icon: Bell, badge: unreadCount },
     { title: t("sidebar.reports"), url: `${lp}/reports`, icon: FileText },
     { title: t("sidebar.settings"), url: `${lp}/settings`, icon: Settings },
   ];
@@ -35,11 +37,16 @@ export default function AppSidebar({ collapsed, onToggle }: { collapsed: boolean
             key={item.url}
             to={item.url}
             end={item.url === `${lp}/dashboard`}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-primary/5 hover:text-foreground transition-colors text-sm font-medium"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-muted-foreground hover:bg-primary/5 hover:text-foreground transition-colors text-sm font-medium relative"
             activeClassName="bg-primary/10 text-primary font-semibold"
           >
             <item.icon className="w-5 h-5 flex-shrink-0" />
             {!collapsed && <span>{item.title}</span>}
+            {'badge' in item && item.badge !== undefined && item.badge > 0 && (
+              <span className={`absolute ${collapsed ? 'top-1 right-1' : 'right-3'} min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1`}>
+                {item.badge > 99 ? '99+' : item.badge}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>

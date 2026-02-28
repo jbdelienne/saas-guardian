@@ -7,6 +7,7 @@ import { Loader2, ExternalLink, ShieldCheck, Clock, Activity, AlertTriangle, XCi
 import { UptimePeriod, useUptimeForServices } from '@/hooks/use-uptime';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import ServiceAlertSettings from './ServiceAlertSettings';
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
   up: { label: 'Operational', color: 'text-success', bg: 'bg-success/10' },
@@ -248,6 +249,25 @@ export default function ServiceDetailModal({ service, open, onClose, onDelete }:
               ))}
             </div>
           )}
+        </div>
+
+        {/* Alert Settings - Collapsible */}
+        <div className="px-6 pb-5">
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center justify-between w-full group">
+              <h3 className="text-sm font-semibold text-foreground">Alert Settings</h3>
+              <ChevronDown className="w-4 h-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3">
+              <ServiceAlertSettings
+                serviceId={service.id}
+                alertEmailEnabled={(service as any).alert_email_enabled ?? true}
+                alertEmail={(service as any).alert_email ?? null}
+                alertChecksThreshold={(service as any).alert_checks_threshold ?? 2}
+                maintenanceUntil={(service as any).maintenance_until ?? null}
+              />
+            </CollapsibleContent>
+          </Collapsible>
         </div>
 
         {/* Previous Alerts - Collapsible */}

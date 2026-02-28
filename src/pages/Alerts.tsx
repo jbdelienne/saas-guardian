@@ -21,15 +21,15 @@ const severityConfig: Record<string, { icon: typeof AlertCircle; dotClass: strin
 type FilterTab = 'active_downtimes' | 'all' | 'critical' | 'warning' | 'dismissed' | 'channels';
 
 function isActiveDowntime(alert: Alert): boolean {
-  if (alert.alert_type !== 'downtime' || alert.is_dismissed) return false;
-  const meta = alert.metadata as Record<string, any> | null;
-  return !meta?.resolved_at;
+  if (alert.is_dismissed) return false;
+  const resolvedAt = (alert as any).resolved_at;
+  if (resolvedAt) return false;
+  return alert.alert_type === 'downtime' || alert.alert_type === 'sla_breach';
 }
 
 function isResolvedDowntime(alert: Alert): boolean {
-  if (alert.alert_type !== 'downtime') return false;
-  const meta = alert.metadata as Record<string, any> | null;
-  return !!meta?.resolved_at;
+  const resolvedAt = (alert as any).resolved_at;
+  return !!resolvedAt || (alert.is_dismissed && alert.alert_type === 'downtime');
 }
 
 function formatDuration(minutes: number): string {
