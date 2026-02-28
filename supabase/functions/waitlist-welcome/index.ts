@@ -29,6 +29,23 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing email");
     }
 
+    // Add contact to Resend audience
+    const audienceId = Deno.env.get("RESEND_AUDIENCE_ID");
+    if (audienceId) {
+      try {
+        await resend.contacts.create({
+          audienceId,
+          email,
+          firstName: company || undefined,
+          unsubscribed: false,
+        });
+        console.log(`Contact ${email} added to audience`);
+      } catch (e: any) {
+        console.error("Failed to add contact to audience:", e.message);
+        // Don't block the welcome email if audience add fails
+      }
+    }
+
     const { error } = await resend.emails.send({
       from: "moniduck <noreply@moniduck.com>",
       to: [email],
