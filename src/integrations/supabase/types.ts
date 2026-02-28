@@ -786,18 +786,21 @@ export type Database = {
           company: string | null
           created_at: string
           email: string
+          first_name: string | null
           id: string
         }
         Insert: {
           company?: string | null
           created_at?: string
           email: string
+          first_name?: string | null
           id?: string
         }
         Update: {
           company?: string | null
           created_at?: string
           email?: string
+          first_name?: string | null
           id?: string
         }
         Relationships: []
