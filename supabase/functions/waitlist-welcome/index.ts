@@ -23,7 +23,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const resend = new Resend(resendKey);
-    const { email, company } = await req.json();
+    const { email, firstName, company } = await req.json();
 
     if (!email) {
       throw new Error("Missing email");
@@ -36,7 +36,7 @@ const handler = async (req: Request): Promise<Response> => {
         await resend.contacts.create({
           audienceId,
           email,
-          firstName: company || undefined,
+          firstName: firstName || company || undefined,
           unsubscribed: false,
         });
         console.log(`Contact ${email} added to audience`);
@@ -53,7 +53,7 @@ const handler = async (req: Request): Promise<Response> => {
       html: `
         <div style="font-family: 'Inter', -apple-system, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 20px; color: #171717;">
           <div style="margin-bottom: 32px;">
-            <h1 style="font-size: 24px; font-weight: 700; margin: 0 0 8px;">Welcome to the waitlist!</h1>
+            <h1 style="font-size: 24px; font-weight: 700; margin: 0 0 8px;">${firstName ? `Hey ${firstName}, welcome` : "Welcome"} to the waitlist!</h1>
             <p style="color: #737373; font-size: 15px; line-height: 1.6; margin: 0;">
               Thanks for signing up${company ? ` from <strong>${company}</strong>` : ""}. You're now on the list for early access to moniduck.
             </p>

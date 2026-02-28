@@ -142,6 +142,7 @@ function WaitlistForm({
   variant?: "default" | "compact";
 }) {
   const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
   const [company, setCompany] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -153,6 +154,7 @@ function WaitlistForm({
     try {
       const { error } = await supabase.from("waitlist_signups").insert({
         email: email.trim().toLowerCase(),
+        first_name: firstName.trim() || null,
         company: company.trim() || null,
       });
       if (error) {
@@ -162,7 +164,7 @@ function WaitlistForm({
       } else {
         try {
           await supabase.functions.invoke("waitlist-welcome", {
-            body: { email: email.trim().toLowerCase(), company: company.trim() || null },
+            body: { email: email.trim().toLowerCase(), firstName: firstName.trim() || null, company: company.trim() || null },
           });
         } catch { /* best-effort */ }
         onSuccess();
@@ -203,12 +205,21 @@ function WaitlistForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <Input
+        type="text"
+        placeholder="First name"
+        value={firstName}
+        onChange={(e) => setFirstName(e.target.value)}
+        className="h-12 text-base"
+        maxLength={100}
+      />
+      <Input
         type="email"
         placeholder="you@company.com"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         required
         className="h-12 text-base"
+        maxLength={255}
       />
       <Input
         type="text"
@@ -216,6 +227,7 @@ function WaitlistForm({
         value={company}
         onChange={(e) => setCompany(e.target.value)}
         className="h-12 text-base"
+        maxLength={200}
       />
       <Button type="submit" size="lg" className="w-full h-12 text-base" disabled={loading}>
         {loading ? (
