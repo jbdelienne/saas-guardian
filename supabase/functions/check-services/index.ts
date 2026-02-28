@@ -43,7 +43,7 @@ async function sendAlertEmail(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "MoniDuck <alerts@moniduck.com>",
+        from: "MoniDuck <onboarding@resend.dev>",
         to: [to],
         subject,
         html: htmlBody,
