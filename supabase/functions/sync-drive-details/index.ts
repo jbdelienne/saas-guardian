@@ -106,6 +106,7 @@ Deno.serve(async (req) => {
     const driveId = url.searchParams.get("drive_id");
     const resumeToken = url.searchParams.get("resume_token") || null;
     const countSoFar = parseInt(url.searchParams.get("count_so_far") || "0", 10);
+    const sizeSoFar = parseFloat(url.searchParams.get("size_so_far") || "0");
 
     if (!integrationId || !driveId) {
       return new Response(JSON.stringify({ error: "integration_id and drive_id required" }), {
@@ -136,7 +137,7 @@ Deno.serve(async (req) => {
     const driveMeta = drives.find((d: { id: string }) => d.id === driveId);
     const driveName = driveMeta?.name || driveId;
 
-    console.log(`Counting drive "${driveName}" (resume: ${resumeToken ? 'yes' : 'no'}, count so far: ${countSoFar})`);
+    console.log(`Counting drive "${driveName}" (resume: ${resumeToken ? 'yes' : 'no'}, count so far: ${countSoFar}, size so far: ${sizeSoFar} bytes)`);
 
     // Mark syncing state on first call
     if (countSoFar === 0 && !resumeToken) {
@@ -160,9 +161,10 @@ Deno.serve(async (req) => {
 
     // Paginate ALL files (including trashed) - Google's 500k limit counts everything
     // Minimal payload: only file IDs for pure counting
-    const baseUrl = `https://www.googleapis.com/drive/v3/files?driveId=${driveId}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&useDomainAdminAccess=true&fields=nextPageToken,files(id)&pageSize=1000`;
+    const baseUrl = `https://www.googleapis.com/drive/v3/files?driveId=${driveId}&corpora=drive&includeItemsFromAllDrives=true&supportsAllDrives=true&useDomainAdminAccess=true&fields=nextPageToken,files(id,size)&pageSize=1000`;
 
     let objectCount = countSoFar;
+    let totalSizeBytes = sizeSoFar;
     let pageToken: string | undefined = resumeToken || undefined;
     const startTime = Date.now();
     let rateLimited = false;
@@ -206,7 +208,9 @@ Deno.serve(async (req) => {
             const retryRes = await fetch(fetchUrl, { headers: { Authorization: `Bearer ${accessToken}` } });
             if (retryRes.ok) {
               const retryData = await retryRes.json();
-              objectCount += (retryData.files || []).length;
+              const retryFiles = retryData.files || [];
+              objectCount += retryFiles.length;
+              for (const f of retryFiles) { totalSizeBytes += Number(f.size || 0); }
               pageToken = retryData.nextPageToken;
               retried = true;
               break;
@@ -220,7 +224,9 @@ Deno.serve(async (req) => {
         }
       } else {
         const data = await res.json();
-        objectCount += (data.files || []).length;
+        const files = data.files || [];
+        objectCount += files.length;
+        for (const f of files) { totalSizeBytes += Number(f.size || 0); }
         pageToken = data.nextPageToken;
         pagesProcessed++;
 
@@ -246,6 +252,8 @@ Deno.serve(async (req) => {
             object_count: -2,
             syncing: true,
             partial_count: objectCount,
+            partial_size_bytes: totalSizeBytes,
+            storage_used_gb: Math.round(totalSizeBytes / (1024 ** 3) * 100) / 100,
           },
         })
         .eq("integration_id", integrationId)
@@ -257,7 +265,7 @@ Deno.serve(async (req) => {
         await new Promise(r => setTimeout(r, 10000));
       }
 
-      const selfUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/sync-drive-details?integration_id=${integrationId}&drive_id=${driveId}&resume_token=${encodeURIComponent(pageToken)}&count_so_far=${objectCount}`;
+      const selfUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/sync-drive-details?integration_id=${integrationId}&drive_id=${driveId}&resume_token=${encodeURIComponent(pageToken)}&count_so_far=${objectCount}&size_so_far=${totalSizeBytes}`;
       fetch(selfUrl, {
         method: "POST",
         headers: {
@@ -266,13 +274,15 @@ Deno.serve(async (req) => {
         },
       }).catch(e => console.error("Self-call error:", e));
 
-      return new Response(JSON.stringify({ status: "continuing", objectCount, driveName, reason }), {
+      return new Response(JSON.stringify({ status: "continuing", objectCount, totalSizeGb: Math.round(totalSizeBytes / (1024 ** 3) * 100) / 100, driveName, reason }), {
         status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     // Done - save final result
-    console.log(`Drive "${driveName}": DONE - ${objectCount} objects`);
+    console.log(`Drive "${driveName}": DONE - ${objectCount} objects, ${Math.round(totalSizeBytes / (1024 ** 3) * 100) / 100} GB`);
+
+    const storageUsedGb = Math.round(totalSizeBytes / (1024 ** 3) * 100) / 100;
 
     const { data: existingRows } = await supabaseAdmin.from("integration_sync_data")
       .select("*")
@@ -293,7 +303,7 @@ Deno.serve(async (req) => {
           created_time: existingMeta.created_time || null,
           object_limit: OBJECT_LIMIT,
           object_count: objectCount,
-          storage_used_gb: existingMeta.storage_used_gb || 0,
+          storage_used_gb: storageUsedGb,
           syncing: false,
         },
         synced_at: new Date().toISOString(),
@@ -303,7 +313,7 @@ Deno.serve(async (req) => {
       .eq("metric_type", "shared_drive")
       .filter("metadata->>drive_id", "eq", driveId);
 
-    return new Response(JSON.stringify({ status: "done", objectCount, driveName }), {
+    return new Response(JSON.stringify({ status: "done", objectCount, storageUsedGb, driveName }), {
       status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
