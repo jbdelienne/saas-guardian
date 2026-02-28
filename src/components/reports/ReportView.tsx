@@ -1,8 +1,9 @@
-import { type RefObject } from 'react';
+import { type RefObject, useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWorkspace } from '@/hooks/use-workspace';
+import { pdf } from '@react-pdf/renderer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,9 @@ import {
 import { format } from 'date-fns';
 import { fr, enUS, de } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Activity, Shield, Clock, TrendingUp, Layers } from 'lucide-react';
+import { ArrowLeft, Activity, Shield, Clock, TrendingUp, Layers, Download, Link2 } from 'lucide-react';
+import { toast } from 'sonner';
+import ReportPDF from './ReportPDF';
 import type { GeneratedReport } from '@/pages/ReportsPage';
 
 function getDateLocale(lang: string) {
@@ -59,6 +62,7 @@ export default function ReportView({ report, onBack, contentRef }: ReportViewPro
   const workspaceId = workspace?.id;
   const { i18n } = useTranslation();
   const dateLocale = getDateLocale(i18n.language);
+  const [exporting, setExporting] = useState(false);
 
   const periodStart = report.periodStart;
   const periodEnd = report.periodEnd;
@@ -235,20 +239,86 @@ export default function ReportView({ report, onBack, contentRef }: ReportViewPro
     return `${Math.floor(minutes / 60)}h${minutes % 60 > 0 ? `${minutes % 60}min` : ''}`;
   };
 
+  const handleExportPDF = useCallback(async () => {
+    setExporting(true);
+    try {
+      const pdfServiceMetrics = serviceMetrics.map((m) => ({
+        name: m.service.name,
+        icon: m.service.icon,
+        uptime: m.uptime,
+        avgResponse: m.avgResponse,
+        incidents: m.incidents,
+      }));
+      const pdfAllIncidents = allIncidents.map((inc) => ({
+        serviceName: inc.serviceName,
+        start: inc.start,
+        duration: inc.duration,
+        cause: inc.cause,
+      }));
+      const blob = await pdf(
+        <ReportPDF
+          periodLabel={report.periodLabel}
+          createdAt={report.createdAt}
+          globalUptime={globalUptime}
+          totalIncidents={totalIncidents}
+          servicesCount={services.length}
+          serviceMetrics={pdfServiceMetrics}
+          allIncidents={pdfAllIncidents}
+          slaRows={slaRows}
+          includeSla={report.includeSla}
+        />
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `moniduck-report-${report.period}-${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('PDF exported');
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to export PDF');
+    } finally {
+      setExporting(false);
+    }
+  }, [serviceMetrics, allIncidents, report, globalUptime, totalIncidents, services.length, slaRows]);
+
+  const handleShareLink = useCallback(() => {
+    if (!report.shareToken) {
+      toast.error('No share token available');
+      return;
+    }
+    const url = `${window.location.origin}/reports/shared/${report.shareToken}`;
+    navigator.clipboard.writeText(url);
+    toast.success('Public link copied to clipboard');
+  }, [report.shareToken]);
+
   return (
     <div className="space-y-6" ref={contentRef}>
-      {/* Back button + title */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
-          <ArrowLeft className="w-4 h-4" />
-        </Button>
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">
-            Report — {report.periodLabel}
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Generated {format(new Date(report.createdAt), 'PPPp', { locale: dateLocale })}
-          </p>
+      {/* Back button + title + actions */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">
+              Report — {report.periodLabel}
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Generated {format(new Date(report.createdAt), 'PPPp', { locale: dateLocale })}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportPDF} disabled={exporting} className="gap-1.5">
+            <Download className="w-4 h-4" />
+            Export PDF
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleShareLink} className="gap-1.5">
+            <Link2 className="w-4 h-4" />
+            Share
+          </Button>
         </div>
       </div>
 

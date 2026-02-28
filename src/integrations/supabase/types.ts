@@ -654,6 +654,7 @@ export type Database = {
           period_start: string
           scope: string
           service_ids: string[]
+          share_token: string
           workspace_id: string
         }
         Insert: {
@@ -667,6 +668,7 @@ export type Database = {
           period_start: string
           scope: string
           service_ids?: string[]
+          share_token?: string
           workspace_id: string
         }
         Update: {
@@ -680,6 +682,7 @@ export type Database = {
           period_start?: string
           scope?: string
           service_ids?: string[]
+          share_token?: string
           workspace_id?: string
         }
         Relationships: [
