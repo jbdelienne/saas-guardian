@@ -14,6 +14,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useTranslation } from 'react-i18next';
 import { useLatestSyncMetrics } from '@/hooks/use-all-sync-data';
+import { useCostByResource } from '@/hooks/use-cost-by-resource';
 import { Badge } from '@/components/ui/badge';
 
 const CLOUD_TAGS = ['aws', 'ec2', 's3', 'lambda', 'rds', 'gcp', 'azure'];
@@ -93,7 +94,7 @@ export default function CloudResourcesPage() {
   );
 
   const { data: syncMetrics = [] } = useLatestSyncMetrics();
-
+  const { costByResourceId } = useCostByResource();
   const costByType = useMemo(() => {
     const map: Record<string, number> = {};
     const costMetric = syncMetrics.find(m => m.metric_key === 'aws_cost_by_service');
@@ -285,6 +286,16 @@ export default function CloudResourcesPage() {
   }, [cloudResources]);
 
   const getResourceCost = (resource: CloudResource): number | null => {
+    // Try per-resource cost first (exact match by arnOrId)
+    const exactCost = costByResourceId.get(resource.arnOrId);
+    if (exactCost !== undefined) {
+      switch (costPeriod) {
+        case 'day': return exactCost / 30;
+        case 'month': return exactCost;
+        case 'year': return exactCost * 12;
+      }
+    }
+    // Fallback: average by service type
     const baseType = getResourceBaseType(resource.type);
     const total30d = costByType[baseType];
     if (total30d === undefined) return null;
