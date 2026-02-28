@@ -11,7 +11,6 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatDistanceToNow, format } from 'date-fns';
 import { toast } from 'sonner';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const severityConfig: Record<string, { icon: typeof AlertCircle; dotClass: string; badgeBg: string; badgeText: string }> = {
   critical: { icon: AlertCircle, dotClass: 'bg-destructive', badgeBg: 'bg-destructive/10', badgeText: 'text-destructive' },
@@ -98,22 +97,34 @@ export default function Alerts() {
           <p className="text-muted-foreground text-sm">{t('alerts.activeAlerts', { count: activeCount })}</p>
         </div>
 
-        <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterTab)}>
-          <TabsList className="mb-6">
-            {tabs.map((tab) => (
-              <TabsTrigger key={tab.key} value={tab.key} className="gap-1.5 text-xs">
-                {tab.key === 'active_downtimes' && <Zap className="w-3.5 h-3.5" />}
-                {tab.icon && <tab.icon className="w-3.5 h-3.5" />}
-                {tab.label}
-                {tab.count !== undefined && tab.count > 0 && (
-                  <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-bold ml-1">
-                    {tab.count}
-                  </span>
-                )}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <div className="flex gap-2 mb-6 flex-wrap">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setFilter(tab.key)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors inline-flex items-center gap-1.5 ${
+                filter === tab.key
+                  ? tab.key === 'active_downtimes'
+                    ? 'bg-destructive text-destructive-foreground'
+                    : 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {tab.key === 'active_downtimes' && <Zap className="w-3.5 h-3.5" />}
+              {tab.icon && <tab.icon className="w-3.5 h-3.5" />}
+              {tab.label}
+              {tab.count !== undefined && tab.count > 0 && (
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                  filter === tab.key
+                    ? 'bg-white/20'
+                    : 'bg-destructive/10 text-destructive'
+                }`}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
 
         {filter === 'channels' ? (
           <div className="space-y-4">
