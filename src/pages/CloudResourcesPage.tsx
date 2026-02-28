@@ -68,15 +68,16 @@ interface CloudResource {
   encryptionEnabled?: boolean;
 }
 
-type ResourceCategory = 'ec2' | 'rds' | 'lambda' | 's3' | 'alb' | 'cloudfront';
+type ResourceCategory = 'compute' | 'databases' | 'functions' | 'storage' | 'loadbalancer' | 'apis' | 'cdn';
 
 const categoryLabels: Record<ResourceCategory, string> = {
-  ec2: 'EC2',
-  rds: 'RDS',
-  lambda: 'Lambda',
-  s3: 'S3',
-  alb: 'ALB / API Gateway',
-  cloudfront: 'CloudFront',
+  compute: 'Compute',
+  databases: 'Databases',
+  functions: 'Functions',
+  storage: 'Storage',
+  loadbalancer: 'Load Balancer',
+  apis: 'APIs',
+  cdn: 'CDN',
 };
 
 export default function CloudResourcesPage() {
@@ -84,7 +85,7 @@ export default function CloudResourcesPage() {
   const { t } = useTranslation();
   const [costPeriod, setCostPeriod] = useState<CostPeriod>('month');
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState<ResourceCategory>('ec2');
+  const [activeTab, setActiveTab] = useState<ResourceCategory>('compute');
 
   const cloudServices = useMemo(
     () => services.filter(s => s.tags?.some(tag => CLOUD_TAGS.includes(tag))),
@@ -252,16 +253,17 @@ export default function CloudResourcesPage() {
   // Group resources by category
   const resourcesByCategory = useMemo(() => {
     const groups: Record<ResourceCategory, CloudResource[]> = {
-      ec2: [], rds: [], lambda: [], s3: [], alb: [], cloudfront: [],
+      compute: [], databases: [], functions: [], storage: [], loadbalancer: [], apis: [], cdn: [],
     };
     for (const r of cloudResources) {
       const base = getResourceBaseType(r.type);
-      if (base === 'EC2') groups.ec2.push(r);
-      else if (base === 'RDS') groups.rds.push(r);
-      else if (base === 'LAMBDA') groups.lambda.push(r);
-      else if (base === 'S3') groups.s3.push(r);
-      else if (base === 'ALB' || base === 'API') groups.alb.push(r);
-      else if (base === 'CLOUDFRONT') groups.cloudfront.push(r);
+      if (base === 'EC2') groups.compute.push(r);
+      else if (base === 'RDS') groups.databases.push(r);
+      else if (base === 'LAMBDA') groups.functions.push(r);
+      else if (base === 'S3') groups.storage.push(r);
+      else if (base === 'ALB') groups.loadbalancer.push(r);
+      else if (base === 'API') groups.apis.push(r);
+      else if (base === 'CLOUDFRONT') groups.cdn.push(r);
     }
     return groups;
   }, [cloudResources]);
@@ -532,7 +534,7 @@ export default function CloudResourcesPage() {
     </Table>
   );
 
-  const renderALBTable = () => (
+  const renderLoadBalancerTable = () => (
     <Table>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
@@ -544,7 +546,7 @@ export default function CloudResourcesPage() {
       </TableHeader>
       <TableBody>
         {filteredResources.length === 0 ? (
-          <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Aucune ressource ALB / API Gateway détectée</TableCell></TableRow>
+          <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Aucun Load Balancer détecté</TableCell></TableRow>
         ) : filteredResources.map((r) => (
           <TableRow key={r.id}>
             <TableCell className="font-medium text-foreground">{r.name}</TableCell>
@@ -557,7 +559,32 @@ export default function CloudResourcesPage() {
     </Table>
   );
 
-  const renderCloudFrontTable = () => (
+  const renderAPIsTable = () => (
+    <Table>
+      <TableHeader>
+        <TableRow className="hover:bg-transparent">
+          <TableHead>Nom</TableHead>
+          <TableHead>Type</TableHead>
+          <TableHead>Request count</TableHead>
+          <TableHead>Latence moy.</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {filteredResources.length === 0 ? (
+          <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Aucune API Gateway détectée</TableCell></TableRow>
+        ) : filteredResources.map((r) => (
+          <TableRow key={r.id}>
+            <TableCell className="font-medium text-foreground">{r.name}</TableCell>
+            <TableCell className="text-xs text-muted-foreground">—</TableCell>
+            <TableCell className="text-xs text-muted-foreground">—</TableCell>
+            <TableCell className="text-xs text-muted-foreground">—</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+
+  const renderCDNTable = () => (
     <Table>
       <TableHeader>
         <TableRow className="hover:bg-transparent">
@@ -569,7 +596,7 @@ export default function CloudResourcesPage() {
       </TableHeader>
       <TableBody>
         {filteredResources.length === 0 ? (
-          <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Aucune distribution CloudFront détectée</TableCell></TableRow>
+          <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Aucune distribution CDN détectée</TableCell></TableRow>
         ) : filteredResources.map((r) => (
           <TableRow key={r.id}>
             <TableCell className="font-medium text-foreground">{r.name}</TableCell>
@@ -584,12 +611,13 @@ export default function CloudResourcesPage() {
 
   const renderTable = () => {
     switch (activeTab) {
-      case 'ec2': return renderEC2Table();
-      case 'rds': return renderRDSTable();
-      case 'lambda': return renderLambdaTable();
-      case 's3': return renderS3Table();
-      case 'alb': return renderALBTable();
-      case 'cloudfront': return renderCloudFrontTable();
+      case 'compute': return renderEC2Table();
+      case 'databases': return renderRDSTable();
+      case 'functions': return renderLambdaTable();
+      case 'storage': return renderS3Table();
+      case 'loadbalancer': return renderLoadBalancerTable();
+      case 'apis': return renderAPIsTable();
+      case 'cdn': return renderCDNTable();
     }
   };
 
