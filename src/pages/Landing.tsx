@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight, Check, X, Sparkles,
@@ -11,6 +11,7 @@ import { useLangPrefix } from "@/hooks/use-lang-prefix";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import duckLogo from "@/assets/moniduck-logo.png";
+import { useScrollReveal, useStaggerReveal } from "@/hooks/use-scroll-reveal";
 
 /* ── Solutions ────────────────────────────────────── */
 
@@ -84,10 +85,93 @@ const annualPrices: Record<string, number> = {
   scaleup: 159,
 };
 
+/* ── Terminal typing effect ─────────────────────── */
+
+const terminalLines = [
+  { icon: "✓", color: "text-success", text: "api.production", detail: "— 200 OK · 42ms" },
+  { icon: "✓", color: "text-success", text: "auth.production", detail: "— 200 OK · 38ms" },
+  { icon: "⚠", color: "text-warning", text: "cdn.staging", detail: "— degraded · 380ms" },
+  { icon: "✓", color: "text-success", text: "AWS us-east-1", detail: "— 12 services healthy" },
+  { icon: "✓", color: "text-success", text: "Google Workspace", detail: "— 142 users · 68% storage" },
+  { icon: "✓", color: "text-success", text: "Stripe", detail: "— webhooks healthy · $48.2k MRR" },
+];
+
+function TerminalTyping() {
+  const [visibleLines, setVisibleLines] = useState(0);
+  const [showSummary, setShowSummary] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const hasStarted = useRef(false);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !hasStarted.current) {
+          hasStarted.current = true;
+          let i = 0;
+          const interval = setInterval(() => {
+            i++;
+            if (i <= terminalLines.length) {
+              setVisibleLines(i);
+            } else {
+              setShowSummary(true);
+              clearInterval(interval);
+            }
+          }, 400);
+        }
+      },
+      { threshold: 0.3 }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={containerRef} className="p-6 md:p-8 font-mono text-sm text-muted-foreground space-y-2">
+      {terminalLines.map((line, i) => (
+        <p
+          key={i}
+          className={`transition-all duration-300 ${
+            i < visibleLines ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+          }`}
+        >
+          <span className={line.color}>{line.icon}</span>{" "}
+          {line.text}{" "}
+          <span className="text-muted-foreground/60">{line.detail}</span>
+        </p>
+      ))}
+      <p
+        className={`text-primary transition-all duration-500 ${
+          showSummary ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+        }`}
+      >
+        → 6 sources connected · 1 warning · 0 critical
+      </p>
+    </div>
+  );
+}
+
 export default function Landing() {
   const { t } = useTranslation();
   const lp = useLangPrefix();
   const [isAnnual, setIsAnnual] = useState(false);
+
+  // Scroll reveal refs
+  const heroRef = useScrollReveal({ delay: 100 });
+  const terminalRef = useScrollReveal({ delay: 300 });
+  const howItWorksHeaderRef = useScrollReveal();
+  const pricingHeaderRef = useScrollReveal();
+  const faqRef = useScrollReveal();
+  const pricingGridRef = useStaggerReveal(planKeys.length, 120);
+
+  const stepRefs = [
+    useScrollReveal({ delay: 0 }),
+    useScrollReveal({ delay: 0 }),
+    useScrollReveal({ delay: 0 }),
+  ];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -116,9 +200,9 @@ export default function Landing() {
 
       {/* Hero */}
       <section className="max-w-6xl mx-auto px-6 pt-24 pb-20 md:pt-32 md:pb-28">
-        <div className="max-w-3xl">
+        <div ref={heroRef} className="max-w-3xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-card text-xs text-muted-foreground mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-success" />
+            <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
             {t("landing.badge")}
           </div>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-[1.1] mb-6">
@@ -148,10 +232,10 @@ export default function Landing() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button size="lg" className="text-base px-8" asChild>
+            <Button size="lg" className="text-base px-8 group" asChild>
               <Link to={`${lp}/auth`}>
                 {t("landing.startMonitoring")}
-                <ArrowRight className="w-4 h-4 ml-2" />
+                <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
               </Link>
             </Button>
             <Button size="lg" variant="outline" className="text-base px-8" asChild>
@@ -161,29 +245,21 @@ export default function Landing() {
         </div>
 
         {/* Terminal-style preview */}
-        <div className="mt-16 md:mt-20 rounded-xl border border-border bg-card overflow-hidden shadow-lg">
+        <div ref={terminalRef} className="mt-16 md:mt-20 rounded-xl border border-border bg-card overflow-hidden shadow-lg">
           <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card">
             <div className="w-3 h-3 rounded-full bg-destructive/60" />
             <div className="w-3 h-3 rounded-full bg-warning/60" />
             <div className="w-3 h-3 rounded-full bg-success/60" />
             <span className="ml-3 text-xs font-mono text-muted-foreground">dashboard — moniduck</span>
           </div>
-          <div className="p-6 md:p-8 font-mono text-sm text-muted-foreground space-y-2">
-            <p><span className="text-success">✓</span> api.production <span className="text-muted-foreground/60">— 200 OK · 42ms</span></p>
-            <p><span className="text-success">✓</span> auth.production <span className="text-muted-foreground/60">— 200 OK · 38ms</span></p>
-            <p><span className="text-warning">⚠</span> cdn.staging <span className="text-muted-foreground/60">— degraded · 380ms</span></p>
-            <p><span className="text-success">✓</span> AWS us-east-1 <span className="text-muted-foreground/60">— 12 services healthy</span></p>
-            <p><span className="text-success">✓</span> Google Workspace <span className="text-muted-foreground/60">— 142 users · 68% storage</span></p>
-            <p><span className="text-success">✓</span> Stripe <span className="text-muted-foreground/60">— webhooks healthy · $48.2k MRR</span></p>
-            <p className="text-primary">→ 6 sources connected · 1 warning · 0 critical</p>
-          </div>
+          <TerminalTyping />
         </div>
       </section>
 
       {/* ── How it works ────────────────────────────── */}
       <section id="solutions" className="border-t border-border bg-card/40">
         <div className="max-w-6xl mx-auto px-6 py-20 md:py-28">
-          <div className="text-center mb-16">
+          <div ref={howItWorksHeaderRef} className="text-center mb-16">
             <p className="text-sm font-medium text-primary mb-3 tracking-wide uppercase">How it works</p>
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
               Up and running <span className="text-primary">in minutes.</span>
@@ -195,7 +271,7 @@ export default function Landing() {
 
           <div className="space-y-20 md:space-y-28">
             {steps.map((step, i) => (
-              <div key={step.number} className={`grid lg:grid-cols-2 gap-10 lg:gap-16 items-center`}>
+              <div ref={stepRefs[i]} key={step.number} className={`grid lg:grid-cols-2 gap-10 lg:gap-16 items-center`}>
                 {/* Text */}
                 <div className={i % 2 === 1 ? "lg:order-2" : ""}>
                   <div className="flex items-center gap-4 mb-5">
@@ -210,7 +286,7 @@ export default function Landing() {
 
                 {/* Visual */}
                 <div className={i % 2 === 1 ? "lg:order-1" : ""}>
-                  <div className="rounded-xl border border-border bg-card overflow-hidden shadow-lg">
+                  <div className="rounded-xl border border-border bg-card overflow-hidden shadow-lg hover:shadow-xl hover:border-primary/20 transition-all duration-500">
                     <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border">
                       <div className="w-2.5 h-2.5 rounded-full bg-destructive/60" />
                       <div className="w-2.5 h-2.5 rounded-full bg-warning/60" />
@@ -237,7 +313,7 @@ export default function Landing() {
       {/* Pricing */}
       <section id="pricing" className="border-t border-border bg-card/40">
         <div className="max-w-7xl mx-auto px-6 py-20 md:py-28">
-          <div className="text-center max-w-2xl mx-auto mb-10">
+          <div ref={pricingHeaderRef} className="text-center max-w-2xl mx-auto mb-10">
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">{t("landing.pricingTitle")}</h2>
             <p className="text-muted-foreground text-lg">{t("landing.pricingSubtitle")}</p>
           </div>
@@ -261,7 +337,7 @@ export default function Landing() {
             </span>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto">
+          <div ref={pricingGridRef} className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto">
             {planKeys.map((planKey) => {
               const isPopular = planKey === "startup";
               const highlights = t(`pricing.${planKey}.highlights`, { returnObjects: true, defaultValue: [] }) as string[];
@@ -274,7 +350,7 @@ export default function Landing() {
               return (
                 <div
                   key={planKey}
-                  className={`rounded-xl border p-5 flex flex-col relative ${
+                  className={`rounded-xl border p-5 flex flex-col relative hover:scale-[1.02] transition-transform duration-300 ${
                     isPopular
                       ? "border-primary bg-primary/5 shadow-lg ring-1 ring-primary/20"
                       : "border-border bg-card"
@@ -352,7 +428,7 @@ export default function Landing() {
           </div>
 
           {/* FAQ */}
-          <div className="max-w-3xl mx-auto mt-20 md:mt-28">
+          <div ref={faqRef} className="max-w-3xl mx-auto mt-20 md:mt-28">
             <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-center mb-10">
               {t("pricing.faq.title")}
             </h2>

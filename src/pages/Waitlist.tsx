@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import duckLogo from "@/assets/moniduck-logo.png";
+import { useScrollReveal, useStaggerReveal } from "@/hooks/use-scroll-reveal";
 
 /* ── Solutions data ───────────────────────────────── */
 
@@ -188,14 +189,14 @@ function WaitlistForm({
           required
           className="h-12 text-base flex-1"
         />
-        <Button type="submit" size="lg" className="h-12 px-8 shrink-0" disabled={loading}>
+        <Button type="submit" size="lg" className="h-12 px-8 shrink-0 group" disabled={loading}>
           {loading ? (
             <span className="flex items-center gap-2">
               <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
               Joining...
             </span>
           ) : (
-            <>Join the waitlist <ArrowRight className="w-4 h-4 ml-1" /></>
+            <>Join the waitlist <ArrowRight className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" /></>
           )}
         </Button>
       </form>
@@ -229,14 +230,14 @@ function WaitlistForm({
         className="h-12 text-base"
         maxLength={200}
       />
-      <Button type="submit" size="lg" className="w-full h-12 text-base" disabled={loading}>
+      <Button type="submit" size="lg" className="w-full h-12 text-base group" disabled={loading}>
         {loading ? (
           <span className="flex items-center gap-2">
             <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
             Joining...
           </span>
         ) : (
-          <>Join the waitlist <ArrowRight className="w-4 h-4 ml-1" /></>
+          <>Join the waitlist <ArrowRight className="w-4 h-4 ml-1 transition-transform group-hover:translate-x-1" /></>
         )}
       </Button>
       <p className="text-xs text-muted-foreground text-center">
@@ -287,6 +288,17 @@ export default function Waitlist() {
   const [capturedEmail, setCapturedEmail] = useState("");
   const { canvasRef, fire } = useConfetti();
 
+  // Scroll reveal refs
+  const heroRef = useScrollReveal({ delay: 100 });
+  const formRef = useScrollReveal({ delay: 250 });
+  const solutionsHeaderRef = useScrollReveal();
+  const solutionsGridRef = useStaggerReveal(solutions.length, 120);
+  const productsHeaderRef = useScrollReveal();
+  const productsGridRef = useStaggerReveal(3, 150);
+  const builtForRef = useScrollReveal();
+  const faqHeaderRef = useScrollReveal();
+  const finalCtaRef = useScrollReveal();
+
   const handleSuccess = () => {
     setSubmitted(true);
     fire();
@@ -316,7 +328,7 @@ export default function Waitlist() {
       <section className="max-w-6xl mx-auto px-6 pt-16 pb-16 md:pt-24 md:pb-24">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           {/* Left — Copy */}
-          <div>
+          <div ref={heroRef}>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-xs text-primary font-medium mb-6">
               <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
               Early Access — Limited Spots
@@ -347,9 +359,9 @@ export default function Waitlist() {
           </div>
 
           {/* Right — Form */}
-          <div id="waitlist-form" className="scroll-mt-24">
+          <div ref={formRef} id="waitlist-form" className="scroll-mt-24">
             {submitted ? <SuccessCard email={capturedEmail} /> : (
-              <div className="rounded-2xl border border-border bg-card p-6 shadow-lg">
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-lg hover:shadow-xl hover:border-primary/20 transition-all duration-500">
                 <div className="flex items-center gap-2 mb-4">
                   <Sparkles className="w-4 h-4 text-primary" />
                   <span className="text-sm font-medium text-foreground">Get early access</span>
@@ -364,7 +376,7 @@ export default function Waitlist() {
       {/* ─── Solutions ───────────────────────────── */}
       <section className="border-t border-border">
         <div className="max-w-6xl mx-auto px-6 py-20 md:py-28">
-          <div className="text-center mb-16">
+          <div ref={solutionsHeaderRef} className="text-center mb-16">
             <p className="text-sm font-medium text-primary mb-3 tracking-wide uppercase">Solutions</p>
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
               Four problems. <span className="text-primary">One platform.</span>
@@ -374,11 +386,11 @@ export default function Waitlist() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div ref={solutionsGridRef} className="grid md:grid-cols-2 gap-6">
             {solutions.map((sol) => (
               <div
                 key={sol.title}
-                className="rounded-xl border border-border bg-card p-6 hover:border-primary/30 hover:shadow-lg transition-all duration-300 group"
+                className="rounded-xl border border-border bg-card p-6 hover:border-primary/30 hover:shadow-lg hover:scale-[1.02] transition-all duration-300 group"
               >
                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-5 group-hover:bg-primary/15 transition-colors">
                   <sol.icon className="w-6 h-6 text-primary" />
@@ -394,19 +406,19 @@ export default function Waitlist() {
       {/* ─── Products ────────────────────────────── */}
       <section className="border-t border-border bg-card/30">
         <div className="max-w-6xl mx-auto px-6 py-16 md:py-20">
-          <div className="text-center mb-12">
+          <div ref={productsHeaderRef} className="text-center mb-12">
             <p className="text-sm font-medium text-primary mb-3 tracking-wide uppercase">Products</p>
             <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-3">
               Three engines powering your monitoring.
             </h2>
           </div>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div ref={productsGridRef} className="grid md:grid-cols-3 gap-6">
             {[
               { icon: Globe, title: "HTTP Monitoring", desc: "Uptime, response time, SSL & content checks for any URL." },
               { icon: Cloud, title: "Cloud Discovery", desc: "Auto-discover EC2, Lambda, RDS, S3 across AWS, GCP & Azure." },
               { icon: Plug, title: "SaaS Integrations", desc: "Google Workspace, Microsoft 365, Stripe — one OAuth, live data." },
             ].map((p) => (
-              <div key={p.title} className="flex items-start gap-4 p-4 rounded-lg border border-border bg-card">
+              <div key={p.title} className="flex items-start gap-4 p-4 rounded-lg border border-border bg-card hover:border-primary/30 hover:shadow-md transition-all duration-300">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                   <p.icon className="w-5 h-5 text-primary" />
                 </div>
@@ -422,7 +434,7 @@ export default function Waitlist() {
 
       {/* ─── Built for ───────────────────────────── */}
       <section className="border-t border-border">
-        <div className="max-w-4xl mx-auto px-6 py-16 md:py-20 text-center">
+        <div ref={builtForRef} className="max-w-4xl mx-auto px-6 py-16 md:py-20 text-center">
           <p className="text-2xl md:text-3xl font-bold tracking-tight mb-3">
             Built for scale-ups. <span className="text-primary">Not enterprises with 200 tools.</span>
           </p>
@@ -435,7 +447,7 @@ export default function Waitlist() {
       {/* ─── FAQ ─────────────────────────────────── */}
       <section className="border-t border-border">
         <div className="max-w-2xl mx-auto px-6 py-20 md:py-28">
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-12 text-center">
+          <h2 ref={faqHeaderRef} className="text-3xl md:text-4xl font-bold tracking-tight mb-12 text-center">
             Questions?
           </h2>
           <div>
@@ -448,7 +460,7 @@ export default function Waitlist() {
 
       {/* ─── Final CTA ───────────────────────────── */}
       <section className="border-t border-border bg-card/40">
-        <div className="max-w-3xl mx-auto px-6 py-20 md:py-28 text-center">
+        <div ref={finalCtaRef} className="max-w-3xl mx-auto px-6 py-20 md:py-28 text-center">
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-3">
             Early access. <span className="text-primary">Free to start.</span>
           </h2>
