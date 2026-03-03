@@ -158,24 +158,19 @@ export default function Alerts() {
               </div>
             </div>
 
-            {/* Slack */}
-            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <MessageSquare className="w-5 h-5 text-primary" />
+            {/* Slack — coming soon */}
+            <div className="bg-card border border-border rounded-xl p-6 opacity-60">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center">
+                    <MessageSquare className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground text-sm">Slack</h3>
+                    <p className="text-xs text-muted-foreground">Slack integration coming soon</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-semibold text-foreground text-sm">Slack</h3>
-                  <p className="text-xs text-muted-foreground">Post alerts to a Slack channel via webhook</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm">Webhook URL</Label>
-                <Input
-                  placeholder="https://hooks.slack.com/services/..."
-                  value={slackUrl}
-                  onChange={(e) => setSlackUrl(e.target.value)}
-                />
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">V2</span>
               </div>
             </div>
 

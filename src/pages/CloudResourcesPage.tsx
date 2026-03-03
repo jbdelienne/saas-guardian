@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { useLatestSyncMetrics } from '@/hooks/use-all-sync-data';
 import { useCostByResource } from '@/hooks/use-cost-by-resource';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const CLOUD_TAGS = ['aws', 'ec2', 's3', 'lambda', 'rds', 'gcp', 'azure'];
 
@@ -69,16 +70,13 @@ interface CloudResource {
   encryptionEnabled?: boolean;
 }
 
-type ResourceCategory = 'compute' | 'databases' | 'functions' | 'storage' | 'loadbalancer' | 'apis' | 'cdn';
+type ResourceCategory = 'compute' | 'databases' | 'functions' | 'storage';
 
 const categoryLabels: Record<ResourceCategory, string> = {
   compute: 'Compute',
   databases: 'Databases',
   functions: 'Functions',
   storage: 'Storage',
-  loadbalancer: 'Load Balancer',
-  apis: 'APIs',
-  cdn: 'CDN',
 };
 
 export default function CloudResourcesPage() {
@@ -254,7 +252,7 @@ export default function CloudResourcesPage() {
   // Group resources by category
   const resourcesByCategory = useMemo(() => {
     const groups: Record<ResourceCategory, CloudResource[]> = {
-      compute: [], databases: [], functions: [], storage: [], loadbalancer: [], apis: [], cdn: [],
+      compute: [], databases: [], functions: [], storage: [],
     };
     for (const r of cloudResources) {
       const base = getResourceBaseType(r.type);
@@ -262,9 +260,6 @@ export default function CloudResourcesPage() {
       else if (base === 'RDS') groups.databases.push(r);
       else if (base === 'LAMBDA') groups.functions.push(r);
       else if (base === 'S3') groups.storage.push(r);
-      else if (base === 'ALB') groups.loadbalancer.push(r);
-      else if (base === 'API') groups.apis.push(r);
-      else if (base === 'CLOUDFRONT') groups.cdn.push(r);
     }
     return groups;
   }, [cloudResources]);
@@ -285,33 +280,46 @@ export default function CloudResourcesPage() {
     return counts;
   }, [cloudResources]);
 
-  const getResourceCost = (resource: CloudResource): number | null => {
+  type CostResult = { amount: number | null; isExact: boolean };
+
+  const getResourceCost = (resource: CloudResource): CostResult => {
     // Try per-resource cost first (exact match by arnOrId)
     const exactCost = costByResourceId.get(resource.arnOrId);
     if (exactCost !== undefined) {
+      let amount: number;
       switch (costPeriod) {
-        case 'day': return exactCost / 30;
-        case 'month': return exactCost;
-        case 'year': return exactCost * 12;
+        case 'day': amount = exactCost / 30; break;
+        case 'month': amount = exactCost; break;
+        case 'year': amount = exactCost * 12; break;
       }
+      return { amount, isExact: true };
     }
-    // Fallback: average by service type
+    // Fallback: average by service type (estimated)
     const baseType = getResourceBaseType(resource.type);
     const total30d = costByType[baseType];
-    if (total30d === undefined) return null;
+    if (total30d === undefined) return { amount: null, isExact: false };
     const count = countByType[baseType] || 1;
     const perResourceMonthly = total30d / count;
+    let amount: number;
     switch (costPeriod) {
-      case 'day': return perResourceMonthly / 30;
-      case 'month': return perResourceMonthly;
-      case 'year': return perResourceMonthly * 12;
+      case 'day': amount = perResourceMonthly / 30; break;
+      case 'month': amount = perResourceMonthly; break;
+      case 'year': amount = perResourceMonthly * 12; break;
     }
+    return { amount, isExact: false };
   };
 
-  const formatCost = (cost: number | null): string => {
-    if (cost === null) return '—';
-    if (cost < 0.01) return '< $0.01';
-    return `$${cost.toFixed(2)}`;
+  const formatCostDisplay = (cost: CostResult): { text: string; className: string; tooltip?: string } => {
+    if (cost.amount === null) return { text: '—', className: 'text-muted-foreground' };
+    const formatted = cost.amount < 0.01 ? '< $0.01' : `$${cost.amount.toFixed(2)}`;
+    if (cost.isExact) {
+      return { text: formatted, className: 'text-foreground' };
+    }
+    return {
+      text: `~${formatted}`,
+      className: 'text-muted-foreground',
+      tooltip: 'Estimated cost. Enable Resource-level data in AWS Cost Explorer for exact figures.',
+    };
   };
 
   const statusConfig: Record<string, { label: string; dotClass: string }> = {
@@ -340,6 +348,27 @@ export default function CloudResourcesPage() {
       </DropdownMenu>
     </TableHead>
   );
+
+  const CostCell = ({ cost }: { cost: CostResult }) => {
+    const display = formatCostDisplay(cost);
+    if (!display.tooltip) {
+      return <TableCell className={`text-right font-mono text-sm ${display.className}`}>{display.text}</TableCell>;
+    }
+    return (
+      <TableCell className="text-right font-mono text-sm">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className={`cursor-help ${display.className}`}>{display.text}</span>
+            </TooltipTrigger>
+            <TooltipContent side="left" className="max-w-[220px] text-xs">
+              {display.tooltip}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </TableCell>
+    );
+  };
 
   const StatusCell = ({ status }: { status: string }) => {
     const cfg = statusConfig[status] ?? statusConfig.unknown;
@@ -400,7 +429,7 @@ export default function CloudResourcesPage() {
                   <span className="text-xs text-muted-foreground">—</span>
                 )}
               </TableCell>
-              <TableCell className="text-right font-mono text-sm">{formatCost(cost)}</TableCell>
+              <CostCell cost={cost} />
             </TableRow>
           );
         })}
@@ -451,7 +480,7 @@ export default function CloudResourcesPage() {
                   <span className="text-xs text-muted-foreground">—</span>
                 )}
               </TableCell>
-              <TableCell className="text-right font-mono text-sm">{formatCost(cost)}</TableCell>
+              <CostCell cost={cost} />
             </TableRow>
           );
         })}
@@ -493,7 +522,7 @@ export default function CloudResourcesPage() {
                   </span>
                 ) : <span className="text-xs text-muted-foreground">—</span>}
               </TableCell>
-              <TableCell className="text-right font-mono text-sm">{formatCost(cost)}</TableCell>
+              <CostCell cost={cost} />
             </TableRow>
           );
         })}
@@ -537,85 +566,10 @@ export default function CloudResourcesPage() {
                   <SecurityBadge safe={r.encryptionEnabled} label={r.encryptionEnabled ? 'Activé' : 'Désactivé'} />
                 ) : <span className="text-xs text-muted-foreground">—</span>}
               </TableCell>
-              <TableCell className="text-right font-mono text-sm">{formatCost(cost)}</TableCell>
+              <CostCell cost={cost} />
             </TableRow>
           );
         })}
-      </TableBody>
-    </Table>
-  );
-
-  const renderLoadBalancerTable = () => (
-    <Table>
-      <TableHeader>
-        <TableRow className="hover:bg-transparent">
-          <TableHead>Nom</TableHead>
-          <TableHead>Request count</TableHead>
-          <TableHead>5xx error rate</TableHead>
-          <TableHead>Latence moy.</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {filteredResources.length === 0 ? (
-          <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Aucun Load Balancer détecté</TableCell></TableRow>
-        ) : filteredResources.map((r) => (
-          <TableRow key={r.id}>
-            <TableCell className="font-medium text-foreground">{r.name}</TableCell>
-            <TableCell className="text-xs text-muted-foreground">—</TableCell>
-            <TableCell className="text-xs text-muted-foreground">—</TableCell>
-            <TableCell className="text-xs text-muted-foreground">—</TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
-
-  const renderAPIsTable = () => (
-    <Table>
-      <TableHeader>
-        <TableRow className="hover:bg-transparent">
-          <TableHead>Nom</TableHead>
-          <TableHead>Type</TableHead>
-          <TableHead>Request count</TableHead>
-          <TableHead>Latence moy.</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {filteredResources.length === 0 ? (
-          <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Aucune API Gateway détectée</TableCell></TableRow>
-        ) : filteredResources.map((r) => (
-          <TableRow key={r.id}>
-            <TableCell className="font-medium text-foreground">{r.name}</TableCell>
-            <TableCell className="text-xs text-muted-foreground">—</TableCell>
-            <TableCell className="text-xs text-muted-foreground">—</TableCell>
-            <TableCell className="text-xs text-muted-foreground">—</TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
-
-  const renderCDNTable = () => (
-    <Table>
-      <TableHeader>
-        <TableRow className="hover:bg-transparent">
-          <TableHead>Distribution</TableHead>
-          <TableHead>Cache hit ratio</TableHead>
-          <TableHead>Error rate</TableHead>
-          <TableHead>Bandwidth</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {filteredResources.length === 0 ? (
-          <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Aucune distribution CDN détectée</TableCell></TableRow>
-        ) : filteredResources.map((r) => (
-          <TableRow key={r.id}>
-            <TableCell className="font-medium text-foreground">{r.name}</TableCell>
-            <TableCell className="text-xs text-muted-foreground">—</TableCell>
-            <TableCell className="text-xs text-muted-foreground">—</TableCell>
-            <TableCell className="text-xs text-muted-foreground">—</TableCell>
-          </TableRow>
-        ))}
       </TableBody>
     </Table>
   );
@@ -626,9 +580,6 @@ export default function CloudResourcesPage() {
       case 'databases': return renderRDSTable();
       case 'functions': return renderLambdaTable();
       case 'storage': return renderS3Table();
-      case 'loadbalancer': return renderLoadBalancerTable();
-      case 'apis': return renderAPIsTable();
-      case 'cdn': return renderCDNTable();
     }
   };
 
