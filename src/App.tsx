@@ -21,6 +21,7 @@ import NotFound from "@/pages/NotFound";
 import Waitlist from "@/pages/Waitlist";
 import ReportsPage from "@/pages/ReportsPage";
 import AwsCostDashboard from "@/pages/AwsCostDashboard";
+import AwsIntegrationDetail from "@/pages/AwsIntegrationDetail";
 import PublicReport from "@/pages/PublicReport";
 
 const queryClient = new QueryClient();
@@ -65,6 +66,7 @@ const LangRoutes = () => (
       <Route path="cloud-resources" element={<ProtectedRoute><CloudResourcesPage /></ProtectedRoute>} />
       <Route path="integrations" element={<ProtectedRoute><Integrations /></ProtectedRoute>} />
       <Route path="integrations/aws/costs" element={<ProtectedRoute><AwsCostDashboard /></ProtectedRoute>} />
+      <Route path="integrations/aws" element={<ProtectedRoute><AwsIntegrationDetail /></ProtectedRoute>} />
       <Route path="integrations/:type" element={<ProtectedRoute><IntegrationDetail /></ProtectedRoute>} />
       <Route path="alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
       <Route path="reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
