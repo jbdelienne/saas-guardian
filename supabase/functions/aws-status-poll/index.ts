@@ -44,6 +44,35 @@ async function pollEC2Status(aws: AwsClient, region: string) {
   return results;
 }
 
+async function pollLambdaErrorRate(aws: AwsClient, region: string, functionName: string): Promise<number> {
+  try {
+    const now = new Date();
+    const startTime = new Date(now.getTime() - 5 * 60 * 1000); // 5 min ago
+    const params = new URLSearchParams({
+      Action: "GetMetricStatistics",
+      Version: "2010-08-01",
+      Namespace: "AWS/Lambda",
+      MetricName: "Errors",
+      "Dimensions.member.1.Name": "FunctionName",
+      "Dimensions.member.1.Value": functionName,
+      StartTime: startTime.toISOString(),
+      EndTime: now.toISOString(),
+      Period: "300",
+      "Statistics.member.1": "Sum",
+    });
+    const res = await aws.fetch(
+      `https://monitoring.${region}.amazonaws.com/?${params.toString()}`,
+      { method: "GET" }
+    );
+    const text = await res.text();
+    const sumMatch = text.match(/<Sum>([\d.]+)<\/Sum>/);
+    return sumMatch ? parseFloat(sumMatch[1]) : 0;
+  } catch (e) {
+    console.error(`CloudWatch Lambda error for ${functionName}:`, e);
+    return 0;
+  }
+}
+
 async function pollRDSStatus(aws: AwsClient, region: string) {
   const results: Array<{ id: string; status: string }> = [];
   try {
@@ -111,7 +140,7 @@ Deno.serve(async (req) => {
       // Load services once (filter AWS in memory to avoid array-operator quirks)
       const { data: awsServices = [] } = await supabaseAdmin
         .from("services")
-        .select("id, name, url, tags")
+        .select("id, name, url, tags, status")
         .eq("user_id", cred.user_id);
 
       
@@ -128,8 +157,46 @@ Deno.serve(async (req) => {
         ])
       );
 
-      // Update all AWS compute resources by instance/database ID from URL
-      // Fallback to current service status when provider API doesn't return the resource.
+      // --- Helper: update service with change detection + alert ---
+      async function updateServiceStatus(svc: any, newStatus: string) {
+        const previousStatus = svc.status;
+        if (previousStatus !== newStatus) {
+          await supabaseAdmin
+            .from("services")
+            .update({ status: newStatus, last_check: now })
+            .eq("id", svc.id);
+
+          // Alert on transition to "down"
+          if (newStatus === "down" && previousStatus !== "down") {
+            await supabaseAdmin.from("alerts").insert({
+              user_id: cred.user_id,
+              workspace_id: cred.workspace_id,
+              service_id: svc.id,
+              alert_type: "service_down",
+              title: `${svc.name} is down`,
+              description: `${svc.name} transitioned from "${previousStatus}" to "down"`,
+              severity: "critical",
+            });
+          }
+        } else {
+          // Still update last_check even if status unchanged
+          await supabaseAdmin
+            .from("services")
+            .update({ last_check: now })
+            .eq("id", svc.id);
+        }
+
+        totalUpdated++;
+        await supabaseAdmin.from("checks").insert({
+          service_id: svc.id,
+          user_id: cred.user_id,
+          status: newStatus,
+          response_time: 0,
+          checked_at: now,
+        });
+      }
+
+      // --- EC2 + RDS compute services ---
       const computeServices = awsServices.filter((s: any) =>
         Array.isArray(s.tags) && (s.tags.includes("ec2") || s.tags.includes("rds"))
       );
@@ -151,24 +218,28 @@ Deno.serve(async (req) => {
             ? rdsStatusById.get(rdsId)
             : undefined;
 
-        const status = computedStatus ?? "up";
+        await updateServiceStatus(svc, computedStatus ?? "up");
+      }
 
-        const { data: updated } = await supabaseAdmin
-          .from("services")
-          .update({ status, last_check: now })
-          .eq("id", svc.id)
-          .select("id");
+      // --- Lambda services: check CloudWatch error rate ---
+      const lambdaServices = awsServices.filter((s: any) =>
+        Array.isArray(s.tags) && s.tags.includes("lambda")
+      );
 
-        if (updated?.length) {
-          totalUpdated++;
-          await supabaseAdmin.from("checks").insert({
-            service_id: svc.id,
-            user_id: cred.user_id,
-            status,
-            response_time: 0,
-            checked_at: now,
-          });
+      for (const svc of lambdaServices) {
+        // Extract function name from URL (e.g. ...functions/my-function)
+        const fnName = typeof svc.url === "string"
+          ? svc.url.match(/functions\/([^?&#/]+)/)?.[1]
+          : undefined;
+
+        if (!fnName) {
+          await updateServiceStatus(svc, "up");
+          continue;
         }
+
+        const errorCount = await pollLambdaErrorRate(aws, cred.region, fnName);
+        const lambdaStatus = errorCount > 0 ? "degraded" : "up";
+        await updateServiceStatus(svc, lambdaStatus);
       }
 
       // Update last_sync_at on credential
