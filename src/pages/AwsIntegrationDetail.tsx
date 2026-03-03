@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
-import { useIntegrations } from '@/hooks/use-supabase';
-import { useSyncData, useAwsCredentials, useSyncAwsCredentials } from '@/hooks/use-integrations';
+import { useIntegrations, useServices } from '@/hooks/use-supabase';
+import { useAwsCredentials, useSyncAwsCredentials } from '@/hooks/use-integrations';
 import { useLatestSyncMetrics } from '@/hooks/use-all-sync-data';
 import { useCostData } from '@/hooks/use-cost-data';
 import { useCostByResource } from '@/hooks/use-cost-by-resource';
@@ -9,149 +9,194 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
-  ArrowLeft, RefreshCw, Loader2, DollarSign, Server, Zap, Database,
-  HardDrive, ShieldAlert, AlertTriangle, CheckCircle2, ArrowRight, Clock, TrendingUp
+  ArrowLeft, RefreshCw, Loader2, Server, Zap, Database,
+  HardDrive, ShieldAlert, AlertTriangle, CheckCircle2, ArrowRight, Clock, TrendingUp, ExternalLink
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { useLangPrefix } from '@/hooks/use-lang-prefix';
-import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 
-// ─── Helpers ───────────────────────────────────────────
+// ─── Types ─────────────────────────────────────────────
 function fmt$(n: number) {
   return `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-interface ResourceSummary {
-  total: number;
-  running: number;
-  errors: number;
-  publicWarnings: number;
+interface AwsResource {
+  id: string;
+  name: string;
+  type: string; // EC2, LAMBDA, RDS, S3
+  status: string;
+  detail?: string; // instance type, runtime, engine
+  publicIp?: string;
+  publiclyAccessible?: boolean;
+  publicAccess?: boolean;
+  stoppedSince?: string;
 }
+
+type ResourceCategory = 'compute' | 'functions' | 'databases' | 'storage';
 
 // ─── Component ─────────────────────────────────────────
 export default function AwsIntegrationDetail() {
   const navigate = useNavigate();
   const lp = useLangPrefix();
-  const queryClient = useQueryClient();
 
   // Data sources
   const { data: integrations = [] } = useIntegrations();
   const awsIntegration = integrations.find(i => i.integration_type === 'aws' && i.is_connected);
   const { data: awsCreds } = useAwsCredentials();
-  const { data: syncData = [], isLoading: syncLoading } = useSyncData(awsIntegration?.id);
-  const { data: allMetrics = [] } = useLatestSyncMetrics();
+  const { data: services = [] } = useServices();
+  const { data: syncMetrics = [] } = useLatestSyncMetrics();
   const { costByResourceId } = useCostByResource();
   const { totalCost, previousCost } = useCostData(awsCreds?.id, 'monthly');
   const syncAws = useSyncAwsCredentials();
   const [syncing, setSyncing] = useState(false);
 
-  // ─── Derived data ──────────────────────────────────
-  const awsMetrics = useMemo(() => allMetrics.filter(m => {
-    const meta = m.metadata as Record<string, any> | null;
-    return meta?.provider === 'aws';
-  }), [allMetrics]);
+  const CLOUD_TAGS = ['aws', 'ec2', 's3', 'lambda', 'rds'];
 
-  const resourcesByCategory = useMemo(() => {
-    const cats: Record<string, { items: typeof awsMetrics; summary: ResourceSummary }> = {
-      compute: { items: [], summary: { total: 0, running: 0, errors: 0, publicWarnings: 0 } },
-      functions: { items: [], summary: { total: 0, running: 0, errors: 0, publicWarnings: 0 } },
-      databases: { items: [], summary: { total: 0, running: 0, errors: 0, publicWarnings: 0 } },
-      storage: { items: [], summary: { total: 0, running: 0, errors: 0, publicWarnings: 0 } },
-    };
+  // ─── Extract resources from sync metrics (same as CloudResourcesPage) ──
+  const resources = useMemo(() => {
+    const res: AwsResource[] = [];
+    const seen = new Set<string>();
 
-    for (const m of awsMetrics) {
-      const meta = m.metadata as Record<string, any> | null;
-      const type = (meta?.type || '').toUpperCase();
-      const status = (meta?.status || '').toLowerCase();
-      const isPublic = meta?.publicly_accessible || meta?.public_access;
-
-      let cat = 'compute';
-      if (type === 'LAMBDA') cat = 'functions';
-      else if (type === 'RDS') cat = 'databases';
-      else if (type === 'S3') cat = 'storage';
-
-      cats[cat].items.push(m);
-      cats[cat].summary.total++;
-      if (status === 'running' || status === 'available' || status === 'active') cats[cat].summary.running++;
-      if (meta?.error_rate && meta.error_rate > 5) cats[cat].summary.errors++;
-      if (isPublic) cats[cat].summary.publicWarnings++;
+    // EC2 from sync metrics
+    const ec2Detail = syncMetrics.find(m => m.metric_key === 'ec2_instances_detail');
+    if (ec2Detail?.metadata) {
+      const instances = (ec2Detail.metadata as Record<string, unknown>).instances as Array<{
+        id: string; type: string; state: string; name?: string; publicIp?: string; stateTransitionReason?: string;
+      }> | undefined;
+      if (instances) {
+        for (const inst of instances) {
+          seen.add(inst.id);
+          res.push({
+            id: inst.id,
+            name: inst.name || inst.id,
+            type: 'EC2',
+            status: inst.state,
+            detail: inst.type,
+            publicIp: inst.publicIp,
+            stoppedSince: inst.state === 'stopped' ? inst.stateTransitionReason : undefined,
+          });
+        }
+      }
     }
 
+    // Lambda
+    const lambdaMetric = syncMetrics.find(m => m.metric_key === 'lambda_total_functions');
+    if (lambdaMetric?.metadata) {
+      const functions = (lambdaMetric.metadata as Record<string, unknown>).functions as Array<{
+        name: string; runtime: string;
+      }> | undefined;
+      if (functions) {
+        for (const fn of functions) {
+          seen.add(fn.name);
+          res.push({
+            id: fn.name,
+            name: fn.name,
+            type: 'LAMBDA',
+            status: 'active',
+            detail: fn.runtime,
+          });
+        }
+      }
+    }
+
+    // RDS
+    const rdsMetric = syncMetrics.find(m => m.metric_key === 'rds_total_instances');
+    if (rdsMetric?.metadata) {
+      const instances = (rdsMetric.metadata as Record<string, unknown>).instances as Array<{
+        id: string; engine: string; status: string; publiclyAccessible?: boolean;
+      }> | undefined;
+      if (instances) {
+        for (const inst of instances) {
+          seen.add(inst.id);
+          res.push({
+            id: inst.id,
+            name: inst.id,
+            type: 'RDS',
+            status: inst.status,
+            detail: inst.engine,
+            publiclyAccessible: inst.publiclyAccessible,
+          });
+        }
+      }
+    }
+
+    // S3
+    const s3Metric = syncMetrics.find(m => m.metric_key === 's3_total_buckets');
+    if (s3Metric?.metadata) {
+      const buckets = (s3Metric.metadata as Record<string, unknown>).buckets as string[] | undefined;
+      if (buckets) {
+        for (const bucket of buckets) {
+          seen.add(bucket);
+          res.push({
+            id: bucket,
+            name: bucket,
+            type: 'S3',
+            status: 'active',
+          });
+        }
+      }
+    }
+
+    return res;
+  }, [syncMetrics]);
+
+  // ─── Group by category ─────────────────────────────
+  const resourcesByCategory = useMemo(() => {
+    const cats: Record<ResourceCategory, AwsResource[]> = {
+      compute: [], functions: [], databases: [], storage: [],
+    };
+    for (const r of resources) {
+      if (r.type === 'EC2') cats.compute.push(r);
+      else if (r.type === 'LAMBDA') cats.functions.push(r);
+      else if (r.type === 'RDS') cats.databases.push(r);
+      else if (r.type === 'S3') cats.storage.push(r);
+    }
     return cats;
-  }, [awsMetrics]);
+  }, [resources]);
 
-  const totalResources = awsMetrics.length;
+  const totalResources = resources.length;
 
-  // Security issues
+  // ─── Security issues ───────────────────────────────
   const securityIssues = useMemo(() => {
     const issues: Array<{ severity: 'critical' | 'warning'; message: string }> = [];
-    for (const m of awsMetrics) {
-      const meta = m.metadata as Record<string, any> | null;
-      if (!meta) continue;
-      const type = (meta.type || '').toUpperCase();
-      const name = meta.name || m.metric_key;
-
-      if (type === 'S3' && meta.public_access) {
-        issues.push({ severity: 'critical', message: `S3 bucket "${name}" is publicly accessible` });
+    for (const r of resources) {
+      if (r.type === 'S3' && r.publicAccess) {
+        issues.push({ severity: 'critical', message: `S3 bucket "${r.name}" is publicly accessible` });
       }
-      if (type === 'RDS' && meta.publicly_accessible) {
-        issues.push({ severity: 'critical', message: `RDS instance "${name}" is publicly accessible` });
+      if (r.type === 'RDS' && r.publiclyAccessible) {
+        issues.push({ severity: 'critical', message: `RDS instance "${r.name}" is publicly accessible` });
       }
-      if (type === 'EC2' && meta.status === 'stopped' && meta.stopped_since) {
-        const days = Math.floor((Date.now() - new Date(meta.stopped_since).getTime()) / 86400000);
-        if (days > 30) {
-          issues.push({ severity: 'warning', message: `EC2 instance "${name}" stopped for ${days} days (potential zombie)` });
+      if (r.type === 'EC2' && r.status === 'stopped' && r.stoppedSince) {
+        const match = r.stoppedSince.match(/\((\d{4}-\d{2}-\d{2})/);
+        if (match) {
+          const days = Math.floor((Date.now() - new Date(match[1]).getTime()) / 86400000);
+          if (days > 30) {
+            issues.push({ severity: 'warning', message: `EC2 instance "${r.name}" stopped for ${days} days (potential zombie)` });
+          }
         }
       }
     }
     return issues;
-  }, [awsMetrics]);
+  }, [resources]);
 
-  // Cost breakdown by service
+  // ─── Cost breakdown ────────────────────────────────
   const costBreakdown = useMemo(() => {
-    const byService = new Map<string, number>();
-    if (costByResourceId) {
-      // Aggregate from cost_by_resource via service grouping in allMetrics
-      for (const m of awsMetrics) {
-        const meta = m.metadata as Record<string, any> | null;
-        const arn = meta?.arn || meta?.url || m.metric_key;
-        const cost = costByResourceId.get(arn) || 0;
-        const type = (meta?.type || 'Other').toUpperCase();
-        const label = type === 'EC2' ? 'EC2 Instances' : type === 'LAMBDA' ? 'Lambda' : type === 'RDS' ? 'RDS' : type === 'S3' ? 'S3' : 'Other';
-        byService.set(label, (byService.get(label) || 0) + cost);
-      }
-    }
-    // If no resource-level data, derive from totalCost rough split
-    if (byService.size === 0 && totalCost > 0) {
-      // Use the cost_by_service data if available — fall back to showing total
-      return [{ service: 'All Services', amount: totalCost, percent: 100 }];
-    }
+    if (totalCost <= 0) return [];
+    // Simple: show total as one line if no resource-level data
+    return [{ service: 'All Services', amount: totalCost, percent: 100 }];
+  }, [totalCost]);
 
-    const entries = [...byService.entries()].sort((a, b) => b[1] - a[1]);
-    const total = entries.reduce((s, [, a]) => s + a, 0) || 1;
-    return entries.map(([service, amount]) => ({
-      service,
-      amount,
-      percent: Math.round((amount / total) * 100),
-    }));
-  }, [awsMetrics, costByResourceId, totalCost]);
-
-  // Cost change %
   const costChange = previousCost > 0 ? Math.round(((totalCost - previousCost) / previousCost) * 100) : 0;
 
-  // Last sync time
   const lastSyncStr = awsCreds?.last_sync_at
     ? formatDistanceToNow(new Date(awsCreds.last_sync_at), { addSuffix: true })
     : awsIntegration?.last_sync
       ? formatDistanceToNow(new Date(awsIntegration.last_sync), { addSuffix: true })
       : 'Never';
 
-  // Sync handler
   const handleSync = async () => {
     if (!awsCreds) return;
     setSyncing(true);
@@ -165,26 +210,23 @@ export default function AwsIntegrationDetail() {
     }
   };
 
-  const categoryIcons: Record<string, typeof Server> = {
-    compute: Server,
-    functions: Zap,
-    databases: Database,
-    storage: HardDrive,
+  const categoryConfig: Record<ResourceCategory, { icon: typeof Server; emoji: string; label: string }> = {
+    compute: { icon: Server, emoji: '💻', label: 'Compute' },
+    functions: { icon: Zap, emoji: '⚡', label: 'Functions' },
+    databases: { icon: Database, emoji: '🗄️', label: 'Databases' },
+    storage: { icon: HardDrive, emoji: '🪣', label: 'Storage' },
   };
 
-  const categoryLabels: Record<string, string> = {
-    compute: 'Compute',
-    functions: 'Functions',
-    databases: 'Databases',
-    storage: 'Storage',
-  };
-
-  const categoryEmojis: Record<string, string> = {
-    compute: '💻',
-    functions: '⚡',
-    databases: '🗄️',
-    storage: '🪣',
-  };
+  function statusBadge(status: string) {
+    const s = status.toLowerCase();
+    if (['running', 'available', 'active'].includes(s)) {
+      return <Badge variant="outline" className="border-emerald-500/50 text-emerald-500 bg-emerald-500/10 text-xs">{status}</Badge>;
+    }
+    if (s === 'stopped') {
+      return <Badge variant="outline" className="border-destructive/50 text-destructive bg-destructive/10 text-xs">{status}</Badge>;
+    }
+    return <Badge variant="outline" className="text-xs">{status}</Badge>;
+  }
 
   // ─── Render ────────────────────────────────────────
   return (
@@ -229,7 +271,9 @@ export default function AwsIntegrationDetail() {
             <CardContent className="pt-6">
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Resources</p>
               <p className="text-3xl font-bold text-foreground mt-1">{totalResources}</p>
-              <p className="text-xs text-muted-foreground mt-1">across {Object.values(resourcesByCategory).filter(c => c.summary.total > 0).length} types</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                across {Object.values(resourcesByCategory).filter(c => c.length > 0).length} types
+              </p>
             </CardContent>
           </Card>
           <Card>
@@ -246,10 +290,10 @@ export default function AwsIntegrationDetail() {
           <Card>
             <CardContent className="pt-6">
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Last Sync</p>
-              <p className="text-3xl font-bold text-foreground mt-1 flex items-center gap-2">
-                <Clock className="w-6 h-6 text-muted-foreground" />
-                <span className="text-lg">{lastSyncStr}</span>
-              </p>
+              <div className="flex items-center gap-2 mt-1">
+                <Clock className="w-5 h-5 text-muted-foreground" />
+                <span className="text-lg font-bold text-foreground">{lastSyncStr}</span>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -284,47 +328,75 @@ export default function AwsIntegrationDetail() {
           </CardContent>
         </Card>
 
-        {/* Section 3 — Resources Summary */}
+        {/* Section 3 — Infrastructure with actual resources */}
         <div>
-          <h2 className="text-lg font-semibold text-foreground mb-4">Infrastructure</h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Infrastructure</h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1 text-xs"
+              onClick={() => navigate(`${lp}/cloud-resources`)}
+            >
+              View all <ArrowRight className="w-3 h-3" />
+            </Button>
+          </div>
+
+          <div className="space-y-6">
             {(['compute', 'functions', 'databases', 'storage'] as const).map(cat => {
-              const { summary } = resourcesByCategory[cat];
-              const Icon = categoryIcons[cat];
+              const items = resourcesByCategory[cat];
+              const config = categoryConfig[cat];
+              if (items.length === 0) return null;
+
               return (
-                <Card
-                  key={cat}
-                  className="cursor-pointer hover:border-primary/50 transition-colors"
-                  onClick={() => navigate(`${lp}/cloud-resources?category=${cat}`)}
-                >
-                  <CardContent className="pt-6">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-lg">{categoryEmojis[cat]}</span>
-                      <span className="text-sm font-semibold text-foreground">{categoryLabels[cat]}</span>
-                    </div>
-                    <p className="text-2xl font-bold text-foreground">{summary.total}</p>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      {summary.running > 0 && (
-                        <span className="text-xs text-emerald-500">{summary.running} running</span>
-                      )}
-                      {summary.errors > 0 && (
-                        <span className="text-xs text-destructive">{summary.errors} error</span>
-                      )}
-                      {summary.publicWarnings > 0 && (
-                        <span className="text-xs text-amber-500">{summary.publicWarnings} public ⚠️</span>
-                      )}
-                      {summary.total === 0 && (
-                        <span className="text-xs text-muted-foreground">No resources</span>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+                <div key={cat}>
+                  <button
+                    className="flex items-center gap-2 mb-3 group cursor-pointer"
+                    onClick={() => navigate(`${lp}/cloud-resources?category=${cat}`)}
+                  >
+                    <span className="text-base">{config.emoji}</span>
+                    <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider group-hover:text-foreground transition-colors">
+                      {config.label} ({items.length})
+                    </span>
+                    <ArrowRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </button>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {items.map(resource => (
+                      <Card key={resource.id} className="hover:border-primary/30 transition-colors">
+                        <CardContent className="pt-4 pb-4 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-foreground text-sm truncate flex-1">{resource.name}</span>
+                            {statusBadge(resource.status)}
+                          </div>
+                          {resource.detail && (
+                            <p className="text-xs text-muted-foreground">{resource.detail}</p>
+                          )}
+                          {resource.publicIp && (
+                            <p className="text-xs text-muted-foreground">IP: {resource.publicIp}</p>
+                          )}
+                          {resource.publiclyAccessible && (
+                            <p className="text-xs text-amber-500 flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" /> Publicly accessible
+                            </p>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
               );
             })}
+
+            {totalResources === 0 && (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">No resources discovered yet. Run a sync to discover your AWS infrastructure.</p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Section 4 — Security Alerts */}
+        {/* Section 4 — Security */}
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Security</CardTitle>
