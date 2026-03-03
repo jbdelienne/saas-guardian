@@ -8,7 +8,7 @@ export default function AlertCountWidget() {
     return <div className="h-full flex items-center justify-center"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
   }
 
-  const active = alerts.filter(a => !a.is_dismissed);
+  const active = alerts.filter(a => !a.is_dismissed && !a.resolved_at);
   const critical = active.filter(a => a.severity === 'critical').length;
   const warning = active.filter(a => a.severity === 'warning').length;
   const info = active.filter(a => a.severity === 'info').length;

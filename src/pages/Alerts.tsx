@@ -71,7 +71,7 @@ export default function Alerts() {
     return false;
   });
 
-  const activeCount = alerts.filter((a) => !a.is_dismissed).length;
+  const activeCount = alerts.filter((a) => !a.is_dismissed && !a.resolved_at).length;
   const criticalCount = alerts.filter((a) => a.severity === 'critical' && !isActiveDowntime(a)).length;
   const warningCount = alerts.filter((a) => a.severity === 'warning' && !isActiveDowntime(a)).length;
   const dismissedCount = alerts.filter((a) => a.is_dismissed && !isResolvedDowntime(a)).length;

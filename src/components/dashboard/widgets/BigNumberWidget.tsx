@@ -105,7 +105,7 @@ function resolveValue(
       };
     }
     case 'aws_active_alerts': {
-      const awsAlerts = alerts.filter(a => !a.is_dismissed && a.integration_type === 'aws');
+      const awsAlerts = alerts.filter(a => !a.is_dismissed && !a.resolved_at && a.integration_type === 'aws');
       return {
         value: `${awsAlerts.length}`,
         label: 'Active AWS Alerts',

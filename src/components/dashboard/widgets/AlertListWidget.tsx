@@ -18,7 +18,7 @@ export default function AlertListWidget() {
   const { data: alerts = [], isLoading } = useAlerts();
   const dismissAlert = useDismissAlert();
 
-  const activeAlerts = alerts.filter((a) => !a.is_dismissed).slice(0, 8);
+  const activeAlerts = alerts.filter((a) => !a.is_dismissed && !a.resolved_at).slice(0, 8);
 
   if (isLoading) {
     return (
