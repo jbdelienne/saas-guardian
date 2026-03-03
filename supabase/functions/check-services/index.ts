@@ -393,6 +393,8 @@ Deno.serve(async (req) => {
           .eq("service_id", service.id)
           .eq("alert_type", "sla_breach")
           .gte("created_at", monthStart)
+          .is("resolved_at", null)
+          .eq("is_dismissed", false)
           .limit(1);
 
         if (!existingSla || existingSla.length === 0) {
@@ -407,6 +409,26 @@ Deno.serve(async (req) => {
             integration_type: "service",
             metadata: { service_id: service.id, url: service.url, monthly_uptime: monthlyUptime },
           });
+        }
+      } else if (monthlyUptime >= 99.9) {
+        // Auto-resolve open SLA breach alerts when uptime recovers
+        const { data: openSlaAlerts } = await supabase
+          .from("alerts")
+          .select("id")
+          .eq("service_id", service.id)
+          .eq("alert_type", "sla_breach")
+          .is("resolved_at", null)
+          .eq("is_dismissed", false);
+
+        for (const slaAlert of (openSlaAlerts || [])) {
+          await supabase
+            .from("alerts")
+            .update({
+              resolved_at: now.toISOString(),
+              is_dismissed: true,
+              metadata: { service_id: service.id, url: service.url, monthly_uptime: monthlyUptime, resolved_at: now.toISOString() },
+            })
+            .eq("id", slaAlert.id);
         }
       }
 
