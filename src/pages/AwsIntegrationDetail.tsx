@@ -328,7 +328,7 @@ export default function AwsIntegrationDetail() {
           </CardContent>
         </Card>
 
-        {/* Section 3 — Infrastructure with actual resources */}
+        {/* Section 3 — Infrastructure */}
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-foreground">Infrastructure</h2>
@@ -342,60 +342,40 @@ export default function AwsIntegrationDetail() {
             </Button>
           </div>
 
-          <div className="space-y-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {(['compute', 'functions', 'databases', 'storage'] as const).map(cat => {
               const items = resourcesByCategory[cat];
               const config = categoryConfig[cat];
 
               return (
-                <div key={cat}>
-                  <button
-                    className="flex items-center gap-2 mb-3 group cursor-pointer"
-                    onClick={() => navigate(`${lp}/cloud-resources?category=${cat}`)}
-                  >
-                    <span className="text-base">{config.emoji}</span>
-                    <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider group-hover:text-foreground transition-colors">
-                      {config.label} ({items.length})
-                    </span>
-                    <ArrowRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </button>
-
-                  {items.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {items.map(resource => (
-                        <Card key={resource.id} className="hover:border-primary/30 transition-colors">
-                          <CardContent className="pt-4 pb-4 space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium text-foreground text-sm truncate flex-1">{resource.name}</span>
-                              {statusBadge(resource.status)}
-                            </div>
-                            {resource.detail && (
-                              <p className="text-xs text-muted-foreground">{resource.detail}</p>
-                            )}
-                            {resource.publicIp && (
-                              <p className="text-xs text-muted-foreground">IP: {resource.publicIp}</p>
-                            )}
-                            {resource.publiclyAccessible && (
-                              <p className="text-xs text-amber-500 flex items-center gap-1">
-                                <AlertTriangle className="w-3 h-3" /> Publicly accessible
-                              </p>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ))}
+                <Card
+                  key={cat}
+                  className="cursor-pointer hover:border-primary/50 transition-colors"
+                  onClick={() => navigate(`${lp}/cloud-resources?category=${cat}`)}
+                >
+                  <CardContent className="pt-5 pb-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="text-lg">{config.emoji}</span>
+                      <span className="text-sm font-semibold text-foreground">{config.label}</span>
+                      <span className="text-xs text-muted-foreground ml-auto">{items.length}</span>
                     </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground ml-7 mb-2">No resources</p>
-                  )}
-                </div>
+
+                    {items.length > 0 ? (
+                      <div className="space-y-2">
+                        {items.map(resource => (
+                          <div key={resource.id} className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-foreground truncate">{resource.name}</span>
+                            {statusBadge(resource.status)}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No resources</p>
+                    )}
+                  </CardContent>
+                </Card>
               );
             })}
-
-            {totalResources === 0 && (
-              <div className="text-center py-8">
-                <p className="text-sm text-muted-foreground">No resources discovered yet. Run a sync to discover your AWS infrastructure.</p>
-              </div>
-            )}
           </div>
         </div>
 
