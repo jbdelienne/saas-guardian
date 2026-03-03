@@ -346,6 +346,9 @@ export default function AwsIntegrationDetail() {
             {(['compute', 'functions', 'databases', 'storage'] as const).map(cat => {
               const items = resourcesByCategory[cat];
               const config = categoryConfig[cat];
+              const running = items.filter(r => ['running', 'available', 'active'].includes(r.status.toLowerCase())).length;
+              const stopped = items.filter(r => r.status.toLowerCase() === 'stopped').length;
+              const publicCount = items.filter(r => r.publiclyAccessible || r.publicAccess).length;
 
               return (
                 <Card
@@ -354,24 +357,30 @@ export default function AwsIntegrationDetail() {
                   onClick={() => navigate(`${lp}/cloud-resources?category=${cat}`)}
                 >
                   <CardContent className="pt-5 pb-4">
-                    <div className="flex items-center gap-2 mb-3">
+                    <div className="flex items-center gap-2 mb-1">
                       <span className="text-lg">{config.emoji}</span>
                       <span className="text-sm font-semibold text-foreground">{config.label}</span>
-                      <span className="text-xs text-muted-foreground ml-auto">{items.length}</span>
                     </div>
-
-                    {items.length > 0 ? (
-                      <div className="space-y-2">
-                        {items.map(resource => (
-                          <div key={resource.id} className="flex items-center justify-between gap-2">
-                            <span className="text-xs text-foreground truncate">{resource.name}</span>
-                            {statusBadge(resource.status)}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">No resources</p>
-                    )}
+                    <p className="text-3xl font-bold text-foreground">
+                      {items.length}
+                      <span className="text-sm font-normal text-muted-foreground ml-1">
+                        {items.length === 1 ? 'resource' : 'resources'}
+                      </span>
+                    </p>
+                    <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 min-h-[20px]">
+                      {running > 0 && (
+                        <span className="text-xs text-emerald-500">{running} running</span>
+                      )}
+                      {stopped > 0 && (
+                        <span className="text-xs text-destructive">{stopped} stopped</span>
+                      )}
+                      {publicCount > 0 && (
+                        <span className="text-xs text-amber-500">{publicCount} public ⚠️</span>
+                      )}
+                      {items.length === 0 && (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               );
