@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import AppLayout from '@/components/layout/AppLayout';
+// layout provided by route
 import { useIntegrations, useUpdateIntegration } from '@/hooks/use-supabase';
 import { useSyncData, useAlertThresholds, useUpdateThreshold, useSyncIntegration } from '@/hooks/use-integrations';
 import { Button } from '@/components/ui/button';
