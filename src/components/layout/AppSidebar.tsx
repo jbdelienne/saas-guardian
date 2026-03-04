@@ -1,4 +1,4 @@
-import { LayoutDashboard, Server, Plug, Bell, Settings, FileText, Cloud } from "lucide-react";
+import { LayoutDashboard, Server, Plug, Bell, Settings, FileText, Cloud, Globe } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useTranslation } from "react-i18next";
 import { useLangPrefix } from "@/hooks/use-lang-prefix";
