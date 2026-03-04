@@ -2,12 +2,13 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams, Outlet } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import '@/i18n';
 import { useTranslation } from 'react-i18next';
 import { useEffect } from 'react';
+import AppLayout from "@/components/layout/AppLayout";
 import Landing from "@/pages/Landing";
 import Auth from "@/pages/Auth";
 import Dashboard from "@/pages/Dashboard";
@@ -50,6 +51,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function ProtectedLayout() {
+  const { user, loading } = useAuth();
+  const { lang } = useParams<{ lang: string }>();
+  if (loading) return null;
+  if (!user) return <Navigate to={`/${lang || 'en'}/auth`} replace />;
+  return <AppLayout />;
+}
+
 function RootRedirect() {
   const browserLang = navigator.language?.split('-')[0] || 'en';
   const lang = SUPPORTED_LANGS.includes(browserLang) ? browserLang : 'en';
@@ -62,17 +71,19 @@ const LangRoutes = () => (
       <Route index element={<Landing />} />
       <Route path="waitlist" element={<Waitlist />} />
       <Route path="auth" element={<Auth />} />
-      <Route path="dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="services" element={<ProtectedRoute><ServicesPage /></ProtectedRoute>} />
-      <Route path="cloud-resources" element={<ProtectedRoute><CloudResourcesPage /></ProtectedRoute>} />
-      <Route path="saas-status" element={<ProtectedRoute><SaasStatusPage /></ProtectedRoute>} />
-      <Route path="integrations" element={<ProtectedRoute><Integrations /></ProtectedRoute>} />
-      <Route path="integrations/aws/costs" element={<ProtectedRoute><AwsCostDashboard /></ProtectedRoute>} />
-      <Route path="integrations/aws" element={<ProtectedRoute><AwsIntegrationDetail /></ProtectedRoute>} />
-      <Route path="integrations/:type" element={<ProtectedRoute><IntegrationDetail /></ProtectedRoute>} />
-      <Route path="alerts" element={<ProtectedRoute><Alerts /></ProtectedRoute>} />
-      <Route path="reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
-      <Route path="settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+      <Route element={<ProtectedLayout />}>
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="services" element={<ServicesPage />} />
+        <Route path="cloud-resources" element={<CloudResourcesPage />} />
+        <Route path="saas-status" element={<SaasStatusPage />} />
+        <Route path="integrations" element={<Integrations />} />
+        <Route path="integrations/aws/costs" element={<AwsCostDashboard />} />
+        <Route path="integrations/aws" element={<AwsIntegrationDetail />} />
+        <Route path="integrations/:type" element={<IntegrationDetail />} />
+        <Route path="alerts" element={<Alerts />} />
+        <Route path="reports" element={<ReportsPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+      </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
   </LanguageWrapper>
