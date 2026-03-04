@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import AppLayout from '@/components/layout/AppLayout';
+// layout provided by route
 import { useServices } from '@/hooks/use-supabase';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, Loader2, Cloud, ChevronDown, AlertTriangle, ShieldAlert, CheckCircle2 } from 'lucide-react';
