@@ -280,6 +280,7 @@ export default function ServicesPage() {
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
