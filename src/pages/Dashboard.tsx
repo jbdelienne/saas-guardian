@@ -62,22 +62,20 @@ export default function Dashboard() {
 
   if (selectedDashboard) {
     return (
-      <AppLayout>
-        <DashboardDetailView
-          dashboardId={selectedDashboard.id}
-          dashboardName={selectedDashboard.name}
-          services={services}
-          syncMetrics={syncMetrics}
-          onBack={() => setSelectedDashboardId(null)}
-          onDelete={async () => {
-            await deleteDashboard.mutateAsync(selectedDashboard.id);
-            setSelectedDashboardId(null);
-          }}
-          onRename={async (name: string) => {
-            await renameDashboard.mutateAsync({ id: selectedDashboard.id, name });
-          }}
-        />
-      </AppLayout>
+      <DashboardDetailView
+        dashboardId={selectedDashboard.id}
+        dashboardName={selectedDashboard.name}
+        services={services}
+        syncMetrics={syncMetrics}
+        onBack={() => setSelectedDashboardId(null)}
+        onDelete={async () => {
+          await deleteDashboard.mutateAsync(selectedDashboard.id);
+          setSelectedDashboardId(null);
+        }}
+        onRename={async (name: string) => {
+          await renameDashboard.mutateAsync({ id: selectedDashboard.id, name });
+        }}
+      />
     );
   }
 
