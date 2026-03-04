@@ -49,12 +49,15 @@ export default function ServicesPage() {
   // Only show HTTP services (exclude cloud-imported ones)
   const httpServices = useMemo(
     () => {
-      const base = services.filter(s => !s.tags?.some(tag => CLOUD_TAGS.includes(tag)));
+      let base = services.filter(s => !s.tags?.some(tag => CLOUD_TAGS.includes(tag)));
+      if (visibilityTab !== 'all') {
+        base = base.filter(s => (s as any).visibility === visibilityTab);
+      }
       if (!search.trim()) return base;
       const q = search.toLowerCase();
       return base.filter(s => s.name.toLowerCase().includes(q) || s.url.toLowerCase().includes(q));
     },
-    [services, search],
+    [services, search, visibilityTab],
   );
 
   const serviceIds = httpServices.map((s) => s.id);
