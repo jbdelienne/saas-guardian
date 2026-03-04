@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import moniduckLogo from '@/assets/moniduck-logo.png';
-import AppLayout from '@/components/layout/AppLayout';
+// layout provided by route
 import { useServices, Service } from '@/hooks/use-supabase';
 import {
   useDashboards,
@@ -54,37 +54,33 @@ export default function Dashboard() {
 
   if (isLoading) {
     return (
-      <AppLayout>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-        </div>
-      </AppLayout>
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
     );
   }
 
   if (selectedDashboard) {
     return (
-      <AppLayout>
-        <DashboardDetailView
-          dashboardId={selectedDashboard.id}
-          dashboardName={selectedDashboard.name}
-          services={services}
-          syncMetrics={syncMetrics}
-          onBack={() => setSelectedDashboardId(null)}
-          onDelete={async () => {
-            await deleteDashboard.mutateAsync(selectedDashboard.id);
-            setSelectedDashboardId(null);
-          }}
-          onRename={async (name: string) => {
-            await renameDashboard.mutateAsync({ id: selectedDashboard.id, name });
-          }}
-        />
-      </AppLayout>
+      <DashboardDetailView
+        dashboardId={selectedDashboard.id}
+        dashboardName={selectedDashboard.name}
+        services={services}
+        syncMetrics={syncMetrics}
+        onBack={() => setSelectedDashboardId(null)}
+        onDelete={async () => {
+          await deleteDashboard.mutateAsync(selectedDashboard.id);
+          setSelectedDashboardId(null);
+        }}
+        onRename={async (name: string) => {
+          await renameDashboard.mutateAsync({ id: selectedDashboard.id, name });
+        }}
+      />
     );
   }
 
   return (
-    <AppLayout>
+    <div className="max-w-5xl animate-fade-in">
       <div className="max-w-5xl animate-fade-in">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -157,7 +153,7 @@ export default function Dashboard() {
           </div>
         </DialogContent>
       </Dialog>
-    </AppLayout>
+    </div>
   );
 }
 

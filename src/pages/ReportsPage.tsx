@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWorkspace } from '@/hooks/use-workspace';
-import AppLayout from '@/components/layout/AppLayout';
+// layout provided by route
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
@@ -271,7 +271,7 @@ export default function ReportsPage() {
     (!scopeAll && selectedServiceIds.length === 0);
 
   return (
-    <AppLayout>
+    <>
       <div className="space-y-6">
         {viewingReport ? (
           <ReportView report={viewingReport} onBack={() => setViewingReport(null)} contentRef={reportViewRef} />
@@ -472,6 +472,6 @@ export default function ReportsPage() {
           </div>
         </SheetContent>
       </Sheet>
-    </AppLayout>
+    </>
   );
 }

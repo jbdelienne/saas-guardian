@@ -1,14 +1,9 @@
-import { useState, ReactNode } from 'react';
+import { useState } from 'react';
+import { Outlet } from 'react-router-dom';
 import AppSidebar from './AppSidebar';
 import TopBar from './TopBar';
 
-
-interface AppLayoutProps {
-  children: ReactNode;
-  centered?: boolean;
-}
-
-export default function AppLayout({ children, centered = false }: AppLayoutProps) {
+export default function AppLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   return (
@@ -19,8 +14,8 @@ export default function AppLayout({ children, centered = false }: AppLayoutProps
           onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
           sidebarCollapsed={sidebarCollapsed}
         />
-        <main className={`flex-1 p-6 ${centered ? 'flex items-center justify-center' : ''}`}>
-          {children}
+        <main className="flex-1 p-6">
+          <Outlet />
         </main>
       </div>
     </div>

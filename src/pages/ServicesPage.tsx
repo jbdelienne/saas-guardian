@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import AppLayout from '@/components/layout/AppLayout';
+// layout provided by route
 import { useServices, useAddService, useDeleteService, useTogglePause, useForceCheck, Service } from '@/hooks/use-supabase';
 import AddServiceModal from '@/components/dashboard/AddServiceModal';
 import ServiceDetailModal from '@/components/dashboard/ServiceDetailModal';
@@ -87,8 +87,7 @@ export default function ServicesPage() {
   };
 
   return (
-    <AppLayout centered>
-      <div className="max-w-5xl animate-fade-in">
+    <div className="max-w-5xl mx-auto animate-fade-in">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-foreground">HTTP Services</h1>
@@ -282,6 +281,6 @@ export default function ServicesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </AppLayout>
+    </div>
   );
 }

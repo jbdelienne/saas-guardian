@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import AppLayout from '@/components/layout/AppLayout';
+// layout provided by route
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -120,7 +120,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <AppLayout>
+    <>
       <h1 className="text-2xl font-bold text-foreground mb-6">{t('settings.title')}</h1>
       <div className="max-w-2xl mx-auto w-full animate-fade-in">
 
@@ -429,6 +429,6 @@ export default function SettingsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </AppLayout>
+    </>
   );
 }

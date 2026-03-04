@@ -1,4 +1,4 @@
-import AppLayout from '@/components/layout/AppLayout';
+// layout provided by route
 import { useIntegrations } from '@/hooks/use-supabase';
 import { useStartOAuth, useSyncData, useSyncIntegration, useSyncAwsCredentials, useAwsCredentials, useDisconnectIntegration, useDisconnectAws } from '@/hooks/use-integrations';
 import { Button } from '@/components/ui/button';
@@ -96,8 +96,7 @@ export default function Integrations() {
     integrations.find((i) => i.integration_type === type && i.is_connected);
 
   return (
-    <AppLayout centered>
-      <div className="max-w-4xl animate-fade-in">
+    <div className="max-w-4xl mx-auto animate-fade-in">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-foreground mb-1">{t('integrations.title')}</h1>
           <p className="text-muted-foreground text-sm">{t('integrations.subtitle')}</p>
@@ -359,8 +358,7 @@ export default function Integrations() {
             ))}
           </div>
         )}
-      </div>
       <AwsConnectModal open={awsModalOpen} onClose={() => setAwsModalOpen(false)} />
-    </AppLayout>
+    </div>
   );
 }

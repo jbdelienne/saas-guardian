@@ -1,4 +1,4 @@
-import AppLayout from '@/components/layout/AppLayout';
+// layout provided by route
 import { useAlerts, useDismissAlert, Alert } from '@/hooks/use-supabase';
 import { useNotificationSettings, useUpsertNotificationSettings } from '@/hooks/use-integrations';
 import { AlertTriangle, AlertCircle, Info, CheckCircle, Loader2, ChevronDown, ChevronUp, ExternalLink, Clock, Globe, Hash, Timer, Zap, Bell, Mail, MessageSquare } from 'lucide-react';
@@ -90,8 +90,7 @@ export default function Alerts() {
   };
 
   return (
-    <AppLayout centered>
-      <div className="max-w-3xl animate-fade-in">
+    <div className="max-w-3xl mx-auto animate-fade-in">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-foreground mb-1">{t('alerts.title')}</h1>
           <p className="text-muted-foreground text-sm">{t('alerts.activeAlerts', { count: activeCount })}</p>
@@ -386,8 +385,7 @@ export default function Alerts() {
             })}
           </div>
         )}
-      </div>
-    </AppLayout>
+    </div>
   );
 }
 

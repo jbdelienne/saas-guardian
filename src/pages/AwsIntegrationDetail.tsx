@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import AppLayout from '@/components/layout/AppLayout';
+// layout provided by route
 import { useIntegrations, useServices } from '@/hooks/use-supabase';
 import { useAwsCredentials, useSyncAwsCredentials } from '@/hooks/use-integrations';
 import { useLatestSyncMetrics } from '@/hooks/use-all-sync-data';
@@ -230,8 +230,7 @@ export default function AwsIntegrationDetail() {
 
   // ─── Render ────────────────────────────────────────
   return (
-    <AppLayout centered>
-      <div className="max-w-5xl animate-fade-in space-y-8">
+    <div className="max-w-5xl mx-auto animate-fade-in space-y-8">
         {/* Header */}
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate(`${lp}/integrations`)}>
@@ -415,7 +414,6 @@ export default function AwsIntegrationDetail() {
             )}
           </CardContent>
         </Card>
-      </div>
-    </AppLayout>
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import AppLayout from '@/components/layout/AppLayout';
+// layout provided by route
 import { useCostData, useTopServices, CostView, CostByService } from '@/hooks/use-cost-data';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -94,8 +94,7 @@ export default function AwsCostDashboard() {
 
   if (!credentialId && !isLoading) {
     return (
-      <AppLayout centered>
-        <div className="max-w-5xl animate-fade-in">
+      <div className="max-w-5xl mx-auto animate-fade-in">
           <div className="flex items-center gap-4 mb-8">
             <Button variant="ghost" size="icon" onClick={() => navigate(`${lp}/integrations/aws`)}>
               <ArrowLeft className="w-5 h-5" />
@@ -108,14 +107,12 @@ export default function AwsCostDashboard() {
               <Button onClick={() => navigate(`${lp}/integrations`)}>Configure AWS</Button>
             </CardContent>
           </Card>
-        </div>
-      </AppLayout>
+      </div>
     );
   }
 
   return (
-    <AppLayout centered>
-      <div className="max-w-6xl animate-fade-in">
+    <div className="max-w-6xl mx-auto animate-fade-in">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
           <Button variant="ghost" size="icon" onClick={() => navigate(`${lp}/integrations/aws`)}>
@@ -319,7 +316,6 @@ export default function AwsCostDashboard() {
             </Card>
           </>
         )}
-      </div>
-    </AppLayout>
+    </div>
   );
 }

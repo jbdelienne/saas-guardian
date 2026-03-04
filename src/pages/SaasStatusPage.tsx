@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import AppLayout from '@/components/layout/AppLayout';
+// layout provided by route
 import { useSaasDependencies, useAddSaasDependency, useDeleteSaasDependency, useForceCheckSaas, KNOWN_SAAS, DependencyStatus, SaasIncident } from '@/hooks/use-saas-dependencies';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -58,8 +58,7 @@ export default function SaasStatusPage() {
   };
 
   return (
-    <AppLayout centered>
-      <div className="max-w-5xl animate-fade-in">
+    <div className="max-w-5xl mx-auto animate-fade-in">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-foreground">SaaS Dependencies</h1>
@@ -194,7 +193,6 @@ export default function SaasStatusPage() {
             </Table>
           </div>
         )}
-      </div>
 
       {/* Add SaaS Modal */}
       <Dialog open={addModalOpen} onOpenChange={(v) => !v && setAddModalOpen(false)}>
@@ -276,6 +274,6 @@ export default function SaasStatusPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </AppLayout>
+    </div>
   );
 }

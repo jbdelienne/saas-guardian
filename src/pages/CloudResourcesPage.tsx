@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import AppLayout from '@/components/layout/AppLayout';
+// layout provided by route
 import { useServices } from '@/hooks/use-supabase';
 import { Button } from '@/components/ui/button';
 import { ExternalLink, Loader2, Cloud, ChevronDown, AlertTriangle, ShieldAlert, CheckCircle2 } from 'lucide-react';
@@ -614,7 +614,7 @@ export default function CloudResourcesPage() {
   };
 
   return (
-    <AppLayout>
+    <>
       <h1 className="text-2xl font-bold text-foreground mb-6">Cloud Resources</h1>
       <div className="max-w-6xl mx-auto w-full animate-fade-in">
         <div className="flex items-center justify-between mb-5">
@@ -657,6 +657,6 @@ export default function CloudResourcesPage() {
           </Tabs>
         )}
       </div>
-    </AppLayout>
+    </>
   );
 }

@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import AppLayout from '@/components/layout/AppLayout';
+// layout provided by route
 import { useIntegrations, useUpdateIntegration } from '@/hooks/use-supabase';
 import { useSyncData, useAlertThresholds, useUpdateThreshold, useSyncIntegration } from '@/hooks/use-integrations';
 import { Button } from '@/components/ui/button';
@@ -198,8 +198,7 @@ export default function IntegrationDetail() {
   if (!type) return null;
 
   return (
-    <AppLayout centered>
-      <div className="max-w-5xl animate-fade-in">
+    <div className="max-w-5xl mx-auto animate-fade-in">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Button variant="ghost" size="icon" onClick={() => navigate(`${lp}/integrations`)}>
@@ -414,8 +413,7 @@ export default function IntegrationDetail() {
             )}
           </>
         )}
-      </div>
-    </AppLayout>
+    </div>
   );
 }
 
