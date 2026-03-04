@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import AppLayout from '@/components/layout/AppLayout';
+// layout provided by route
 import { useSaasDependencies, useAddSaasDependency, useDeleteSaasDependency, useForceCheckSaas, KNOWN_SAAS, DependencyStatus, SaasIncident } from '@/hooks/use-saas-dependencies';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
