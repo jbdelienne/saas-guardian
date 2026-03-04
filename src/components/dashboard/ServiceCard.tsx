@@ -30,6 +30,7 @@ export default function ServiceCard({ service, onClick }: ServiceCardProps) {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2.5">
           <span className="text-xl">{service.icon}</span>
+          <span className="text-sm">{(service as any).visibility === 'private' ? '🔒' : '🌐'}</span>
           <h3 className="font-semibold text-card-foreground text-sm">{service.name}</h3>
         </div>
         <div className="flex items-center gap-2">

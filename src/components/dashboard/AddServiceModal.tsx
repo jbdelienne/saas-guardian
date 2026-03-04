@@ -10,7 +10,7 @@ import IconPicker from './IconPicker';
 interface AddServiceModalProps {
   open: boolean;
   onClose: () => void;
-  onAdd: (service: { name: string; icon: string; url: string; check_interval: number; content_keyword?: string }) => Promise<void>;
+  onAdd: (service: { name: string; icon: string; url: string; check_interval: number; content_keyword?: string; visibility?: string }) => Promise<void>;
 }
 
 export default function AddServiceModal({ open, onClose, onAdd }: AddServiceModalProps) {
@@ -19,6 +19,7 @@ export default function AddServiceModal({ open, onClose, onAdd }: AddServiceModa
   const [url, setUrl] = useState('');
   const [interval, setInterval] = useState('5');
   const [contentKeyword, setContentKeyword] = useState('');
+  const [visibility, setVisibility] = useState('public');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -26,7 +27,7 @@ export default function AddServiceModal({ open, onClose, onAdd }: AddServiceModa
     e.preventDefault();
     setLoading(true);
     try {
-      await onAdd({ name, icon, url, check_interval: Number(interval), content_keyword: contentKeyword || undefined });
+      await onAdd({ name, icon, url, check_interval: Number(interval), content_keyword: contentKeyword || undefined, visibility });
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
@@ -35,6 +36,7 @@ export default function AddServiceModal({ open, onClose, onAdd }: AddServiceModa
         setIcon('');
         setInterval('5');
         setContentKeyword('');
+        setVisibility('public');
         setLoading(false);
         onClose();
       }, 1500);
@@ -83,6 +85,18 @@ export default function AddServiceModal({ open, onClose, onAdd }: AddServiceModa
                   <SelectItem value="5">Every 5 min</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Visibility</Label>
+              <Select value={visibility} onValueChange={setVisibility}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public">🌐 Public endpoint</SelectItem>
+                  <SelectItem value="private">🔒 Private endpoint</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">Public endpoints trigger critical alerts when down. Private endpoints trigger warnings.</p>
             </div>
 
             <div className="space-y-2">

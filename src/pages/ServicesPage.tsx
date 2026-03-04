@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import { useServices, useAddService, useDeleteService, useTogglePause, useForceCheck, Service } from '@/hooks/use-supabase';
 import AddServiceModal from '@/components/dashboard/AddServiceModal';
@@ -19,8 +19,9 @@ import {
 import { useTranslation } from 'react-i18next';
 import { UptimePeriod, useUptimeForServices } from '@/hooks/use-uptime';
 import { toast } from 'sonner';
-import { useMemo } from 'react';
 import SearchBar from '@/components/SearchBar';
+
+type VisibilityTab = 'all' | 'public' | 'private';
 
 const periodLabels: Record<UptimePeriod, string> = {
   '24h': '24h',
@@ -42,17 +43,21 @@ export default function ServicesPage() {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [uptimePeriod, setUptimePeriod] = useState<UptimePeriod>('12m');
   const [search, setSearch] = useState('');
+  const [visibilityTab, setVisibilityTab] = useState<VisibilityTab>('all');
   const { t } = useTranslation();
 
   // Only show HTTP services (exclude cloud-imported ones)
   const httpServices = useMemo(
     () => {
-      const base = services.filter(s => !s.tags?.some(tag => CLOUD_TAGS.includes(tag)));
+      let base = services.filter(s => !s.tags?.some(tag => CLOUD_TAGS.includes(tag)));
+      if (visibilityTab !== 'all') {
+        base = base.filter(s => (s as any).visibility === visibilityTab);
+      }
       if (!search.trim()) return base;
       const q = search.toLowerCase();
       return base.filter(s => s.name.toLowerCase().includes(q) || s.url.toLowerCase().includes(q));
     },
-    [services, search],
+    [services, search, visibilityTab],
   );
 
   const serviceIds = httpServices.map((s) => s.id);
@@ -96,6 +101,23 @@ export default function ServicesPage() {
               {t('services.addService')}
             </Button>
           </div>
+        </div>
+
+        {/* Visibility tabs */}
+        <div className="flex items-center gap-1 mb-4">
+          {(['all', 'public', 'private'] as VisibilityTab[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setVisibilityTab(tab)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-sm transition-colors ${
+                visibilityTab === tab
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
+            >
+              {tab === 'all' ? 'All' : tab === 'public' ? '🌐 Public' : '🔒 Private'}
+            </button>
+          ))}
         </div>
 
         {isLoading ? (
@@ -153,6 +175,7 @@ export default function ServicesPage() {
                         <span className="text-lg">{service.icon}</span>
                       </TableCell>
                       <TableCell className="font-medium text-foreground">
+                        <span className="mr-1.5">{(service as any).visibility === 'private' ? '🔒' : '🌐'}</span>
                         {service.name}
                         {service.is_paused && (
                           <span className="ml-2 text-[10px] uppercase tracking-wider text-warning font-semibold">{t('services.paused')}</span>
