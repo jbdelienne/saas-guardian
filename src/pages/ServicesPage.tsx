@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import AppLayout from '@/components/layout/AppLayout';
+// layout provided by route
 import { useServices, useAddService, useDeleteService, useTogglePause, useForceCheck, Service } from '@/hooks/use-supabase';
 import AddServiceModal from '@/components/dashboard/AddServiceModal';
 import ServiceDetailModal from '@/components/dashboard/ServiceDetailModal';
