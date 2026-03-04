@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import moniduckLogo from '@/assets/moniduck-logo.png';
-import AppLayout from '@/components/layout/AppLayout';
+// layout provided by route
 import { useServices, Service } from '@/hooks/use-supabase';
 import {
   useDashboards,
