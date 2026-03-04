@@ -88,6 +88,18 @@ export default function AddServiceModal({ open, onClose, onAdd }: AddServiceModa
             </div>
 
             <div className="space-y-2">
+              <Label>Visibility</Label>
+              <Select value={visibility} onValueChange={setVisibility}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="public">🌐 Public endpoint</SelectItem>
+                  <SelectItem value="private">🔒 Private endpoint</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">Public endpoints trigger critical alerts when down. Private endpoints trigger warnings.</p>
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="svc-keyword">Content validation keyword <span className="text-muted-foreground font-normal">(optional)</span></Label>
               <Input id="svc-keyword" value={contentKeyword} onChange={(e) => setContentKeyword(e.target.value)} placeholder="e.g. OK, healthy, alive" />
               <p className="text-[11px] text-muted-foreground">If set, the service will be marked as degraded when this keyword is not found in the response body.</p>
