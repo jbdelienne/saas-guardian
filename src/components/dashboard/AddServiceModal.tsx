@@ -27,7 +27,7 @@ export default function AddServiceModal({ open, onClose, onAdd }: AddServiceModa
     e.preventDefault();
     setLoading(true);
     try {
-      await onAdd({ name, icon, url, check_interval: Number(interval), content_keyword: contentKeyword || undefined });
+      await onAdd({ name, icon, url, check_interval: Number(interval), content_keyword: contentKeyword || undefined, visibility });
       setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
