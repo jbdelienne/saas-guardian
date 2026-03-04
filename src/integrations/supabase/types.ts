@@ -468,6 +468,59 @@ export type Database = {
           },
         ]
       }
+      dependency_status: {
+        Row: {
+          created_at: string
+          id: string
+          incidents: Json
+          last_check: string | null
+          provider: string
+          sla_actual: number
+          sla_promised: number
+          status: string
+          status_page_url: string | null
+          updated_at: string
+          user_id: string
+          workspace_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          incidents?: Json
+          last_check?: string | null
+          provider: string
+          sla_actual?: number
+          sla_promised?: number
+          status?: string
+          status_page_url?: string | null
+          updated_at?: string
+          user_id: string
+          workspace_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          incidents?: Json
+          last_check?: string | null
+          provider?: string
+          sla_actual?: number
+          sla_promised?: number
+          status?: string
+          status_page_url?: string | null
+          updated_at?: string
+          user_id?: string
+          workspace_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dependency_status_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integration_sync_data: {
         Row: {
           created_at: string
