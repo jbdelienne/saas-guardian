@@ -36,6 +36,7 @@ export default function AddServiceModal({ open, onClose, onAdd }: AddServiceModa
         setIcon('');
         setInterval('5');
         setContentKeyword('');
+        setVisibility('public');
         setLoading(false);
         onClose();
       }, 1500);
