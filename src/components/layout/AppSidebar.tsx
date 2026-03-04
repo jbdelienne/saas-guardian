@@ -41,7 +41,6 @@ export default function AppSidebar({ collapsed, onToggle }: { collapsed: boolean
             collapsed ? 'w-9 h-9' : 'w-20 h-20'
           }`}
         />
-        />
         <span className={`text-lg font-bold text-foreground transition-all duration-300 ${collapsed ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
           moniduck
         </span>
