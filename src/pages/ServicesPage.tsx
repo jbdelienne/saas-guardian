@@ -103,6 +103,23 @@ export default function ServicesPage() {
           </div>
         </div>
 
+        {/* Visibility tabs */}
+        <div className="flex items-center gap-1 mb-4">
+          {(['all', 'public', 'private'] as VisibilityTab[]).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setVisibilityTab(tab)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-sm transition-colors ${
+                visibilityTab === tab
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
+            >
+              {tab === 'all' ? 'All' : tab === 'public' ? '🌐 Public' : '🔒 Private'}
+            </button>
+          ))}
+        </div>
+
         {isLoading ? (
           <div className="flex justify-center py-16">
             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
