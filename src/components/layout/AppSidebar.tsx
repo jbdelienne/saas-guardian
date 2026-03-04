@@ -26,9 +26,17 @@ export default function AppSidebar({ collapsed, onToggle }: { collapsed: boolean
         collapsed ? "w-16" : "w-60"
       }`}
     >
-      <div className="items-center gap-2 p-4 border-b border-sidebar-border min-h-[60px] flex flex-col">
-        <img src={duckLogo} alt="moniduck" className="w-20 h-20 flex-shrink-0" />
-        {!collapsed && <span className="text-lg font-bold text-foreground">moniduck</span>}
+      <div className="items-center gap-2 p-4 border-b border-sidebar-border min-h-[60px] flex flex-col overflow-hidden">
+        <img
+          src={duckLogo}
+          alt="moniduck"
+          className={`flex-shrink-0 object-contain transition-all duration-300 ease-in-out ${
+            collapsed ? 'w-9 h-9 animate-[spin_0.4s_ease-in-out]' : 'w-20 h-20'
+          }`}
+        />
+        <span className={`text-lg font-bold text-foreground transition-all duration-300 ${collapsed ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
+          moniduck
+        </span>
       </div>
 
       <nav className="flex-1 p-2 space-y-1">
