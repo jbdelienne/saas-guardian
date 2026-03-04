@@ -1,4 +1,4 @@
-import AppLayout from '@/components/layout/AppLayout';
+// layout provided by route
 import { useAlerts, useDismissAlert, Alert } from '@/hooks/use-supabase';
 import { useNotificationSettings, useUpsertNotificationSettings } from '@/hooks/use-integrations';
 import { AlertTriangle, AlertCircle, Info, CheckCircle, Loader2, ChevronDown, ChevronUp, ExternalLink, Clock, Globe, Hash, Timer, Zap, Bell, Mail, MessageSquare } from 'lucide-react';
