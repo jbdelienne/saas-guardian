@@ -1,4 +1,4 @@
-import { LayoutGrid, Activity, Table, BarChart3, Cloud } from 'lucide-react';
+import { LayoutGrid, Activity, Monitor, Tv } from 'lucide-react';
 import { WidgetConfig } from './WidgetRenderer';
 
 export interface SourceSelection {
@@ -11,152 +11,81 @@ export interface DashboardTemplate {
   name: string;
   description: string;
   icon: typeof LayoutGrid;
-  /** Which source types this template supports */
   sourceTypes: ('service' | 'integration')[];
   generateWidgets: (sources: SourceSelection) => Omit<WidgetConfig, 'id'>[];
 }
 
 export const templates: DashboardTemplate[] = [
   {
-    id: 'overview',
-    name: 'Service Overview',
-    description: 'Status cards for each service + alert feed',
-    icon: LayoutGrid,
-    sourceTypes: ['service'],
-    generateWidgets: ({ serviceIds }) => {
-      const widgets: Omit<WidgetConfig, 'id'>[] = serviceIds.slice(0, 8).map((sid) => ({
-        widget_type: 'status_card',
-        title: 'Service Status',
-        config: { service_id: sid },
-        width: 1,
-        height: 1,
-      }));
-      widgets.push({
-        widget_type: 'alert_list',
-        title: 'Recent Alerts',
-        config: {},
-        width: 2,
-        height: 2,
-      });
-      return widgets;
-    },
-  },
-  {
-    id: 'performance',
-    name: 'Performance Monitor',
-    description: 'Response time & uptime charts for each service',
+    id: 'production',
+    name: 'Production Overview',
+    description: 'Global uptime, public endpoints, response time & active incidents',
     icon: Activity,
     sourceTypes: ['service'],
     generateWidgets: ({ serviceIds }) => {
-      const widgets: Omit<WidgetConfig, 'id'>[] = [];
-      serviceIds.slice(0, 6).forEach((sid) => {
-        widgets.push({
-          widget_type: 'response_time_chart',
-          title: 'Response Time',
-          config: { service_id: sid },
-          width: 1,
-          height: 1,
-        });
-        widgets.push({
-          widget_type: 'uptime_chart',
-          title: 'Uptime',
-          config: { service_id: sid },
-          width: 1,
-          height: 1,
-        });
-      });
-      return widgets;
-    },
-  },
-  {
-    id: 'compact',
-    name: 'Compact Table',
-    description: 'All services in a table + top alerts',
-    icon: Table,
-    sourceTypes: ['service'],
-    generateWidgets: () => [
-      { widget_type: 'service_table', title: 'All Services', config: {}, width: 2, height: 2 },
-      { widget_type: 'alert_list', title: 'Recent Alerts', config: {}, width: 2, height: 2 },
-    ],
-  },
-  {
-    id: 'analytics',
-    name: 'Analytics Deep Dive',
-    description: 'Detailed charts and metrics for all services',
-    icon: BarChart3,
-    sourceTypes: ['service'],
-    generateWidgets: ({ serviceIds }) => {
       const widgets: Omit<WidgetConfig, 'id'>[] = [
-        { widget_type: 'service_table', title: 'All Services', config: {}, width: 2, height: 1 },
+        { widget_type: 'big_number', title: 'Uptime global', config: { metric_key: 'service_uptime' }, width: 3, height: 2 },
+        { widget_type: 'big_number', title: 'Uptime public endpoints', config: { metric_key: 'service_uptime_public' }, width: 3, height: 2 },
+        { widget_type: 'big_number', title: 'Avg response time', config: { metric_key: 'service_response_time' }, width: 3, height: 2 },
+        { widget_type: 'alert_count', title: 'Active incidents', config: {}, width: 3, height: 2 },
       ];
-      serviceIds.slice(0, 3).forEach((sid) => {
-        widgets.push({
-          widget_type: 'response_time_chart',
-          title: 'Response Time',
-          config: { service_id: sid },
-          width: 1,
-          height: 1,
-        });
-      });
-      widgets.push({
-        widget_type: 'alert_list',
-        title: 'Alerts',
-        config: {},
-        width: 1,
-        height: 1,
-      });
-      return widgets;
-    },
-  },
-  {
-    id: 'google_drive',
-    name: 'Google Drive',
-    description: 'Storage usage, file counts & shared drives',
-    icon: Cloud,
-    sourceTypes: ['integration'],
-    generateWidgets: () => [
-      { widget_type: 'drive_storage_gauge', title: 'Drive Storage', config: {}, width: 2, height: 2 },
-      { widget_type: 'integration_metric', title: 'Fichiers possédés', config: { metric_key: 'drive_owned_files' }, width: 1, height: 1 },
-      { widget_type: 'integration_metric', title: 'Partagés avec moi', config: { metric_key: 'drive_shared_with_me' }, width: 1, height: 1 },
-      { widget_type: 'integration_metric', title: 'Drives partagés', config: { metric_key: 'drive_shared_drives' }, width: 1, height: 1 },
-      { widget_type: 'integration_metric', title: 'Corbeille', config: { metric_key: 'drive_trash_gb' }, width: 1, height: 1 },
-      { widget_type: 'alert_list', title: 'Alerts', config: {}, width: 2, height: 2 },
-    ],
-  },
-  {
-    id: 'mixed',
-    name: 'Mixed Dashboard',
-    description: 'Combine services and integrations in one view',
-    icon: LayoutGrid,
-    sourceTypes: ['service', 'integration'],
-    generateWidgets: ({ serviceIds, integrationIds }) => {
-      const widgets: Omit<WidgetConfig, 'id'>[] = [];
-      // Add service status cards
+      // Add status cards for first 4 services
       serviceIds.slice(0, 4).forEach((sid) => {
         widgets.push({
           widget_type: 'status_card',
           title: 'Service Status',
           config: { service_id: sid },
-          width: 1,
-          height: 1,
+          width: 3,
+          height: 2,
         });
       });
-      // Add integration widgets if we have integrations
-      if (integrationIds.length > 0) {
-        widgets.push(
-          { widget_type: 'drive_storage_gauge', title: 'Drive Storage', config: {}, width: 2, height: 2 },
-          { widget_type: 'integration_metric', title: 'Fichiers possédés', config: { metric_key: 'drive_owned_files' }, width: 1, height: 1 },
-          { widget_type: 'integration_metric', title: 'Drives partagés', config: { metric_key: 'drive_shared_drives' }, width: 1, height: 1 },
-        );
-      }
       widgets.push({
         widget_type: 'alert_list',
         title: 'Recent Alerts',
         config: {},
-        width: 2,
-        height: 2,
+        width: 6,
+        height: 3,
       });
       return widgets;
     },
+  },
+  {
+    id: 'cloud',
+    name: 'Cloud Overview',
+    description: 'Monthly cost, cost variation, resources with issues',
+    icon: Monitor,
+    sourceTypes: ['service', 'integration'],
+    generateWidgets: () => [
+      { widget_type: 'big_number', title: 'Monthly cost', config: { metric_key: 'aws_monthly_cost', source: 'aws' }, width: 4, height: 2 },
+      { widget_type: 'big_number', title: 'Cost variation', config: { metric_key: 'aws_cost_trend', source: 'aws' }, width: 4, height: 2 },
+      { widget_type: 'big_number', title: 'Resources with issues', config: { metric_key: 'cloud_resources_issues', source: 'aws' }, width: 4, height: 2 },
+      { widget_type: 'alert_list', title: 'Cloud Alerts', config: {}, width: 6, height: 3 },
+      { widget_type: 'service_table', title: 'All Services', config: {}, width: 6, height: 3 },
+    ],
+  },
+  {
+    id: 'tv',
+    name: 'TV Mode',
+    description: 'Large widgets optimized for wall displays',
+    icon: Tv,
+    sourceTypes: ['service'],
+    generateWidgets: ({ serviceIds }) => {
+      const widgets: Omit<WidgetConfig, 'id'>[] = [
+        { widget_type: 'big_number', title: 'Uptime global', config: { metric_key: 'service_uptime' }, width: 4, height: 3 },
+        { widget_type: 'big_number', title: 'Avg response time', config: { metric_key: 'service_response_time' }, width: 4, height: 3 },
+        { widget_type: 'alert_count', title: 'Incidents', config: {}, width: 4, height: 3 },
+        { widget_type: 'status_list', title: 'All Services', config: {}, width: 6, height: 4 },
+        { widget_type: 'alert_list', title: 'Recent Alerts', config: {}, width: 6, height: 4 },
+      ];
+      return widgets;
+    },
+  },
+  {
+    id: 'blank',
+    name: 'Blank',
+    description: 'Start from scratch',
+    icon: LayoutGrid,
+    sourceTypes: ['service', 'integration'],
+    generateWidgets: () => [],
   },
 ];
