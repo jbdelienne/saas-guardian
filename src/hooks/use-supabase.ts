@@ -29,7 +29,7 @@ export function useAddService() {
   const { user } = useAuth();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (svc: { name: string; icon: string; url: string; check_interval: number; content_keyword?: string; owner_id?: string; tags?: string[] }) => {
+    mutationFn: async (svc: { name: string; icon: string; url: string; check_interval: number; content_keyword?: string; owner_id?: string; tags?: string[]; visibility?: string }) => {
       // Get user's workspace_id
       const { data: profile } = await supabase
         .from('profiles')

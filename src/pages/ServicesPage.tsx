@@ -158,6 +158,7 @@ export default function ServicesPage() {
                         <span className="text-lg">{service.icon}</span>
                       </TableCell>
                       <TableCell className="font-medium text-foreground">
+                        <span className="mr-1.5">{(service as any).visibility === 'private' ? '🔒' : '🌐'}</span>
                         {service.name}
                         {service.is_paused && (
                           <span className="ml-2 text-[10px] uppercase tracking-wider text-warning font-semibold">{t('services.paused')}</span>
