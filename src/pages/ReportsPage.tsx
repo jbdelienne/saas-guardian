@@ -271,7 +271,7 @@ export default function ReportsPage() {
     (!scopeAll && selectedServiceIds.length === 0);
 
   return (
-    <AppLayout>
+    <>
       <div className="space-y-6">
         {viewingReport ? (
           <ReportView report={viewingReport} onBack={() => setViewingReport(null)} contentRef={reportViewRef} />
