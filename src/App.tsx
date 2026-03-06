@@ -98,6 +98,7 @@ const LangRoutes = () => (
 const AppRoutes = () => (
   <Routes>
     <Route path="/" element={<RootRedirect />} />
+    <Route path="/waitlist" element={<ShortcutRedirect path="waitlist" />} />
     <Route path="/reports/shared/:shareToken" element={<PublicReport />} />
     <Route path="/:lang/*" element={<LangRoutes />} />
   </Routes>
