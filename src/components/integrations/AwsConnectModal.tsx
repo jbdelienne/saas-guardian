@@ -103,9 +103,11 @@ export default function AwsConnectModal({ open, onClose, onConnected }: AwsConne
     setSaving(true);
 
     if (credentials) {
+      const updatePayload: Record<string, string> = { access_key_id: accessKeyId, region, sync_status: 'pending' };
+      if (secretAccessKey.trim()) updatePayload.secret_access_key = secretAccessKey;
       const { error } = await supabase
         .from('aws_credentials')
-        .update({ access_key_id: accessKeyId, secret_access_key: secretAccessKey, region, sync_status: 'pending' })
+        .update(updatePayload)
         .eq('id', credentials.id);
 
       if (error) {
