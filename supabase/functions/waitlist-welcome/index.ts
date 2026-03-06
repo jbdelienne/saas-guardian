@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "npm:resend@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,15 +16,6 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    // Verify this was called internally via the service role or with a matching secret
-    const authHeader = req.headers.get("authorization") || "";
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!serviceRoleKey || !authHeader.includes(serviceRoleKey)) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
-    }
 
     const resendKey = Deno.env.get("RESEND_API_KEY");
     if (!resendKey) {
