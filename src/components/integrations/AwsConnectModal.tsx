@@ -86,8 +86,13 @@ export default function AwsConnectModal({ open, onClose, onConnected }: AwsConne
   };
 
   const handleSave = async () => {
-    if (!accessKeyId.trim() || !secretAccessKey.trim()) {
-      toast.error('Please enter both Access Key ID and Secret Access Key');
+    // For new credentials, secret is required. For updates, it's optional (only if user wants to change it)
+    if (!accessKeyId.trim()) {
+      toast.error('Please enter an Access Key ID');
+      return;
+    }
+    if (!credentials && !secretAccessKey.trim()) {
+      toast.error('Please enter a Secret Access Key');
       return;
     }
     if (!accessKeyId.startsWith('AKIA') && !accessKeyId.startsWith('ASIA')) {
