@@ -47,7 +47,6 @@ const handler = async (req: Request): Promise<Response> => {
     // Sanitize optional string fields
     const safeName = typeof firstName === "string" ? firstName.slice(0, 100) : undefined;
     const safeCompany = typeof company === "string" ? company.slice(0, 200) : undefined;
-    }
 
     // Add contact to Resend audience
     const audienceId = Deno.env.get("RESEND_AUDIENCE_ID");
@@ -56,13 +55,12 @@ const handler = async (req: Request): Promise<Response> => {
         await resend.contacts.create({
           audienceId,
           email,
-          firstName: firstName || company || undefined,
+          firstName: safeName || safeCompany || undefined,
           unsubscribed: false,
         });
-        console.log(`Contact ${email} added to audience`);
+        console.log(`Contact added to audience`);
       } catch (e: any) {
         console.error("Failed to add contact to audience:", e.message);
-        // Don't block the welcome email if audience add fails
       }
     }
 
@@ -75,9 +73,9 @@ const handler = async (req: Request): Promise<Response> => {
         html: `
           <div style="font-family: 'Inter', -apple-system, sans-serif; max-width: 560px; margin: 0 auto; padding: 40px 20px; color: #171717;">
             <div style="margin-bottom: 32px;">
-              <h1 style="font-size: 24px; font-weight: 700; margin: 0 0 8px;">${firstName ? `Hey ${firstName}, welcome` : "Welcome"} to the waitlist!</h1>
+              <h1 style="font-size: 24px; font-weight: 700; margin: 0 0 8px;">${safeName ? `Hey ${safeName}, welcome` : "Welcome"} to the waitlist!</h1>
               <p style="color: #737373; font-size: 15px; line-height: 1.6; margin: 0;">
-                Thanks for signing up${company ? ` from <strong>${company}</strong>` : ""}. You're now on the list for early access to moniduck.
+                Thanks for signing up${safeCompany ? ` from <strong>${safeCompany}</strong>` : ""}. You're now on the list for early access to moniduck.
               </p>
             </div>
             <div style="background: #f5f5f5; border-radius: 12px; padding: 24px; margin-bottom: 32px;">
