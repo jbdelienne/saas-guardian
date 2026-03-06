@@ -37,7 +37,6 @@ const AWS_REGIONS = [
 interface AwsCredentials {
   id: string;
   access_key_id: string;
-  secret_access_key: string;
   region: string;
   last_sync_at: string | null;
   sync_status: string;
