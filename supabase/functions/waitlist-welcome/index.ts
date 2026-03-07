@@ -64,9 +64,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Add contact to Resend audience
     const audienceId = Deno.env.get("RESEND_AUDIENCE_ID");
-    if (audienceId) {
+    if (audienceId && resendFull) {
       try {
-        await resend.contacts.create({
+        await resendFull.contacts.create({
           audienceId,
           email,
           firstName: safeName || safeCompany || undefined,
