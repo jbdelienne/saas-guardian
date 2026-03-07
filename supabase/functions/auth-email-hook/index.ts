@@ -36,9 +36,9 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 
 // Configuration
 const SITE_NAME = "moniduck"
-const SENDER_DOMAIN = "notify.moniduck.io"
+const SENDER_DOMAIN = "send.moniduck.io"
 const ROOT_DOMAIN = "moniduck.io"
-const FROM_DOMAIN = "notify.moniduck.io" // Domain shown in From address (may be root or sender subdomain)
+const FROM_DOMAIN = "send.moniduck.io" // Domain shown in From address (may be root or sender subdomain)
 
 // Sample data for preview mode ONLY (not used in actual email sending).
 // URLs are baked in at scaffold time from the project's real data.
