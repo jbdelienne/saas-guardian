@@ -1,25 +1,21 @@
 project_id = "cynnbynmicfosozmgjua"
 
-[functions.check-services]
-verify_jwt = false
-
-[functions.integration-oauth]
-verify_jwt = false
-
-[functions.integration-oauth-callback]
-verify_jwt = false
-
-[functions.integration-sync]
-verify_jwt = false
-
-[functions.aws-sync]
-verify_jwt = false
-
-[functions.waitlist-welcome]
-verify_jwt = false
-
-[functions.aws-status-poll]
-verify_jwt = false
-
-[functions.aws-cost-sync]
-verify_jwt = false
+[functions]
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.aws-cost-sync]
+    verify_jwt = false
+  [functions.aws-status-poll]
+    verify_jwt = false
+  [functions.aws-sync]
+    verify_jwt = false
+  [functions.check-services]
+    verify_jwt = false
+  [functions.integration-oauth]
+    verify_jwt = false
+  [functions.integration-oauth-callback]
+    verify_jwt = false
+  [functions.integration-sync]
+    verify_jwt = false
+  [functions.waitlist-welcome]
+    verify_jwt = false
