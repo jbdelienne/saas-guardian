@@ -153,23 +153,22 @@ function WaitlistForm({
     setLoading(true);
     onEmailCapture?.(email.trim().toLowerCase());
     try {
+      const normalizedEmail = email.trim().toLowerCase();
       const { error } = await supabase.from("waitlist_signups").insert({
-        email: email.trim().toLowerCase(),
+        email: normalizedEmail,
         first_name: firstName.trim() || null,
         company: company.trim() || null,
       });
-      if (error) {
-        if (error.code === "23505") {
-          onSuccess();
-        } else throw error;
-      } else {
-        try {
-          await supabase.functions.invoke("waitlist-welcome", {
-            body: { email: email.trim().toLowerCase(), firstName: firstName.trim() || null, company: company.trim() || null },
-          });
-        } catch { /* best-effort */ }
-        onSuccess();
+      if (error && error.code !== "23505") {
+        throw error;
       }
+      // Send welcome email (both for new signups and duplicates)
+      try {
+        await supabase.functions.invoke("waitlist-welcome", {
+          body: { email: normalizedEmail, firstName: firstName.trim() || null, company: company.trim() || null },
+        });
+      } catch { /* best-effort */ }
+      onSuccess();
     } catch (err: any) {
       toast.error("Something went wrong. Please try again.");
       console.error(err);
